@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using GameName.Core.Analysis;
 using GameName.Core.Journal;
 using GameName.UI.Shared;
 using UnityEngine.UIElements;
@@ -126,27 +125,10 @@ namespace GameName.UI.Journal
             var chipRow = new VisualElement();
             chipRow.AddToClassList("journal-emotion-chip-row");
             foreach (var detected in record.Result.DetectedEmotions)
-                chipRow.Add(CreateEmotionChip(detected));
+                chipRow.Add(EmotionChipFactory.Create(detected));
             row.Add(chipRow);
 
             return row;
-        }
-
-        private static VisualElement CreateEmotionChip(DetectedEmotion detected)
-        {
-            var chip = new VisualElement();
-            chip.AddToClassList("emotion-chip");
-
-            var swatch = new VisualElement();
-            swatch.AddToClassList("emotion-chip__swatch");
-            swatch.AddToClassList(EmotionDisplay.ColorClass(detected.Emotion));
-            chip.Add(swatch);
-
-            var valueLabel = new Label(detected.Intensity.HasValue ? detected.Intensity.Value.ToString() : "미공개");
-            valueLabel.AddToClassList(detected.Intensity.HasValue ? "emotion-chip__value" : "emotion-chip__value--hidden");
-            chip.Add(valueLabel);
-
-            return chip;
         }
 
         private static VisualElement CreateAmpouleRow(AmpouleRecord record)

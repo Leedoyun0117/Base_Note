@@ -1,40 +1,52 @@
 using System;
 using System.Collections.Generic;
-using GameName.Core.Clues;
-using GameName.Core.Journal;
+using GameName.Core.Commissions;
 using GameName.Core.MemoryRooms;
 
 namespace GameName.UI.Session
 {
-    // GameSession을 조립하는 데 필요한 "세계" 데이터 묶음 — 기억 방 그래프
-    // 구조와 방별 정답+단서. 전부 생성자로 주입받는다(매직 넘버 금지와 같은
-    // 이유로, 그래프 배치를 코드 여기저기에 흩어 상수로 박아두지 않는다).
+    // GameSession을 조립하는 데 필요한 "세계" 데이터 묶음.
+    //
+    // 이전에는 방 그래프/정답/단서/대사까지 전부 여기 한 번만 담았지만, 그러면
+    // 의뢰가 바뀔 때 갈아 끼울 데이터가 없다. 그래서 이 타입에는 모든 의뢰가
+    // 공유하는 고정 지형(허브 노드/연결, 허브 안의 고정 지점들)만 남기고,
+    // 의뢰마다 달라지는 데이터는 CommissionData 목록으로 분리했다.
     public sealed class GameSessionData
     {
-        public IReadOnlyList<MemoryGraphNode> Nodes { get; }
-        public IReadOnlyList<OpenConnection> OpenConnections { get; }
-        public IReadOnlyList<LadderConnection> LadderConnections { get; }
-        public IReadOnlyList<MemoryRoomData> RoomData { get; }
-        public MemoryGraphNodeId InitialPlayerPosition { get; }
+        // 허브(계단·분석실·조향실)와 그 사이의 고정 연결 — 모든 의뢰가 공유하는
+        // 지형이라 의뢰 교체 때 다시 만들지 않는다.
+        public IReadOnlyList<MemoryGraphNode> HubNodes { get; }
+        public IReadOnlyList<OpenConnection> HubOpenConnections { get; }
+
+        // 기억으로 들어갈 때 시작하는 지점이자, 계단을 통해 현실로 복귀할 때
+        // 반드시 서 있어야 하는 지점 — 같은 노드다(계단으로 들어가 계단으로
+        // 나간다). 허브 소속 고정 지점이므로 의뢰가 바뀌어도 값 자체는
+        // 바뀌지 않는다.
+        public MemoryGraphNodeId MemoryEntryNodeId { get; }
+
         public MemoryGraphNodeId PerfumeryRoomNodeId { get; }
-        public CommissionId InitialCommissionId { get; }
+        public MemoryGraphNodeId AnalysisRoomNodeId { get; }
+
+        public IReadOnlyList<CommissionData> Commissions { get; }
 
         public GameSessionData(
-            IReadOnlyList<MemoryGraphNode> nodes,
-            IReadOnlyList<OpenConnection> openConnections,
-            IReadOnlyList<LadderConnection> ladderConnections,
-            IReadOnlyList<MemoryRoomData> roomData,
-            MemoryGraphNodeId initialPlayerPosition,
+            IReadOnlyList<MemoryGraphNode> hubNodes,
+            IReadOnlyList<OpenConnection> hubOpenConnections,
+            MemoryGraphNodeId memoryEntryNodeId,
             MemoryGraphNodeId perfumeryRoomNodeId,
-            CommissionId initialCommissionId)
+            MemoryGraphNodeId analysisRoomNodeId,
+            IReadOnlyList<CommissionData> commissions)
         {
-            Nodes = nodes ?? throw new ArgumentNullException(nameof(nodes));
-            OpenConnections = openConnections ?? throw new ArgumentNullException(nameof(openConnections));
-            LadderConnections = ladderConnections ?? throw new ArgumentNullException(nameof(ladderConnections));
-            RoomData = roomData ?? throw new ArgumentNullException(nameof(roomData));
-            InitialPlayerPosition = initialPlayerPosition;
+            HubNodes = hubNodes ?? throw new ArgumentNullException(nameof(hubNodes));
+            HubOpenConnections = hubOpenConnections ?? throw new ArgumentNullException(nameof(hubOpenConnections));
+            MemoryEntryNodeId = memoryEntryNodeId;
             PerfumeryRoomNodeId = perfumeryRoomNodeId;
-            InitialCommissionId = initialCommissionId;
+            AnalysisRoomNodeId = analysisRoomNodeId;
+
+            if (commissions == null) throw new ArgumentNullException(nameof(commissions));
+            if (commissions.Count == 0)
+                throw new ArgumentException("최소 한 개의 의뢰가 필요하다.", nameof(commissions));
+            Commissions = commissions;
         }
     }
 }

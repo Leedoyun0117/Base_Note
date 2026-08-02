@@ -16,5 +16,9 @@ namespace GameName.Core.Ampoules
         // 확인한다. UI 같은 소비자가 "몇 개를 더 담으려 하는데 괜찮은지"를
         // 스스로 계산하지 않고 이 저장소에 직접 물어볼 수 있게 하기 위한 것이다.
         bool CanAccept(int additionalCount);
+
+        // 용량을 늘리는 안전한 가산 동작 — 업그레이드 상점이 쓴다. 보관함을
+        // 통째로 비우는 권한은 IResettable로만 노출된다.
+        void IncreaseCapacity(int amount);
     }
 }

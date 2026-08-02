@@ -62,7 +62,65 @@
     color: var(--text-dim);
 }
 
-/* ── 좌측: 방 선택 ─────────────────────────────────────────── */
+/* ── 좌측: 이동 + 방 선택 ──────────────────────────────────── */
+
+/* 조향실은 허브라 이동 대상이 계단/분석실뿐이라 목록이 짧다 — flex-grow를
+   주지 않고 높이를 제한해, 아래 "제작 대상 방 목록"(room-list)이 밀려나지
+   않게 한다. 기억 방/분석실 화면의 neighbor-list(그쪽은 유일한 목록이라
+   flex-grow: 1)와 이 점만 다르다 — 클래스 이름과 로직(RoomNavigationPanelView)은
+   완전히 동일하게 재사용한다.*/
+.neighbor-list {
+    max-height: 220px;
+}
+
+.current-room-label {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+.restored-badge {
+    margin-top: var(--space-1);
+    font-size: 11px;
+    color: var(--success);
+    display: none;
+}
+
+.neighbor-row {
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.neighbor-row__name {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.neighbor-row__locked-badge {
+    margin-top: var(--space-1);
+    font-size: 11px;
+    color: var(--danger);
+}
+
+.neighbor-row__move-button {
+    margin-top: var(--space-2);
+    height: 28px;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}
+
+.neighbor-row__move-button:disabled {
+    opacity: 0.4;
+}
 
 .room-list {
     flex-grow: 1;

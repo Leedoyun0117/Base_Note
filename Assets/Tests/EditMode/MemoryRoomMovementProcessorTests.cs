@@ -18,6 +18,7 @@ namespace GameName.Core.Tests.EditMode
             public bool IsRestored(MemoryRoomId roomId) => _restored.Contains(roomId);
             public void ReportJudgement(MemoryRoomId roomId, ScentJudgementResult result) { }
             public void MarkRestored(MemoryRoomId roomId) => _restored.Add(roomId);
+            public void Reset() => _restored.Clear();
         }
 
         private static readonly MemoryGraphNodeId Staircase = new MemoryGraphNodeId("staircase");
@@ -126,6 +127,48 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
+        public void 이미_복원된_방으로_이동하면_정신력을_소모하지_않는다()
+        {
+            var processor = MakeProcessor(
+                out var tracker, out var gauge, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+            tracker.MarkRestored(Room2);
+
+            var result = processor.Move(MemoryGraphNodeId.OfRoom(Room2));
+
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(100, gauge.CurrentValue);
+        }
+
+        [Test]
+        public void 한_번_가_본_방으로_다시_이동하면_복원_여부와_무관하게_정신력을_소모하지_않는다()
+        {
+            var processor = MakeProcessor(
+                out _, out var gauge, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+
+            processor.Move(MemoryGraphNodeId.OfRoom(Room2)); // 첫 방문 — 1 소모(99)
+            processor.Move(MemoryGraphNodeId.OfRoom(Room1)); // 되돌아옴 — Room1은 이미 가 본 곳
+            var result = processor.Move(MemoryGraphNodeId.OfRoom(Room2)); // 재방문 — 무료
+
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(99, gauge.CurrentValue);
+        }
+
+        [Test]
+        public void Reset하면_방문_기록이_지워져_다시_비용이_청구된다()
+        {
+            var processor = MakeProcessor(
+                out _, out var gauge, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+            processor.Move(MemoryGraphNodeId.OfRoom(Room2));
+
+            processor.Reset();
+            processor.Move(MemoryGraphNodeId.OfRoom(Room1)); // 방문 기록이 지워졌으니 다시 유료(98)
+            var result = processor.Move(MemoryGraphNodeId.OfRoom(Room2)); // 이것도 다시 유료(97)
+
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(97, gauge.CurrentValue);
+        }
+
+        [Test]
         public void 허브_이동과_허브_방_이동은_정신력을_소모하지_않는다()
         {
             var processor = MakeProcessor(out _, out var gauge, out _, out _, initialPosition: Staircase);
@@ -133,6 +176,32 @@ namespace GameName.Core.Tests.EditMode
             processor.Move(AnalysisRoom);
             processor.Move(MemoryGraphNodeId.OfRoom(Room1));
 
+            Assert.AreEqual(100, gauge.CurrentValue);
+        }
+
+        // 조향실 화면이 가장 먼저 만들어져 이동 개념이 생기기 전에 굳는
+        // 바람에, 조향실에서 나가는 이동 수단이 UI에 빠져 있던 적이 있었다.
+        // 그래프 자체(계단/분석실과의 연결)는 처음부터 있었으므로 여기서는
+        // 그 연결이 실제로 동작하는지만 다시 확인한다.
+        [Test]
+        public void 조향실에서_계단으로_이동할_수_있고_정신력을_소모하지_않는다()
+        {
+            var processor = MakeProcessor(out _, out var gauge, out _, out _, initialPosition: PerfumeryRoom);
+
+            var result = processor.Move(Staircase);
+
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(100, gauge.CurrentValue);
+        }
+
+        [Test]
+        public void 조향실에서_분석실로_이동할_수_있고_정신력을_소모하지_않는다()
+        {
+            var processor = MakeProcessor(out _, out var gauge, out _, out _, initialPosition: PerfumeryRoom);
+
+            var result = processor.Move(AnalysisRoom);
+
+            Assert.IsTrue(result.Succeeded);
             Assert.AreEqual(100, gauge.CurrentValue);
         }
 

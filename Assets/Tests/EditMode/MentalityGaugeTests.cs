@@ -127,5 +127,33 @@ namespace GameName.Core.Tests.EditMode
             Assert.Throws<ArgumentException>(() =>
                 new MentalityGauge(MakeSettings(initial: 200, max: 100), MakeEventBus()));
         }
+
+        [Test]
+        public void Reset은_소모_회복과_무관하게_처음_설정한_초기값으로_되돌린다()
+        {
+            var gauge = new MentalityGauge(MakeSettings(initial: 70, max: 100), MakeEventBus());
+            gauge.Consume(50);
+            gauge.Restore(30);
+
+            gauge.Reset();
+
+            Assert.AreEqual(70, gauge.CurrentValue);
+        }
+
+        [Test]
+        public void 이미_초기값이면_Reset해도_이벤트가_발행되지_않는다()
+        {
+            var eventBus = MakeEventBus();
+            var receivedCount = 0;
+
+            using (eventBus.Subscribe<MentalityChangedEvent>(e => receivedCount++))
+            {
+                var gauge = new MentalityGauge(MakeSettings(initial: 100), eventBus);
+
+                gauge.Reset();
+
+                Assert.AreEqual(0, receivedCount);
+            }
+        }
     }
 }

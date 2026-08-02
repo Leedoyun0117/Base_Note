@@ -1,0 +1,130 @@
+/* 다른 화면들과 같은 토큰 값을 그대로 재사용한다 — 새 색을 추가하지 않는다. */
+:root {
+    --bg: #16181B;
+    --surface: #1E2126;
+    --surface-raised: #282C33;
+    --border: #363B44;
+    --text: #E4E6EA;
+    --text-dim: #8A9099;
+    --text-faint: #5A616B;
+
+    --success: #6FA86B;
+    --danger: #C75B4A;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    --radius: 3px;
+}
+
+/* 화면 전체를 덮지만, 세 하위 패널이 전부 숨겨져 있을 때는(기억 안을 자유롭게
+   돌아다니는 동안) 그 아래 조향실/기억 방/분석실 화면의 클릭을 그대로
+   통과시켜야 한다 — picking-mode: Ignore로 이 컨테이너 자체는 클릭을 가로채지
+   않고, 실제로 보이는 하위 패널(과 그 버튼들)만 기본 피킹으로 클릭을 받는다. */
+.flow-overlay {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    picking-mode: Ignore;
+    justify-content: center;
+    align-items: center;
+}
+
+.panel-title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+    margin-bottom: var(--space-2);
+}
+
+.caption {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: normal;
+}
+
+.failure-message {
+    margin-top: var(--space-2);
+    margin-bottom: var(--space-2);
+    font-size: 11px;
+    color: var(--danger);
+    white-space: normal;
+}
+
+.craft-button {
+    margin-top: var(--space-2);
+    height: 36px;
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.ampoule-row__action-button {
+    margin-top: var(--space-2);
+    height: 28px;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}
+
+/* ── 대화 패널: 화면 하단 고정 ─────────────────────────────── */
+
+.dialogue-panel {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--surface);
+    border-top-width: 1px;
+    border-top-color: var(--border);
+    padding: var(--space-6);
+}
+
+.dialogue-speaker {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--text-dim);
+    margin-bottom: var(--space-2);
+}
+
+.dialogue-text {
+    font-size: 18px;
+    color: var(--text);
+    white-space: normal;
+    margin-bottom: var(--space-2);
+}
+
+/* ── 복귀 확인 패널 ────────────────────────────────────────── */
+
+.exit-confirm-panel {
+    width: 420px;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-6);
+}
+
+.exit-confirm-controls {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top-width: 1px;
+    border-top-color: var(--border);
+}
+

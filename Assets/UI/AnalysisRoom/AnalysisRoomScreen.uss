@@ -1,0 +1,265 @@
+/* 조향실/기억 방 화면과 같은 토큰 값을 그대로 재사용한다 — 새 색을 추가하지
+   않는다. UIDocument마다 스타일시트가 독립적이라 값을 다시 선언해야 하지만,
+   값 자체는 전부 동일하게 맞춘다. */
+:root {
+    --bg: #16181B;
+    --surface: #1E2126;
+    --surface-raised: #282C33;
+    --border: #363B44;
+    --text: #E4E6EA;
+    --text-dim: #8A9099;
+    --text-faint: #5A616B;
+
+    --joy: #E5B95C;
+    --love: #D98BA0;
+    --anger: #C75B4A;
+    --sadness: #5B8CB8;
+    --fear: #8B7AB8;
+
+    --success: #6FA86B;
+    --danger: #C75B4A;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    --radius: 3px;
+}
+
+.screen {
+    flex-direction: row;
+    flex-grow: 1;
+    background-color: var(--bg);
+}
+
+.panel {
+    flex-grow: 1;
+    flex-basis: 0;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    margin: var(--space-2);
+    padding: var(--space-4);
+}
+
+.panel--wide {
+    flex-grow: 2;
+}
+
+.panel-title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+    margin-bottom: var(--space-4);
+}
+
+.section-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-2);
+}
+
+.caption {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: normal;
+}
+
+.failure-message {
+    margin-top: var(--space-2);
+    font-size: 11px;
+    color: var(--danger);
+    white-space: normal;
+}
+
+/* ── 이동(재사용) 패널 — 기억 방 화면과 동일한 클래스 이름 ───────────── */
+
+.current-room-label {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+.restored-badge {
+    margin-top: var(--space-1);
+    font-size: 11px;
+    color: var(--success);
+    display: none;
+}
+
+.mentality-bar-track {
+    height: 12px;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.mentality-bar-fill {
+    height: 100%;
+    background-color: var(--success);
+}
+
+.neighbor-list {
+    flex-grow: 1;
+}
+
+.neighbor-row {
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.neighbor-row__name {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.neighbor-row__locked-badge {
+    margin-top: var(--space-1);
+    font-size: 11px;
+    color: var(--danger);
+}
+
+.neighbor-row__move-button {
+    margin-top: var(--space-2);
+    height: 28px;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    -unity-text-align: middle-center;
+}
+
+.neighbor-row__move-button:disabled {
+    opacity: 0.4;
+}
+
+/* ── 분석 패널 ─────────────────────────────────────────────── */
+
+.clue-analysis-list {
+    flex-grow: 1;
+    margin-top: var(--space-2);
+}
+
+.clue-row {
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.clue-row--selected {
+    border-color: var(--text);
+}
+
+.clue-row__swatches {
+    flex-direction: row;
+    margin-bottom: var(--space-1);
+}
+
+.clue-row__swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius);
+    margin-right: var(--space-1);
+}
+
+.clue-row__summary {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: normal;
+}
+
+.analysis-options {
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top-width: 1px;
+    border-top-color: var(--border);
+}
+
+.craft-button {
+    margin-top: var(--space-2);
+    height: 32px;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+    -unity-font-style: bold;
+}
+
+.craft-button:disabled {
+    opacity: 0.4;
+}
+
+.analysis-result {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top-width: 1px;
+    border-top-color: var(--border);
+}
+
+.analysis-result-title {
+    font-size: 14px;
+    -unity-font-style: bold;
+    color: var(--text);
+    margin-bottom: var(--space-2);
+}
+
+/* 감정 칩(EmotionChipFactory) — 기록지 화면과 같은 클래스 이름을 쓴다. */
+
+.analysis-emotion-chip-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+}
+
+.emotion-chip {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-1) var(--space-2);
+    margin-right: var(--space-2);
+    margin-bottom: var(--space-1);
+}
+
+.emotion-chip__swatch {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--radius);
+    margin-right: var(--space-1);
+}
+
+.emotion-chip__value {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+.emotion-chip__value--hidden {
+    font-size: 11px;
+    color: var(--text-faint);
+}
+
+.emotion--joy { background-color: var(--joy); }
+.emotion--love { background-color: var(--love); }
+.emotion--anger { background-color: var(--anger); }
+.emotion--sadness { background-color: var(--sadness); }
+.emotion--fear { background-color: var(--fear); }

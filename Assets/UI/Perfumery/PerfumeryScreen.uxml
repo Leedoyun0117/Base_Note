@@ -5,6 +5,20 @@
 
         <ui:VisualElement name="room-panel" class="panel">
             <ui:Label text="기억 방" class="panel-title" />
+
+            <ui:Label text="이동" class="section-label" />
+            <ui:Label name="current-room-label" text="-" class="current-room-label" />
+            <ui:Label name="current-room-restored-badge" text="복원됨" class="restored-badge" />
+            <ui:VisualElement class="mentality-bar-track">
+                <ui:VisualElement name="mentality-bar-fill" class="mentality-bar-fill" />
+            </ui:VisualElement>
+            <ui:Label name="mentality-value" text="- / -" class="caption" />
+            <ui:Label name="mentality-notice" text="" class="failure-message" />
+            <ui:Label text="갈 수 있는 곳" class="caption" />
+            <ui:ScrollView name="neighbor-list" class="neighbor-list" />
+            <ui:Label name="move-failure-message" text="" class="failure-message" />
+
+            <ui:Label text="제작 대상 방 목록" class="section-label" />
             <ui:ScrollView name="room-list" class="room-list" />
             <ui:VisualElement class="required-total-block">
                 <ui:Label text="요구 총량" class="caption" />

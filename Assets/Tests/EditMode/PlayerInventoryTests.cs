@@ -91,5 +91,18 @@ namespace GameName.Core.Tests.EditMode
             Assert.IsFalse(result.Succeeded);
             Assert.AreEqual(InventoryRemoveFailureReason.NotFound, result.FailureReason);
         }
+
+        [Test]
+        public void Reset은_내용물만_비우고_용량은_그대로_둔다()
+        {
+            var inventory = new PlayerInventory(new InventorySettings(2), new SharedSlotInventoryPolicy());
+            inventory.TryStore(MakeClueInfo("clue-1"));
+            inventory.IncreaseCapacity(3);
+
+            inventory.Reset();
+
+            Assert.AreEqual(0, inventory.Items.Count);
+            Assert.AreEqual(5, inventory.Capacity);
+        }
     }
 }

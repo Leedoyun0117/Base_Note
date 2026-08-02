@@ -5,6 +5,7 @@ using System.Reflection;
 using GameName.Core.Ampoules;
 using GameName.Core.Analysis;
 using GameName.Core.Clues;
+using GameName.Core.Dialogue;
 using GameName.Core.Emotions;
 using GameName.Core.Events;
 using GameName.Core.Inventory;
@@ -35,15 +36,15 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 서로_다른_의뢰의_기록은_섞이지_않는다()
         {
-            var journal = MakeJournal(out _, out _, out _);
+            var journal = MakeJournal(out var eventBus, out _, out _);
             var commissionA = new CommissionId("commission-a");
             var commissionB = new CommissionId("commission-b");
 
             journal.BeginCommission(commissionA);
-            journal.RecordDialogue(new DialogueLine("피해자", "그날 밤 무슨 일이 있었나요"));
+            eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("피해자", "그날 밤 무슨 일이 있었나요")));
 
             journal.BeginCommission(commissionB);
-            journal.RecordDialogue(new DialogueLine("의뢰인", "다른 사건입니다"));
+            eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("의뢰인", "다른 사건입니다")));
 
             var recordsA = journal.GetDialogue(commissionA);
             var recordsB = journal.GetDialogue(commissionB);
@@ -57,10 +58,10 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 화면이_받아간_기록_목록을_바꿔도_원본은_그대로다()
         {
-            var journal = MakeJournal(out _, out _, out _);
+            var journal = MakeJournal(out var eventBus, out _, out _);
             var commission = new CommissionId("commission-a");
             journal.BeginCommission(commission);
-            journal.RecordDialogue(new DialogueLine("A", "첫 줄"));
+            eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("A", "첫 줄")));
 
             var records = journal.GetDialogue(commission);
 
@@ -148,6 +149,7 @@ namespace GameName.Core.Tests.EditMode
             AssertNoJournalDependency(typeof(ClueAnalyzer));
             AssertNoJournalDependency(typeof(AmpouleCraftingProcessor));
             AssertNoJournalDependency(typeof(ScentTestingProcessor));
+            AssertNoJournalDependency(typeof(DialogueProgressor));
         }
 
         private static void AssertNoJournalDependency(Type processorType)
@@ -195,13 +197,13 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 기록_순서는_삽입_순서와_항상_같다()
         {
-            var journal = MakeJournal(out _, out _, out _);
+            var journal = MakeJournal(out var eventBus, out _, out _);
             var commission = new CommissionId("commission-a");
             journal.BeginCommission(commission);
 
-            journal.RecordDialogue(new DialogueLine("A", "첫"));
-            journal.RecordDialogue(new DialogueLine("B", "둘"));
-            journal.RecordDialogue(new DialogueLine("C", "셋"));
+            eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("A", "첫")));
+            eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("B", "둘")));
+            eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("C", "셋")));
 
             var expected = new[] { "첫", "둘", "셋" };
             var firstRead = journal.GetDialogue(commission).Select(l => l.Text).ToArray();
@@ -242,10 +244,23 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 활성_의뢰가_없으면_기록이_조용히_무시된다()
         {
-            var journal = MakeJournal(out _, out _, out _);
+            var journal = MakeJournal(out var eventBus, out _, out _);
 
             Assert.IsNull(journal.ActiveCommissionId);
-            Assert.DoesNotThrow(() => journal.RecordDialogue(new DialogueLine("A", "누구도 듣지 않는 말")));
+            Assert.DoesNotThrow(() =>
+                eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("A", "누구도 듣지 않는 말"))));
+        }
+
+        [Test]
+        public void 대화_한_줄은_기록_하나만_남긴다()
+        {
+            var journal = MakeJournal(out var eventBus, out _, out _);
+            var commission = new CommissionId("commission-a");
+            journal.BeginCommission(commission);
+
+            eventBus.Publish(new DialogueLineShownEvent(new DialogueLine("A", "한 번만 기록되어야 한다")));
+
+            Assert.AreEqual(1, journal.GetDialogue(commission).Count);
         }
     }
 }

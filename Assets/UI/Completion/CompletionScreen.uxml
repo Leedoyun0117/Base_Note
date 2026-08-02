@@ -1,0 +1,32 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="CompletionScreen.uss" />
+
+    <ui:VisualElement name="screen" class="screen">
+
+        <ui:VisualElement name="result-panel" class="panel">
+            <ui:Label text="의뢰 결과" class="panel-title" />
+
+            <ui:Label text="평균 정확도" class="section-label" />
+            <ui:Label name="average-accuracy-label" text="-" class="headline-value" />
+
+            <ui:Label text="의뢰인이 준 선물" class="section-label" />
+            <ui:Label name="gift-label" text="-" class="caption" />
+
+            <ui:Label text="방별 결과" class="section-label" />
+            <ui:ScrollView name="room-results-list" class="room-results-list" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="display-upgrade-panel" class="panel">
+            <ui:Label text="진열 · 업그레이드" class="panel-title" />
+
+            <ui:Label name="emotional-balance-label" text="보유 감정량: 0" class="headline-value" />
+
+            <ui:Label text="업그레이드" class="section-label" />
+            <ui:ScrollView name="upgrade-list" class="upgrade-list" />
+
+            <ui:Button name="next-commission-button" text="다음 의뢰로" class="craft-button" />
+            <ui:Label name="next-commission-message" text="" class="failure-message" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

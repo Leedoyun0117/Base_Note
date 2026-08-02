@@ -1,4 +1,5 @@
 using GameName.UI.Journal;
+using GameName.UI.MemoryRoom;
 using GameName.UI.Session;
 using UnityEngine;
 using UnityEngine.UIElements;
@@ -29,13 +30,22 @@ namespace GameName.UI.Perfumery
             var session = _gameSession.Session;
             var root = GetComponent<UIDocument>().rootVisualElement;
 
+            // 조향실도 그래프 위의 노드 하나다 — 계단·분석실로 나가는 이동은
+            // 기억 방/분석실 화면과 같은 재사용 컨트롤러가 담당한다. 좌측
+            // "기억 방" 패널 위쪽에 함께 그려진다(같은 root-panel 하위 요소).
+            var navigationView = new RoomNavigationPanelView(root.Q<VisualElement>("room-panel"));
+            var navigationController = new RoomNavigationPanelController(
+                navigationView, session.Graph, session.RestorationTracker, session.MentalityGauge,
+                session.MovementProcessor, session.PlayerLocation, session.RoomIds, session.EventBus);
+
             var roomView = new RoomSelectionPanelView(root.Q<VisualElement>("room-panel"));
             var roomController = new RoomSelectionPanelController(
                 roomView, session.RoomIds, session.PublicInfoRepository, session.RestorationTracker, session.EventBus);
 
             var compositionView = new PerfumeryCompositionPanelView(root.Q<VisualElement>("perfumery-panel"));
             var compositionController = new PerfumeryCompositionPanelController(
-                compositionView, session.CompositionValidator, session.AmpouleStorage, session.MentalityCostSettings);
+                compositionView, session.CompositionValidator, session.AmpouleStorage,
+                session.AmpouleCraftingQueue, session.MentalityCostSettings);
 
             var statusView = new StatusPanelView(root.Q<VisualElement>("status-panel"));
             var statusController = new StatusPanelController(
@@ -43,7 +53,7 @@ namespace GameName.UI.Perfumery
                 session.TransferProcessor, session.EventBus);
 
             _screenController = new PerfumeryScreenController(
-                roomController, compositionController, statusController, session.CraftingProcessor);
+                navigationController, roomController, compositionController, statusController, session.CraftingProcessor);
 
             // ── 기록지 화면 조립 ────────────────────────────────────────
             if (_journalVisibility != null)

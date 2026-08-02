@@ -8,7 +8,13 @@ namespace GameName.Core.MemoryRooms
     // 같은 실행 중 상태는 갖지 않는다 — 그건 IMemoryRoomRestorationTracker의
     // 몫이다. 노드/연결 목록은 전부 생성자로 주입받는다. 방 배치를 코드에
     // 상수로 박아두지 않기 위함이다.
-    public sealed class MemoryRoomGraph
+    //
+    // IMemoryRoomGraph(읽기)와 IMemoryRoomGraphLoader(통째로 교체) 두 경계를
+    // 함께 구현한다. 이동 처리기 등 여러 처리기가 이 객체 참조를 생성자로
+    // 받아 그대로 들고 있으므로, 의뢰가 바뀌어도 이 객체 자체를 새로 만들지
+    // 않고 내부 내용만 Load()로 바꿔치기한다 — 그래야 참조를 들고 있는 모든
+    // 처리기를 다시 만들 필요가 없다.
+    public sealed class MemoryRoomGraph : IMemoryRoomGraph, IMemoryRoomGraphLoader
     {
         private readonly Dictionary<MemoryGraphNodeId, MemoryGraphNode> _nodesById =
             new Dictionary<MemoryGraphNodeId, MemoryGraphNode>();
@@ -21,9 +27,23 @@ namespace GameName.Core.MemoryRooms
             IReadOnlyList<OpenConnection> openConnections,
             IReadOnlyList<LadderConnection> ladderConnections)
         {
+            Load(nodes, openConnections, ladderConnections);
+        }
+
+        // 지금까지의 노드/연결을 전부 버리고 새 구조로 대체한다. 새 의뢰가
+        // 시작될 때 GameSession.LoadCommission이 호출한다.
+        public void Load(
+            IReadOnlyList<MemoryGraphNode> nodes,
+            IReadOnlyList<OpenConnection> openConnections,
+            IReadOnlyList<LadderConnection> ladderConnections)
+        {
             if (nodes == null) throw new ArgumentNullException(nameof(nodes));
             if (openConnections == null) throw new ArgumentNullException(nameof(openConnections));
             if (ladderConnections == null) throw new ArgumentNullException(nameof(ladderConnections));
+
+            _nodesById.Clear();
+            _openConnections.Clear();
+            _ladderConnections.Clear();
 
             foreach (var node in nodes)
             {

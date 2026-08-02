@@ -23,15 +23,15 @@ namespace GameName.UI.Perfumery
         private readonly PerfumeryCompositionPanelView _view;
         private readonly IScentCompositionValidator _compositionValidator;
         private readonly IAmpouleStorage _storage;
+        private readonly IAmpouleCraftingQueue _queue;
         private readonly Dictionary<EmotionType, int> _supportingIntensities = new Dictionary<EmotionType, int>();
-        private readonly List<AmpouleCraftingRequest> _queue = new List<AmpouleCraftingRequest>();
 
         private EmotionType? _baseEmotion;
         private MemoryRoomId? _targetRoomId;
         private int? _requiredTotal;
         private Scent _currentScent;
 
-        public IReadOnlyList<AmpouleCraftingRequest> Queue => _queue;
+        public IReadOnlyList<AmpouleCraftingRequest> Queue => _queue.Items;
 
         // 대기열 일괄 제작은 화면 컨트롤러가 AmpouleCraftingProcessor를 호출해
         // 처리한다 — 여기서는 "제작해 달라"는 요청만 밖으로 알린다.
@@ -41,12 +41,14 @@ namespace GameName.UI.Perfumery
             PerfumeryCompositionPanelView view,
             IScentCompositionValidator compositionValidator,
             IAmpouleStorage storage,
+            IAmpouleCraftingQueue queue,
             IMentalityCostSettings costSettings)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _compositionValidator =
                 compositionValidator ?? throw new ArgumentNullException(nameof(compositionValidator));
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
+            _queue = queue ?? throw new ArgumentNullException(nameof(queue));
             if (costSettings == null) throw new ArgumentNullException(nameof(costSettings));
 
             foreach (var emotion in AllEmotions)
@@ -64,7 +66,7 @@ namespace GameName.UI.Perfumery
             _view.SetCraftCostNotice(
                 $"제작 비용: 정신력 {costSettings.AmpouleCraftingCost} (몇 개를 만들든 1회만 소모)");
             _view.SetSupportingIntensities(_supportingIntensities);
-            _view.SetQueue(_queue);
+            _view.SetQueue(_queue.Items);
             RefreshCraftQueueButtonEnabled();
             Revalidate();
         }
@@ -79,7 +81,7 @@ namespace GameName.UI.Perfumery
         public void ClearQueue()
         {
             _queue.Clear();
-            _view.SetQueue(_queue);
+            _view.SetQueue(_queue.Items);
             RefreshAddToQueueButtonEnabled();
             RefreshCraftQueueButtonEnabled();
         }
@@ -113,11 +115,11 @@ namespace GameName.UI.Perfumery
         {
             if (_currentScent == null || _targetRoomId == null)
                 return;
-            if (!_storage.CanAccept(_queue.Count + 1))
+            if (!_storage.CanAccept(_queue.Items.Count + 1))
                 return;
 
             _queue.Add(new AmpouleCraftingRequest(_targetRoomId.Value, _currentScent));
-            _view.SetQueue(_queue);
+            _view.SetQueue(_queue.Items);
 
             ResetDraftComposition();
             RefreshCraftQueueButtonEnabled();
@@ -125,11 +127,11 @@ namespace GameName.UI.Perfumery
 
         private void OnQueueItemRemoveRequested(int index)
         {
-            if (index < 0 || index >= _queue.Count)
+            if (index < 0 || index >= _queue.Items.Count)
                 return;
 
             _queue.RemoveAt(index);
-            _view.SetQueue(_queue);
+            _view.SetQueue(_queue.Items);
             RefreshAddToQueueButtonEnabled();
             RefreshCraftQueueButtonEnabled();
         }
@@ -177,11 +179,11 @@ namespace GameName.UI.Perfumery
 
         private void RefreshAddToQueueButtonEnabled()
         {
-            var canQueue = _currentScent != null && _storage.CanAccept(_queue.Count + 1);
+            var canQueue = _currentScent != null && _storage.CanAccept(_queue.Items.Count + 1);
             _view.SetAddToQueueButtonEnabled(canQueue);
         }
 
-        private void RefreshCraftQueueButtonEnabled() => _view.SetCraftQueueButtonEnabled(_queue.Count > 0);
+        private void RefreshCraftQueueButtonEnabled() => _view.SetCraftQueueButtonEnabled(_queue.Items.Count > 0);
 
         private static string DescribeFailure(AmpouleCraftingFailureReason reason)
         {

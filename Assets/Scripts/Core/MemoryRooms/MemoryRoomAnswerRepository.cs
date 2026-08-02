@@ -8,15 +8,26 @@ namespace GameName.Core.MemoryRooms
     // 주입받았는지에 따라 소비자가 받을 수 있는 정보의 범위가 갈린다 —
     // MemoryRoomAnswer.ToPublicInfo()가 이미 보장하는 단방향 변환을 그대로
     // 재사용한다.
-    public sealed class MemoryRoomAnswerRepository : IMemoryRoomAnswerRepository, IMemoryRoomPublicInfoRepository
+    //
+    // IMemoryRoomAnswerLoader도 함께 구현한다 — 시향 판정기 등 정상 소비자가
+    // 들고 있는 참조를 그대로 둔 채, 의뢰가 바뀔 때 내부 정답만 통째로
+    // 바꿔치기하기 위해서다.
+    public sealed class MemoryRoomAnswerRepository :
+        IMemoryRoomAnswerRepository, IMemoryRoomPublicInfoRepository, IMemoryRoomAnswerLoader
     {
-        private readonly Dictionary<MemoryRoomId, MemoryRoomAnswer> _answersByRoomId;
+        private readonly Dictionary<MemoryRoomId, MemoryRoomAnswer> _answersByRoomId =
+            new Dictionary<MemoryRoomId, MemoryRoomAnswer>();
 
         public MemoryRoomAnswerRepository(IReadOnlyList<MemoryRoomAnswer> answers)
         {
+            Load(answers);
+        }
+
+        public void Load(IReadOnlyList<MemoryRoomAnswer> answers)
+        {
             if (answers == null) throw new ArgumentNullException(nameof(answers));
 
-            _answersByRoomId = new Dictionary<MemoryRoomId, MemoryRoomAnswer>(answers.Count);
+            _answersByRoomId.Clear();
             foreach (var answer in answers)
             {
                 if (_answersByRoomId.ContainsKey(answer.RoomId))

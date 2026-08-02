@@ -1,0 +1,54 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="FinalCraftingScreen.uss" />
+
+    <ui:VisualElement name="screen" class="screen">
+
+        <ui:VisualElement name="room-panel" class="panel">
+            <ui:Label text="방 선택" class="panel-title" />
+
+            <ui:Label text="방 목록" class="section-label" />
+            <ui:ScrollView name="room-list" class="room-list" />
+            <ui:VisualElement class="required-total-block">
+                <ui:Label text="요구 총량" class="caption" />
+                <ui:Label name="required-total-value" text="-" class="required-total-value" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <ui:VisualElement name="perfumery-panel" class="panel">
+            <ui:Label text="최종 조향" class="panel-title" />
+
+            <ui:Label text="바탕 감정" class="section-label" />
+            <ui:VisualElement name="base-emotion-slots" class="base-emotion-row" />
+
+            <ui:Label text="보조 감정" class="section-label" />
+            <ui:VisualElement name="supporting-emotion-rows" class="supporting-emotion-list" />
+
+            <ui:VisualElement class="total-block">
+                <ui:Label name="total-over-required" text="0 / -" class="total-value" />
+            </ui:VisualElement>
+
+            <ui:Label text="위반 사항" class="section-label" />
+            <ui:VisualElement name="violations-list" class="violations-list" />
+
+            <ui:Button name="add-to-queue-button" text="대기열에 담기" class="craft-button" />
+
+            <ui:Label text="이 방에 확정된 최종 향" class="section-label" />
+            <ui:VisualElement name="craft-queue-list" class="craft-queue-list" />
+            <ui:Label name="craft-cost-notice" text="" class="caption" />
+
+            <ui:Button name="craft-queue-button" text="대기열 일괄 제작" class="craft-button" />
+            <ui:Label name="craft-result-message" text="" class="failure-message" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="submit-panel" class="panel">
+            <ui:Label text="의뢰인에게 제공" class="panel-title" />
+
+            <ui:Label text="진행 상황" class="section-label" />
+            <ui:Label name="completion-status-label" text="0 / 0 방 완료" class="current-room-label" />
+
+            <ui:Button name="provide-button" text="의뢰인에게 제공하기" class="craft-button" />
+            <ui:Label name="provide-result-message" text="" class="failure-message" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

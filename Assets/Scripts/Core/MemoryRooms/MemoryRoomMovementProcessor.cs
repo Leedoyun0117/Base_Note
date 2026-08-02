@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using GameName.Core.Events;
 using GameName.Core.Mentality;
 
@@ -12,17 +13,23 @@ namespace GameName.Core.MemoryRooms
     // 불가능한 이동이 통과하는 일 자체가 생길 수 없다. 시향 판정이나 조향에
     // 대해서도 전혀 알지 못한다 — 복원 여부는 IMemoryRoomRestorationTracker에게
     // 물어볼 뿐이다.
-    public sealed class MemoryRoomMovementProcessor
+    //
+    // IResettable도 구현한다 — 어떤 방을 이미 가 봤는지(_visitedRoomIds)는 이번
+    // 의뢰 한 번의 탐험 진행 상태이지, 다음 의뢰로 넘어가도 유지될 값이 아니다.
+    // 그 초기화 권한은 CommissionSession만 받는다(다른 IResettable 구현체와
+    // 같은 이유).
+    public sealed class MemoryRoomMovementProcessor : IResettable
     {
-        private readonly MemoryRoomGraph _graph;
+        private readonly IMemoryRoomGraph _graph;
         private readonly IMemoryRoomRestorationTracker _restorationTracker;
         private readonly IMentalityGauge _mentalityGauge;
         private readonly IMentalityCostSettings _costSettings;
         private readonly IPlayerLocationMover _playerLocation;
         private readonly IEventBus _eventBus;
+        private readonly HashSet<MemoryRoomId> _visitedRoomIds = new HashSet<MemoryRoomId>();
 
         public MemoryRoomMovementProcessor(
-            MemoryRoomGraph graph,
+            IMemoryRoomGraph graph,
             IMemoryRoomRestorationTracker restorationTracker,
             IMentalityGauge mentalityGauge,
             IMentalityCostSettings costSettings,
@@ -65,6 +72,13 @@ namespace GameName.Core.MemoryRooms
                 throw new InvalidOperationException($"현재 위치({from})가 그래프에 없는 노드다.");
             if (!_graph.TryGetNode(to, out var toNode))
                 throw new ArgumentException($"그래프에 없는 노드({to})다.", nameof(to));
+
+            // 지금 서 있는 방은 이동 성공 여부와 무관하게 이미 "가 본 곳"이다.
+            // Move()로 도착한 적 없는 커미션 시작 지점(예: 첫 기억 방)도 이렇게
+            // 표시해 둬야, 더 안쪽까지 갔다가 그 방으로 되돌아올 때 다시 비용이
+            // 청구되지 않는다.
+            if (fromNode.Type == MemoryGraphNodeType.MemoryRoom)
+                _visitedRoomIds.Add(new MemoryRoomId(fromNode.Id.Value));
 
             if (_graph.TryGetLadderLowerRoom(from, to, out var lowerRoomId))
             {
@@ -110,17 +124,40 @@ namespace GameName.Core.MemoryRooms
             if (!to.Equals(from))
                 _eventBus.Publish(new MemoryRoomMoveCompletedEvent(from, to));
 
+            // 방금 도착한 곳이 기억 방이면 "가 본 곳"으로 기록한다 — 그래야
+            // 다음에 같은 방으로 다시 들어올 때 CalculateNominalCost가 무료로
+            // 처리한다. 실패한 시도에서는 여기까지 오지 않으므로 실제로 들어간
+            // 적 없는 방이 방문 처리되는 일은 없다.
+            if (toNode.Type == MemoryGraphNodeType.MemoryRoom)
+                _visitedRoomIds.Add(new MemoryRoomId(toNode.Id.Value));
+
             return MemoryGraphMoveResult.Success();
         }
+
+        public void Reset() => _visitedRoomIds.Clear();
 
         // 노드 종류만으로 정해지는 "명목상" 비용. 0-정신력 면제는 여기에 넣지
         // 않는다 — 그 면제는 "지금 정신력이 얼마인가"라는 순간의 상태에 달려
         // 있어서 노드 종류만 보는 이 계산과는 층위가 다르기 때문이다.
+        //
+        // 목적지 방에 이미 한 번이라도 가 본 적이 있으면(방문했거나, 다른
+        // 수단으로 이미 복원되어 있으면) 비용이 없다 — 정신력 비용은 "아직
+        // 가보지 않은 곳을 처음 탐색하는" 대가이지, 이미 한 번 가 본 곳을
+        // 다시 오가는 것까지 매번 청구할 이유가 없다. 그래서 한 번 들어간
+        // 방부터는 완전히 복원했는지와 무관하게 몇 번을 오가도 그 방으로의
+        // 이동만큼은 계속 무료다.
         private int CalculateNominalCost(MemoryGraphNode fromNode, MemoryGraphNode toNode)
         {
             var bothAreMemoryRooms =
                 fromNode.Type == MemoryGraphNodeType.MemoryRoom && toNode.Type == MemoryGraphNodeType.MemoryRoom;
-            return bothAreMemoryRooms ? _costSettings.MemoryRoomMoveCost : 0;
+            if (!bothAreMemoryRooms)
+                return 0;
+
+            var toRoomId = new MemoryRoomId(toNode.Id.Value);
+            if (_restorationTracker.IsRestored(toRoomId) || _visitedRoomIds.Contains(toRoomId))
+                return 0;
+
+            return _costSettings.MemoryRoomMoveCost;
         }
 
         // Move()가 실제로 청구하는 것과 같은 값을 미리 계산한다 — 0-정신력

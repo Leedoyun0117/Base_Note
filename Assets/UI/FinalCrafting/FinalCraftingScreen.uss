@@ -1,0 +1,289 @@
+/* 조향실 화면(PerfumeryScreen.uss)과 동일한 디자인 토큰·클래스를 그대로
+   재사용한다 — 새 색이나 치수를 만들지 않는다. 이 화면이 조향실 패널
+   구조(방 목록 + 조향 패널)를 그대로 재사용하므로 스타일도 같은 값을
+   그대로 옮겨 쓰는 것이 자연스럽다. */
+
+:root {
+    --bg: #16181B;
+    --surface: #1E2126;
+    --surface-raised: #282C33;
+    --border: #363B44;
+    --text: #E4E6EA;
+    --text-dim: #8A9099;
+    --text-faint: #5A616B;
+
+    --joy: #E5B95C;
+    --love: #D98BA0;
+    --anger: #C75B4A;
+    --sadness: #5B8CB8;
+    --fear: #8B7AB8;
+
+    --success: #6FA86B;
+    --danger: #C75B4A;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    --radius: 3px;
+}
+
+.screen {
+    flex-direction: row;
+    flex-grow: 1;
+    background-color: var(--bg);
+}
+
+.panel {
+    flex-grow: 1;
+    flex-basis: 0;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    margin: var(--space-2);
+    padding: var(--space-4);
+}
+
+.panel-title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+    margin-bottom: var(--space-4);
+}
+
+.section-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-2);
+}
+
+.caption {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+.current-room-label {
+    font-size: 16px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+.room-list {
+    flex-grow: 1;
+}
+
+.room-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.room-row--selected {
+    border-color: var(--text);
+}
+
+.room-row--restored {
+    opacity: 0.6;
+}
+
+.room-row__name {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.room-row__badge {
+    font-size: 11px;
+    color: var(--success);
+}
+
+.required-total-block {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top-width: 1px;
+    border-top-color: var(--border);
+}
+
+.required-total-value {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+.base-emotion-row {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+.emotion-slot {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius);
+    border-width: 1px;
+    border-color: var(--border);
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+}
+
+.emotion-slot--selected {
+    opacity: 1;
+    border-color: var(--text);
+}
+
+.emotion-slot__label {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: var(--bg);
+}
+
+.emotion--joy { background-color: var(--joy); }
+.emotion--love { background-color: var(--love); }
+.emotion--anger { background-color: var(--anger); }
+.emotion--sadness { background-color: var(--sadness); }
+.emotion--fear { background-color: var(--fear); }
+
+.supporting-emotion-list {
+    flex-direction: column;
+}
+
+.stepper-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.stepper-row__swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius);
+    margin-right: var(--space-2);
+}
+
+.stepper-row__label {
+    flex-grow: 1;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.stepper-button {
+    width: 24px;
+    height: 24px;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.stepper-row__value {
+    width: 32px;
+    -unity-text-align: middle-center;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.total-block {
+    margin-top: var(--space-4);
+    padding: var(--space-3);
+    background-color: var(--surface-raised);
+    border-radius: var(--radius);
+    border-width: 1px;
+    border-color: var(--border);
+    align-items: center;
+}
+
+.total-value {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+.violations-list {
+    margin-top: var(--space-2);
+}
+
+.violation-item {
+    font-size: 11px;
+    color: var(--danger);
+    margin-bottom: var(--space-1);
+    white-space: normal;
+}
+
+.ampoule-row {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+.ampoule-row__swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius);
+    margin-right: var(--space-2);
+}
+
+.ampoule-row__summary {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: normal;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+.ampoule-row__action-button {
+    height: 24px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 11px;
+    -unity-text-align: middle-center;
+}
+
+.craft-queue-list {
+    margin-top: var(--space-2);
+}
+
+.craft-button {
+    margin-top: var(--space-4);
+    height: 40px;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.craft-button:disabled {
+    opacity: 0.4;
+}
+
+.failure-message {
+    margin-top: var(--space-2);
+    font-size: 11px;
+    color: var(--danger);
+    white-space: normal;
+}

@@ -60,5 +60,35 @@ namespace GameName.Core.Tests.EditMode
                 Assert.AreEqual(1, receivedCount);
             }
         }
+
+        [Test]
+        public void Reset_후에는_복원했던_방도_다시_미복원_상태다()
+        {
+            var eventBus = new EventBus(new NoOpEventExceptionHandler());
+            var tracker = new MemoryRoomRestorationTracker(eventBus);
+            var roomId = new MemoryRoomId("room-1");
+            tracker.ReportJudgement(roomId, MakeResult(FeedbackStage.PianoAndViolinAndDrum));
+
+            tracker.Reset();
+
+            Assert.IsFalse(tracker.IsRestored(roomId));
+        }
+
+        [Test]
+        public void Reset은_복원_이벤트를_발행하지_않는다()
+        {
+            var eventBus = new EventBus(new NoOpEventExceptionHandler());
+            var tracker = new MemoryRoomRestorationTracker(eventBus);
+            var roomId = new MemoryRoomId("room-1");
+            tracker.ReportJudgement(roomId, MakeResult(FeedbackStage.PianoAndViolinAndDrum));
+
+            var receivedCount = 0;
+            using (eventBus.Subscribe<MemoryRoomRestoredEvent>(e => receivedCount++))
+            {
+                tracker.Reset();
+
+                Assert.AreEqual(0, receivedCount);
+            }
+        }
     }
 }

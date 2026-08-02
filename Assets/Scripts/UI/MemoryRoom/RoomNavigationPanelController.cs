@@ -17,7 +17,7 @@ namespace GameName.UI.MemoryRoom
     public sealed class RoomNavigationPanelController : IDisposable
     {
         private readonly RoomNavigationPanelView _view;
-        private readonly MemoryRoomGraph _graph;
+        private readonly IMemoryRoomGraph _graph;
         private readonly IMemoryRoomRestorationTracker _restorationTracker;
         private readonly IMentalityGauge _mentalityGauge;
         private readonly MemoryRoomMovementProcessor _movementProcessor;
@@ -30,7 +30,7 @@ namespace GameName.UI.MemoryRoom
 
         public RoomNavigationPanelController(
             RoomNavigationPanelView view,
-            MemoryRoomGraph graph,
+            IMemoryRoomGraph graph,
             IMemoryRoomRestorationTracker restorationTracker,
             IMentalityGauge mentalityGauge,
             MemoryRoomMovementProcessor movementProcessor,

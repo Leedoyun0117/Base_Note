@@ -49,5 +49,18 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(1, infos.Count);
             Assert.AreEqual(new ClueId("clue-2"), infos[0].Id);
         }
+
+        [Test]
+        public void Load_후에는_이전_습득_기록이_사라지고_새_정의만_조회된다()
+        {
+            var roomId = new MemoryRoomId("room-a");
+            var tracker = new MemoryRoomClueTracker(new[] { MakeClueDefinition("clue-1", roomId) });
+            tracker.MarkCollected(new ClueId("clue-1"));
+
+            tracker.Load(new[] { MakeClueDefinition("clue-1", roomId) });
+
+            var infos = tracker.GetAvailableClueInfos(roomId);
+            Assert.AreEqual(1, infos.Count);
+        }
     }
 }

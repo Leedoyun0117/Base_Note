@@ -19,9 +19,13 @@ namespace GameName.Core.Mentality
     // 제공하고, 그 값을 어떻게 쓸지는 각 행동 시스템의 몫이다. 기억 방 복원에
     // 따른 자동 회복도 여기서 다루지 않는다 — 그건 MentalityChangedEvent가 아니라
     // MemoryRoomRestoredEvent를 구독하는 별도 어댑터의 책임이다.
-    public sealed class MentalityGauge : IMentalityGauge
+    // IResettable도 함께 구현한다 — 초기화 권한은 IMentalityGauge(정상 동작
+    // 인터페이스)에는 없고, 오직 IResettable로만 노출된다. CommissionSession만
+    // 이 좁은 인터페이스로 참조를 받아 새 의뢰 시작 시 되돌린다.
+    public sealed class MentalityGauge : IMentalityGauge, IResettable
     {
         private readonly IEventBus _eventBus;
+        private readonly int _initialValue;
         private int _currentValue;
 
         public int MaxValue { get; }
@@ -37,6 +41,7 @@ namespace GameName.Core.Mentality
                 throw new ArgumentException("초기값은 최대값을 넘을 수 없다.", nameof(settings));
 
             MaxValue = settings.MaxMentality;
+            _initialValue = settings.InitialMentality;
             _currentValue = settings.InitialMentality;
         }
 
@@ -61,6 +66,8 @@ namespace GameName.Core.Mentality
             ChangeBy(clampedAmount);
             return true;
         }
+
+        public void Reset() => ChangeBy(_initialValue - _currentValue);
 
         private void ChangeBy(int delta)
         {

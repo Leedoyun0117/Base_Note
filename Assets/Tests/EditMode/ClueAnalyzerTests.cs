@@ -17,7 +17,7 @@ namespace GameName.Core.Tests.EditMode
             public ClueAnalyzer Analyzer;
             public IMentalityGauge Gauge;
             public EventBus EventBus;
-            public IClueAnalysisProgress Progress;
+            public ClueAnalysisProgress Progress;
             public IPlayerInventory Inventory;
         }
 

@@ -82,5 +82,17 @@ namespace GameName.Core.Tests.EditMode
             Assert.IsTrue(storage.CanAccept(2));
             Assert.IsFalse(storage.CanAccept(3));
         }
+
+        [Test]
+        public void Reset은_보관함을_비우고_상한은_그대로_둔다()
+        {
+            var storage = new AmpouleStorage(new AmpouleStorageSettings(3));
+            storage.TryStore(MakeAmpoule("ampoule-1"));
+
+            storage.Reset();
+
+            Assert.AreEqual(0, storage.Ampoules.Count);
+            Assert.AreEqual(3, storage.Capacity);
+        }
     }
 }

@@ -17,9 +17,10 @@ namespace GameName.Core.Journal
     // GameName.Core.Tests.EditMode 등)에 속할 때 컴파일러가 타입 대신 네임스페이스로
     // 먼저 해석해 CS0118 오류가 난다.
     //
-    // 분석/제작/시향 기록은 ClueAnalyzedEvent, AmpouleCraftedEvent,
-    // ScentJudgedEvent를 직접 구독해서 채운다 — 처리기들은 더 이상 IJournal을
-    // 알지 못한다(중복 경로 제거, 자세한 근거는 설계 근거 문서 참고).
+    // 분석/제작/시향/대화 기록은 ClueAnalyzedEvent, AmpouleCraftedEvent,
+    // ScentJudgedEvent, DialogueLineShownEvent를 직접 구독해서 채운다 —
+    // 처리기(대화 진행기 포함)들은 더 이상 IJournal을 알지 못한다(중복 경로
+    // 제거, 자세한 근거는 설계 근거 문서 참고).
     //
     // IAmpouleStorage/IPlayerInventory를 읽기 전용으로 참조한다 — 앰플의
     // "지금 위치"를 이 타입이 별도로 추적하지 않고, 조회 시점에 두 저장소에
@@ -60,6 +61,7 @@ namespace GameName.Core.Journal
         private readonly IDisposable _clueAnalyzedSubscription;
         private readonly IDisposable _ampouleCraftedSubscription;
         private readonly IDisposable _scentJudgedSubscription;
+        private readonly IDisposable _dialogueLineShownSubscription;
 
         public PlayerJournal(IEventBus eventBus, IAmpouleStorage storage, IPlayerInventory inventory)
         {
@@ -70,6 +72,7 @@ namespace GameName.Core.Journal
             _clueAnalyzedSubscription = eventBus.Subscribe<ClueAnalyzedEvent>(OnClueAnalyzed);
             _ampouleCraftedSubscription = eventBus.Subscribe<AmpouleCraftedEvent>(OnAmpouleCrafted);
             _scentJudgedSubscription = eventBus.Subscribe<ScentJudgedEvent>(OnScentJudged);
+            _dialogueLineShownSubscription = eventBus.Subscribe<DialogueLineShownEvent>(OnDialogueLineShown);
         }
 
         public CommissionId? ActiveCommissionId => _activeCommissionId;
@@ -79,12 +82,6 @@ namespace GameName.Core.Journal
             _activeCommissionId = commissionId;
             if (!_recordsByCommission.ContainsKey(commissionId))
                 _recordsByCommission[commissionId] = new CommissionRecords();
-        }
-
-        public void RecordDialogue(DialogueLine line)
-        {
-            var records = ActiveRecordsOrNull();
-            records?.Dialogue.Add(line);
         }
 
         public IReadOnlyList<DialogueLine> GetDialogue(CommissionId commissionId) =>
@@ -101,6 +98,12 @@ namespace GameName.Core.Journal
                 result.Add(ProjectAmpouleRecord(entry));
 
             return result;
+        }
+
+        private void OnDialogueLineShown(DialogueLineShownEvent evt)
+        {
+            var records = ActiveRecordsOrNull();
+            records?.Dialogue.Add(evt.Line);
         }
 
         private void OnClueAnalyzed(ClueAnalyzedEvent evt)
@@ -186,6 +189,7 @@ namespace GameName.Core.Journal
             _clueAnalyzedSubscription.Dispose();
             _ampouleCraftedSubscription.Dispose();
             _scentJudgedSubscription.Dispose();
+            _dialogueLineShownSubscription.Dispose();
         }
     }
 }
