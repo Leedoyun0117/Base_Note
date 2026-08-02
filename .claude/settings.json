@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git mv *)",
+      "Bash(mv Assets/Scripts/Core/Journal/Journal.cs Assets/Scripts/Core/Journal/PlayerJournal.cs)",
+      "Bash(mv Assets/Scripts/Core/Journal/Journal.cs.meta Assets/Scripts/Core/Journal/PlayerJournal.cs.meta)"
+    ]
+  }
+}

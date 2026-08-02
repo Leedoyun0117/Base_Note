@@ -1,0 +1,313 @@
+:root {
+    --bg: #16181B;
+    --surface: #1E2126;
+    --surface-raised: #282C33;
+    --border: #363B44;
+    --text: #E4E6EA;
+    --text-dim: #8A9099;
+    --text-faint: #5A616B;
+
+    --joy: #E5B95C;
+    --love: #D98BA0;
+    --anger: #C75B4A;
+    --sadness: #5B8CB8;
+    --fear: #8B7AB8;
+
+    --success: #6FA86B;
+    --danger: #C75B4A;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-6: 24px;
+    --space-8: 32px;
+
+    --radius: 3px;
+}
+
+.screen {
+    flex-direction: row;
+    flex-grow: 1;
+    background-color: var(--bg);
+}
+
+.panel {
+    flex-grow: 1;
+    flex-basis: 0;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    margin: var(--space-2);
+    padding: var(--space-4);
+}
+
+.panel-title {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+    margin-bottom: var(--space-4);
+}
+
+.section-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: var(--space-4);
+    margin-bottom: var(--space-2);
+}
+
+.caption {
+    font-size: 11px;
+    color: var(--text-dim);
+}
+
+/* ── 좌측: 방 선택 ─────────────────────────────────────────── */
+
+.room-list {
+    flex-grow: 1;
+}
+
+.room-row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+.room-row--selected {
+    border-color: var(--text);
+}
+
+.room-row--restored {
+    opacity: 0.6;
+}
+
+.room-row__name {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.room-row__badge {
+    font-size: 11px;
+    color: var(--success);
+}
+
+.required-total-block {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top-width: 1px;
+    border-top-color: var(--border);
+}
+
+.required-total-value {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+/* ── 중앙: 조향 ────────────────────────────────────────────── */
+
+.base-emotion-row {
+    flex-direction: row;
+    justify-content: space-between;
+}
+
+/* 스프라이트 교체 지점: 지금은 감정 슬롯을 단색 사각형으로만 표시한다.
+   나중에 감정별 아이콘 스프라이트로 교체한다. */
+.emotion-slot {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius);
+    border-width: 1px;
+    border-color: var(--border);
+    align-items: center;
+    justify-content: center;
+    opacity: 0.5;
+}
+
+.emotion-slot--selected {
+    opacity: 1;
+    border-color: var(--text);
+}
+
+.emotion-slot__label {
+    font-size: 11px;
+    -unity-font-style: bold;
+    color: var(--bg);
+}
+
+.emotion--joy { background-color: var(--joy); }
+.emotion--love { background-color: var(--love); }
+.emotion--anger { background-color: var(--anger); }
+.emotion--sadness { background-color: var(--sadness); }
+.emotion--fear { background-color: var(--fear); }
+
+.supporting-emotion-list {
+    flex-direction: column;
+}
+
+.stepper-row {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.stepper-row__swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius);
+    margin-right: var(--space-2);
+}
+
+.stepper-row__label {
+    flex-grow: 1;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.stepper-button {
+    width: 24px;
+    height: 24px;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+.stepper-row__value {
+    width: 32px;
+    -unity-text-align: middle-center;
+    font-size: 14px;
+    color: var(--text);
+}
+
+.total-block {
+    margin-top: var(--space-4);
+    padding: var(--space-3);
+    background-color: var(--surface-raised);
+    border-radius: var(--radius);
+    border-width: 1px;
+    border-color: var(--border);
+    align-items: center;
+}
+
+/* 이 화면에서 가장 중요한 숫자 — 합계 / 요구 총량 */
+.total-value {
+    font-size: 20px;
+    -unity-font-style: bold;
+    color: var(--text);
+}
+
+.violations-list {
+    margin-top: var(--space-2);
+}
+
+.violation-item {
+    font-size: 11px;
+    color: var(--danger);
+    margin-bottom: var(--space-1);
+    white-space: normal;
+}
+
+/* ── 우측: 상태 ────────────────────────────────────────────── */
+
+.mentality-bar-track {
+    height: 12px;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.mentality-bar-fill {
+    height: 100%;
+    background-color: var(--success);
+}
+
+.ampoule-list {
+    flex-grow: 1;
+    margin-top: var(--space-2);
+}
+
+.ampoule-row {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-2);
+    margin-bottom: var(--space-2);
+}
+
+/* 스프라이트 교체 지점: 앰플 대표 감정을 색 블록으로만 보여준다.
+   나중에 앰플 아이콘 스프라이트로 교체한다. */
+.ampoule-row__swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: var(--radius);
+    margin-right: var(--space-2);
+}
+
+.ampoule-row__summary {
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: normal;
+    flex-grow: 1;
+    flex-shrink: 1;
+}
+
+/* 행 안에서 "옮기기", "삭제"처럼 짧은 글자가 들어가는 보조 버튼. 스테퍼
+   버튼과 달리 텍스트 폭이 있어 너비를 자동으로 둔다. */
+.ampoule-row__action-button {
+    height: 24px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 11px;
+    -unity-text-align: middle-center;
+}
+
+/* 제작 대기열 목록 — ampoule-list와 달리 flex-grow를 주지 않는다. 조향
+   패널 안에 이미 여러 구획(배합기, 위반 목록, 대기열)이 쌓여 있어, 대기열
+   목록까지 남는 공간을 욕심내면 다른 구획을 밀어내기 쉽기 때문이다. */
+.craft-queue-list {
+    margin-top: var(--space-2);
+}
+
+.craft-button {
+    margin-top: var(--space-4);
+    height: 40px;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 14px;
+    -unity-font-style: bold;
+}
+
+.craft-button:disabled {
+    opacity: 0.4;
+}
+
+.failure-message {
+    margin-top: var(--space-2);
+    font-size: 11px;
+    color: var(--danger);
+    white-space: normal;
+}

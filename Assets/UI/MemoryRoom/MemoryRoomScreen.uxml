@@ -1,0 +1,45 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <Style src="MemoryRoomScreen.uss" />
+
+    <ui:VisualElement name="screen" class="screen">
+
+        <ui:VisualElement name="navigation-panel" class="panel">
+            <ui:Label text="기억 방" class="panel-title" />
+
+            <ui:Label name="current-room-label" text="-" class="current-room-label" />
+            <ui:Label name="current-room-restored-badge" text="복원됨" class="restored-badge" />
+
+            <ui:Label text="정신력" class="section-label" />
+            <ui:VisualElement class="mentality-bar-track">
+                <ui:VisualElement name="mentality-bar-fill" class="mentality-bar-fill" />
+            </ui:VisualElement>
+            <ui:Label name="mentality-value" text="- / -" class="caption" />
+            <ui:Label name="mentality-notice" text="" class="failure-message" />
+
+            <ui:Label text="갈 수 있는 곳" class="section-label" />
+            <ui:ScrollView name="neighbor-list" class="neighbor-list" />
+            <ui:Label name="move-failure-message" text="" class="failure-message" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="clue-panel" class="panel">
+            <ui:Label text="단서" class="panel-title" />
+            <ui:Label text="아직 줍지 않은 단서 (방 배경 오브젝트로 교체될 자리)" class="caption" />
+            <ui:ScrollView name="clue-list" class="clue-list" />
+            <ui:Label name="clue-collect-failure-message" text="" class="failure-message" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="inventory-panel" class="panel">
+            <ui:Label text="인벤토리" class="panel-title" />
+            <ui:Label name="inventory-count" text="- / -" class="caption" />
+            <ui:VisualElement name="inventory-slot-list" class="inventory-slot-list" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="scent-test-panel" class="panel">
+            <ui:Label text="시향" class="panel-title" />
+            <ui:Label text="목표 방이 지금 있는 방과 같은 앰플만 시향할 수 있습니다." class="caption" />
+            <ui:ScrollView name="scent-test-list" class="scent-test-list" />
+            <ui:VisualElement name="scent-test-result" class="scent-test-result" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

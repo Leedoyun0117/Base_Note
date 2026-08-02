@@ -62,6 +62,7 @@ namespace GameName.Core.Tests.EditMode
             out FakeRestorationTracker tracker,
             out IMentalityGauge gauge,
             out IPlayerLocation playerLocation,
+            out EventBus eventBus,
             MemoryGraphNodeId initialPosition,
             int initialMentality = 100,
             int moveCost = 1)
@@ -71,17 +72,18 @@ namespace GameName.Core.Tests.EditMode
                 initialMentality: initialMentality, maxMentality: 100,
                 memoryRoomMoveCost: moveCost, basicAnalysisCost: 20, advancedAnalysisCost: 30,
                 ampouleCraftingCost: 8, memoryRoomFullRestorationRecovery: 20);
-            gauge = new MentalityGauge(settings, new EventBus(new NoOpEventExceptionHandler()));
+            eventBus = new EventBus(new NoOpEventExceptionHandler());
+            gauge = new MentalityGauge(settings, eventBus);
             var location = new PlayerLocation(initialPosition);
             playerLocation = location;
-            return new MemoryRoomMovementProcessor(MakeGraph(), tracker, gauge, settings, location);
+            return new MemoryRoomMovementProcessor(MakeGraph(), tracker, gauge, settings, location, eventBus);
         }
 
         [Test]
         public void 가로_연결은_조건_없이_통행된다()
         {
             var processor = MakeProcessor(
-                out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+                out _, out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
 
             var result = processor.Move(MemoryGraphNodeId.OfRoom(Room2));
 
@@ -92,7 +94,7 @@ namespace GameName.Core.Tests.EditMode
         public void 사다리는_아래_방이_복원되기_전에는_막힌다()
         {
             var processor = MakeProcessor(
-                out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room2));
+                out _, out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room2));
 
             var result = processor.Move(MemoryGraphNodeId.OfRoom(Room3));
 
@@ -104,7 +106,7 @@ namespace GameName.Core.Tests.EditMode
         public void 사다리는_아래_방이_복원되면_열린다()
         {
             var processor = MakeProcessor(
-                out var tracker, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room2));
+                out var tracker, out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room2));
             tracker.MarkRestored(Room2);
 
             var result = processor.Move(MemoryGraphNodeId.OfRoom(Room3));
@@ -116,7 +118,7 @@ namespace GameName.Core.Tests.EditMode
         public void 기억_방_이동은_정신력을_1_소모한다()
         {
             var processor = MakeProcessor(
-                out _, out var gauge, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+                out _, out var gauge, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
 
             processor.Move(MemoryGraphNodeId.OfRoom(Room2));
 
@@ -126,7 +128,7 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 허브_이동과_허브_방_이동은_정신력을_소모하지_않는다()
         {
-            var processor = MakeProcessor(out _, out var gauge, out _, initialPosition: Staircase);
+            var processor = MakeProcessor(out _, out var gauge, out _, out _, initialPosition: Staircase);
 
             processor.Move(AnalysisRoom);
             processor.Move(MemoryGraphNodeId.OfRoom(Room1));
@@ -138,7 +140,7 @@ namespace GameName.Core.Tests.EditMode
         public void 정신력이_0이어도_기억_방을_지나_계단까지_이동할_수_있다()
         {
             var processor = MakeProcessor(
-                out _, out var gauge, out var location,
+                out _, out var gauge, out var location, out _,
                 initialPosition: MemoryGraphNodeId.OfRoom(Room2), initialMentality: 0);
 
             var step1 = processor.Move(MemoryGraphNodeId.OfRoom(Room1));
@@ -156,7 +158,7 @@ namespace GameName.Core.Tests.EditMode
         public void 연결이_없으면_이동이_실패하고_사유는_NoConnection이다()
         {
             var processor = MakeProcessor(
-                out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+                out _, out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
 
             var result = processor.Move(PerfumeryRoom);
 
@@ -169,7 +171,7 @@ namespace GameName.Core.Tests.EditMode
         {
             // 잔량(1)보다 이동 비용(2)이 큰, "바닥은 아니지만 부족한" 상황을 만든다.
             var processor = MakeProcessor(
-                out _, out var gauge, out _,
+                out _, out var gauge, out _, out _,
                 initialPosition: MemoryGraphNodeId.OfRoom(Room1), initialMentality: 1, moveCost: 2);
 
             var result = processor.Move(MemoryGraphNodeId.OfRoom(Room2));
@@ -183,7 +185,7 @@ namespace GameName.Core.Tests.EditMode
         public void 이동에_성공하면_현재_위치가_목적지로_갱신된다()
         {
             var processor = MakeProcessor(
-                out _, out _, out var location, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+                out _, out _, out var location, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
 
             processor.Move(MemoryGraphNodeId.OfRoom(Room2));
 
@@ -194,13 +196,81 @@ namespace GameName.Core.Tests.EditMode
         public void 이동에_실패하면_현재_위치가_그대로_유지된다()
         {
             var initialPosition = MemoryGraphNodeId.OfRoom(Room1);
-            var processor = MakeProcessor(out _, out _, out var location, initialPosition: initialPosition);
+            var processor = MakeProcessor(
+                out _, out _, out var location, out _, initialPosition: initialPosition);
 
             // Room1 -> PerfumeryRoom은 연결이 없어 실패해야 한다.
             var result = processor.Move(PerfumeryRoom);
 
             Assert.IsFalse(result.Succeeded);
             Assert.AreEqual(initialPosition, location.Current);
+        }
+
+        [Test]
+        public void 기억_방_사이_이동_비용_미리보기는_실제_소모와_같다()
+        {
+            var processor = MakeProcessor(
+                out _, out var gauge, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+
+            var previewedCost = processor.PreviewCost(MemoryGraphNodeId.OfRoom(Room2));
+            processor.Move(MemoryGraphNodeId.OfRoom(Room2));
+
+            Assert.AreEqual(1, previewedCost);
+            Assert.AreEqual(100 - previewedCost, gauge.CurrentValue);
+        }
+
+        [Test]
+        public void 허브로_가는_이동_비용_미리보기는_0이다()
+        {
+            var processor = MakeProcessor(out _, out _, out _, out _, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+
+            var previewedCost = processor.PreviewCost(AnalysisRoom);
+
+            Assert.AreEqual(0, previewedCost);
+        }
+
+        [Test]
+        public void 정신력이_0이면_기억_방_이동_비용_미리보기도_0이다()
+        {
+            var processor = MakeProcessor(
+                out _, out _, out _, out _,
+                initialPosition: MemoryGraphNodeId.OfRoom(Room1), initialMentality: 0);
+
+            var previewedCost = processor.PreviewCost(MemoryGraphNodeId.OfRoom(Room2));
+
+            Assert.AreEqual(0, previewedCost);
+        }
+
+        [Test]
+        public void 이동에_성공하면_이동_완료_이벤트가_전후_위치와_함께_발행된다()
+        {
+            var processor = MakeProcessor(
+                out _, out _, out _, out var eventBus, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+
+            MemoryRoomMoveCompletedEvent? received = null;
+            using (eventBus.Subscribe<MemoryRoomMoveCompletedEvent>(e => received = e))
+            {
+                processor.Move(MemoryGraphNodeId.OfRoom(Room2));
+            }
+
+            Assert.IsTrue(received.HasValue);
+            Assert.AreEqual(MemoryGraphNodeId.OfRoom(Room1), received.Value.PreviousPosition);
+            Assert.AreEqual(MemoryGraphNodeId.OfRoom(Room2), received.Value.NewPosition);
+        }
+
+        [Test]
+        public void 이동에_실패하면_이동_완료_이벤트가_발행되지_않는다()
+        {
+            var processor = MakeProcessor(
+                out _, out _, out _, out var eventBus, initialPosition: MemoryGraphNodeId.OfRoom(Room1));
+
+            var receivedCount = 0;
+            using (eventBus.Subscribe<MemoryRoomMoveCompletedEvent>(e => receivedCount++))
+            {
+                processor.Move(PerfumeryRoom); // 연결이 없어 실패해야 한다.
+            }
+
+            Assert.AreEqual(0, receivedCount);
         }
     }
 }

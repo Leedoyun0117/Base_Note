@@ -55,6 +55,38 @@ namespace GameName.Core.MemoryRooms
         public bool AreOpenlyConnected(MemoryGraphNodeId a, MemoryGraphNodeId b) =>
             _openConnections.Contains((a, b));
 
+        // 특정 노드와 구조적으로 인접한(가로 연결 또는 사다리로 이어진) 모든
+        // 노드 id를 돌려준다. 잠김 여부는 여기서 판단하지 않는다 — 그건 복원
+        // 상태(IMemoryRoomRestorationTracker)까지 함께 봐야 하는 별개의 질문이라,
+        // 호출부가 이 목록을 얻은 뒤 TryGetLadderLowerRoom + IsRestored를 다시
+        // 물어 판단한다. 화면이 인접 노드를 스스로 다시 구성(전수 조사 등)하지
+        // 않고 그래프에 직접 물어보게 하려고 추가한 조회 전용 메서드다.
+        public IReadOnlyList<MemoryGraphNodeId> GetNeighborIds(MemoryGraphNodeId nodeId)
+        {
+            RequireKnownNode(nodeId);
+
+            var neighbors = new List<MemoryGraphNodeId>();
+
+            foreach (var pair in _openConnections)
+            {
+                if (pair.Item1.Equals(nodeId))
+                    neighbors.Add(pair.Item2);
+            }
+
+            foreach (var ladder in _ladderConnections)
+            {
+                var upperNodeId = MemoryGraphNodeId.OfRoom(ladder.UpperRoom);
+                var lowerNodeId = MemoryGraphNodeId.OfRoom(ladder.LowerRoom);
+
+                if (nodeId.Equals(upperNodeId))
+                    neighbors.Add(lowerNodeId);
+                else if (nodeId.Equals(lowerNodeId))
+                    neighbors.Add(upperNodeId);
+            }
+
+            return neighbors;
+        }
+
         public bool TryGetLadderLowerRoom(MemoryGraphNodeId a, MemoryGraphNodeId b, out MemoryRoomId lowerRoomId)
         {
             foreach (var ladder in _ladderConnections)
