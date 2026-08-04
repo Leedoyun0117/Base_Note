@@ -1,5 +1,6 @@
 using GameName.Core.Ampoules;
 using GameName.Core.Emotions;
+using GameName.Core.Events;
 using GameName.Core.Mentality;
 using GameName.Core.MemoryRooms;
 using GameName.Core.Validation;
@@ -43,8 +44,11 @@ namespace GameName.UI.Tests.EditMode
                 initialMentality: 100, maxMentality: 100,
                 memoryRoomMoveCost: 1, basicAnalysisCost: 20, advancedAnalysisCost: 30,
                 ampouleCraftingCost: 8, memoryRoomFullRestorationRecovery: 20);
+            var eventBus = new EventBus(new NoOpEventExceptionHandler());
+            var mentalityGauge = new MentalityGauge(costSettings, eventBus);
 
-            return new PerfumeryCompositionPanelController(view, compositionValidator, storage, queue, costSettings);
+            return new PerfumeryCompositionPanelController(
+                view, compositionValidator, storage, queue, mentalityGauge, costSettings, eventBus);
         }
 
         [Test]

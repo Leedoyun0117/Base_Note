@@ -1,5 +1,6 @@
 using System;
 using GameName.Core.Ampoules;
+using GameName.Core.Clues;
 using GameName.Core.Inventory;
 using GameName.Core.Judging;
 using GameName.Core.Mentality;
@@ -25,6 +26,7 @@ namespace GameName.UI.Session
         public IEmotionCompositionPolicy CompositionPolicy { get; }
         public IInventorySettings InventorySettings { get; }
         public IAmpouleStorageSettings StorageSettings { get; }
+        public IClueStorageSettings ClueStorageSettings { get; }
         public IAmpouleIdGenerator AmpouleIdGenerator { get; }
         public IUpgradeCatalog UpgradeCatalog { get; }
 
@@ -35,6 +37,7 @@ namespace GameName.UI.Session
             IEmotionCompositionPolicy compositionPolicy,
             IInventorySettings inventorySettings,
             IAmpouleStorageSettings storageSettings,
+            IClueStorageSettings clueStorageSettings,
             IAmpouleIdGenerator ampouleIdGenerator,
             IUpgradeCatalog upgradeCatalog)
         {
@@ -44,6 +47,7 @@ namespace GameName.UI.Session
             CompositionPolicy = compositionPolicy ?? throw new ArgumentNullException(nameof(compositionPolicy));
             InventorySettings = inventorySettings ?? throw new ArgumentNullException(nameof(inventorySettings));
             StorageSettings = storageSettings ?? throw new ArgumentNullException(nameof(storageSettings));
+            ClueStorageSettings = clueStorageSettings ?? throw new ArgumentNullException(nameof(clueStorageSettings));
             AmpouleIdGenerator = ampouleIdGenerator ?? throw new ArgumentNullException(nameof(ampouleIdGenerator));
             UpgradeCatalog = upgradeCatalog ?? throw new ArgumentNullException(nameof(upgradeCatalog));
         }

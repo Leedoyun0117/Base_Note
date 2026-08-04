@@ -34,12 +34,12 @@ namespace GameName.Core.Tests.EditMode
         {
             var nodes = new[]
             {
-                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase),
-                new MemoryGraphNode(AnalysisRoom, MemoryGraphNodeType.AnalysisRoom),
-                new MemoryGraphNode(PerfumeryRoom, MemoryGraphNodeType.PerfumeryRoom),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room3), MemoryGraphNodeType.MemoryRoom),
+                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase, new MemoryGraphCoordinate(0, 0)),
+                new MemoryGraphNode(AnalysisRoom, MemoryGraphNodeType.AnalysisRoom, new MemoryGraphCoordinate(1, 0)),
+                new MemoryGraphNode(PerfumeryRoom, MemoryGraphNodeType.PerfumeryRoom, new MemoryGraphCoordinate(2, 0)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(1, 3)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(1, 2)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room3), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(1, 1)),
             };
 
             var openConnections = new[]
@@ -162,10 +162,13 @@ namespace GameName.Core.Tests.EditMode
 
             processor.Reset();
             processor.Move(MemoryGraphNodeId.OfRoom(Room1)); // 방문 기록이 지워졌으니 다시 유료(98)
-            var result = processor.Move(MemoryGraphNodeId.OfRoom(Room2)); // 이것도 다시 유료(97)
+
+            // Room2 -> Room1로 떠나는 이 이동 자체가 Room2를 "가 본 곳"으로 다시
+            // 표시하므로(76-81행), 곧바로 Room2로 되돌아가는 다음 이동은 무료다.
+            var result = processor.Move(MemoryGraphNodeId.OfRoom(Room2));
 
             Assert.IsTrue(result.Succeeded);
-            Assert.AreEqual(97, gauge.CurrentValue);
+            Assert.AreEqual(98, gauge.CurrentValue);
         }
 
         [Test]

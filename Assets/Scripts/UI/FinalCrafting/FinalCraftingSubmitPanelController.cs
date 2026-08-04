@@ -19,12 +19,6 @@ namespace GameName.UI.FinalCrafting
         private readonly CommissionCompletionProcessor _completionProcessor;
         private readonly Func<RewardTable> _rewardTableProvider;
 
-        // 완료 화면이 결과를 보여줘야 하므로, 성공한 결과를 밖으로 알린다 —
-        // 화면 전환 자체는 CommissionStageChangedEvent를 구독하는
-        // SceneScreenSwitcher가 하고, 이 이벤트는 오직 "보여줄 결과 데이터를
-        // 어딘가에 보관해 달라"는 목적으로만 쓰인다.
-        public event Action<CommissionCompletionResult> Completed;
-
         public FinalCraftingSubmitPanelController(
             FinalCraftingSubmitPanelView view,
             IFinalCraftingBoard board,
@@ -59,16 +53,13 @@ namespace GameName.UI.FinalCrafting
         {
             // 성공하면 CommissionSession의 단계가 Completed로 바뀌고, 그 변화를
             // 구독하는 SceneScreenSwitcher가 완료 화면으로 전환한다 — 이 컨트롤러가
-            // 직접 화면을 바꾸지 않는다.
+            // 직접 화면을 바꾸지 않는다. 완료 화면이 보여줄 결과 데이터는
+            // CommissionCompletionProcessor가 그 전환보다 먼저 발행하는
+            // CommissionCompletedEvent를 GameSession이 구독해 저장해 두므로,
+            // 여기서 따로 전달할 필요가 없다.
             var result = _completionProcessor.Complete(_roomIds, _rewardTableProvider());
             if (!result.Succeeded)
-            {
                 _view.SetResultMessage(DescribeFailure(result.FailureReason.Value));
-                return;
-            }
-
-            _view.SetResultMessage(null);
-            Completed?.Invoke(result);
         }
 
         private static string DescribeFailure(CommissionCompletionFailureReason reason)

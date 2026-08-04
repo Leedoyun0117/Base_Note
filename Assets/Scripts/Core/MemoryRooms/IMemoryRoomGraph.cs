@@ -13,5 +13,11 @@ namespace GameName.Core.MemoryRooms
         bool AreOpenlyConnected(MemoryGraphNodeId a, MemoryGraphNodeId b);
         IReadOnlyList<MemoryGraphNodeId> GetNeighborIds(MemoryGraphNodeId nodeId);
         bool TryGetLadderLowerRoom(MemoryGraphNodeId a, MemoryGraphNodeId b, out MemoryRoomId lowerRoomId);
+
+        // 지도처럼 그래프 전체를 한 번에 그려야 하는 소비자를 위한 전수 열거.
+        // 위 조회 전용 메서드들과 달리 "구조 전체"가 필요할 때만 쓴다.
+        IReadOnlyList<MemoryGraphNode> Nodes { get; }
+        IReadOnlyList<OpenConnection> OpenConnections { get; }
+        IReadOnlyList<LadderConnection> LadderConnections { get; }
     }
 }

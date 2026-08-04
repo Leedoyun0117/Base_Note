@@ -35,6 +35,7 @@ namespace GameName.Core.Tests.EditMode
             public DisplayCollection DisplayCollection;
             public RewardTable RewardTable;
             public IReadOnlyList<MemoryRoomId> RoomIds;
+            public EventBus EventBus;
         }
 
         private static MemoryRoomAnswer MakeAnswer(MemoryRoomId roomId, EmotionType baseEmotion, int loveIntensity) =>
@@ -76,7 +77,8 @@ namespace GameName.Core.Tests.EditMode
             var session = new CommissionSession(
                 eventBus, resettables, journal, dialogueProgressor, playerLocation, EntryNode);
 
-            var processor = new CommissionCompletionProcessor(board, answerRepository, scentJudge, displayCollection, session);
+            var processor = new CommissionCompletionProcessor(
+                board, answerRepository, scentJudge, displayCollection, session, eventBus);
 
             // 완료를 시도하려면 ReturnedToReality 단계여야 한다.
             session.Begin(new CommissionId("commission-1"));
@@ -98,6 +100,7 @@ namespace GameName.Core.Tests.EditMode
                 DisplayCollection = displayCollection,
                 RewardTable = rewardTable,
                 RoomIds = new[] { RoomA, RoomB },
+                EventBus = eventBus,
             };
         }
 
@@ -149,6 +152,28 @@ namespace GameName.Core.Tests.EditMode
             // RoomA는 1.0, RoomB는 바탕이 틀려 유효 정확도 0.0 -> 평균 0.5.
             Assert.AreEqual(0.5, result.AverageAccuracy);
             Assert.AreEqual(10, result.Gift.EmotionalValue);
+        }
+
+        // 회귀 테스트: 완료 화면(UI)은 CommissionStageChangedEvent를 구독하는
+        // SceneScreenSwitcher가 즉시(동기적으로) 전환시키므로, 그 화면의
+        // 컨트롤러가 결과를 읽으러 오는 시점에는 이미 CommissionCompletedEvent가
+        // 먼저 발행되어 있어야 한다. 순서가 바뀌면 완료 화면이 빈 결과("-")로
+        // 한 번 그려진 뒤 다시는 갱신되지 않는 버그가 재현된다.
+        [Test]
+        public void CommissionCompletedEvent는_CommissionStageChangedEvent보다_먼저_발행된다()
+        {
+            var fixture = MakeFixture();
+            fixture.Board.Set(RoomA, new Scent(EmotionType.Joy, new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) })));
+            fixture.Board.Set(RoomB, new Scent(EmotionType.Fear, new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) })));
+
+            var order = new List<string>();
+            using (fixture.EventBus.Subscribe<CommissionCompletedEvent>(_ => order.Add("completed")))
+            using (fixture.EventBus.Subscribe<CommissionStageChangedEvent>(_ => order.Add("stage-changed")))
+            {
+                fixture.Processor.Complete(fixture.RoomIds, fixture.RewardTable);
+            }
+
+            CollectionAssert.AreEqual(new[] { "completed", "stage-changed" }, order);
         }
     }
 }

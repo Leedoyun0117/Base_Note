@@ -11,13 +11,13 @@ namespace GameName.UI.MemoryRoom
     // 전부 각 패널 컨트롤러가 이미 Core로 얻은 결론을 그대로 전달만 한다.
     public sealed class MemoryRoomScreenController : IDisposable
     {
-        private readonly RoomNavigationPanelController _navigationPanel;
+        private readonly MemoryRoomMapNavigationController _navigationPanel;
         private readonly ClueCollectionPanelController _cluePanel;
         private readonly MemoryRoomInventoryPanelController _inventoryPanel;
         private readonly ScentTestingPanelController _testingPanel;
 
         public MemoryRoomScreenController(
-            RoomNavigationPanelController navigationPanel,
+            MemoryRoomMapNavigationController navigationPanel,
             ClueCollectionPanelController cluePanel,
             MemoryRoomInventoryPanelController inventoryPanel,
             ScentTestingPanelController testingPanel)
@@ -40,6 +40,7 @@ namespace GameName.UI.MemoryRoom
 
             _navigationPanel.Dispose();
             _cluePanel.Dispose();
+            _inventoryPanel.Dispose();
             _testingPanel.Dispose();
         }
     }

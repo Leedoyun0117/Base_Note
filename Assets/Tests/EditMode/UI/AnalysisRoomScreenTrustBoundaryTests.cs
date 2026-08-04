@@ -13,9 +13,10 @@ namespace GameName.UI.Tests.EditMode
     // 새면 게임의 핵심 장치가 무너지므로, 런타임 값이 아니라 타입 자체를 검사해
     // 나중에 누가 실수로 필드/매개변수를 추가해도 즉시 잡아낸다.
     //
-    // RoomNavigationPanelView/Controller는 기억 방 화면 쪽 테스트
-    // (MemoryRoomScreenTrustBoundaryTests)가 이미 검증하므로 여기서 다시
-    // 검사하지 않는다 — 이 화면은 그 타입을 재사용할 뿐 새로 만들지 않았다.
+    // RoomNavigationPanelView/MemoryRoomMapNavigationController는 기억 방 화면
+    // 쪽 테스트(MemoryRoomScreenTrustBoundaryTests)가 이미 검증하므로 여기서
+    // 다시 검사하지 않는다 — 이 화면은 그 타입을 재사용할 뿐 새로 만들지
+    // 않았다.
     public class AnalysisRoomScreenTrustBoundaryTests
     {
         private static readonly Type[] ScreenTypes =
@@ -23,6 +24,10 @@ namespace GameName.UI.Tests.EditMode
             typeof(AnalysisPanelView),
             typeof(AnalysisPanelController),
             typeof(ClueAnalysisRowData),
+            typeof(ClueStoragePanelView),
+            typeof(ClueStoragePanelController),
+            typeof(ClueStorageRowData),
+            typeof(AnalysisRoomScreenController),
         };
 
         private static readonly Type[] ForbiddenTypes = { typeof(ClueDefinition), typeof(MemoryRoomAnswer) };

@@ -35,7 +35,6 @@ namespace GameName.UI.FinalCrafting
             var submitController = new FinalCraftingSubmitPanelController(
                 submitView, session.FinalCraftingBoard, session.RoomIds, session.CommissionCompletionProcessor,
                 () => session.CurrentCommissionData.RewardTable);
-            submitController.Completed += session.RecordCompletionResult;
 
             _screenController = new FinalCraftingScreenController(roomController, craftingController, submitController);
         }

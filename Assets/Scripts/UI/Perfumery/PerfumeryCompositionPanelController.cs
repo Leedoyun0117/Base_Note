@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using GameName.Core.Ampoules;
 using GameName.Core.Emotions;
+using GameName.Core.Events;
 using GameName.Core.Mentality;
 using GameName.Core.MemoryRooms;
 using GameName.Core.Validation;
@@ -13,6 +14,10 @@ namespace GameName.UI.Perfumery
     // IScentCompositionValidator에, 대기열에 더 담을 수 있는지는 전부
     // IAmpouleStorage.CanAccept에 위임한다 — 이 컨트롤러는 그 결론을 화면에
     // 옮기고 대기열이라는 목록 자체만 관리한다.
+    //
+    // 정신력 변화는 구독한다 — 이 화면의 지도(이동)가 기억 방 사이를 오갈 때
+    // 정신력을 소모할 수 있어서, "대기열 일괄 제작" 버튼의 활성/비활성 상태가
+    // 제작을 시도하지 않아도 곧바로 바뀔 수 있기 때문이다.
     public sealed class PerfumeryCompositionPanelController : IDisposable
     {
         private static readonly EmotionType[] AllEmotions =
@@ -24,6 +29,9 @@ namespace GameName.UI.Perfumery
         private readonly IScentCompositionValidator _compositionValidator;
         private readonly IAmpouleStorage _storage;
         private readonly IAmpouleCraftingQueue _queue;
+        private readonly IMentalityGauge _mentalityGauge;
+        private readonly IMentalityCostSettings _costSettings;
+        private readonly IDisposable _mentalitySubscription;
         private readonly Dictionary<EmotionType, int> _supportingIntensities = new Dictionary<EmotionType, int>();
 
         private EmotionType? _baseEmotion;
@@ -42,14 +50,18 @@ namespace GameName.UI.Perfumery
             IScentCompositionValidator compositionValidator,
             IAmpouleStorage storage,
             IAmpouleCraftingQueue queue,
-            IMentalityCostSettings costSettings)
+            IMentalityGauge mentalityGauge,
+            IMentalityCostSettings costSettings,
+            IEventBus eventBus)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _compositionValidator =
                 compositionValidator ?? throw new ArgumentNullException(nameof(compositionValidator));
             _storage = storage ?? throw new ArgumentNullException(nameof(storage));
             _queue = queue ?? throw new ArgumentNullException(nameof(queue));
-            if (costSettings == null) throw new ArgumentNullException(nameof(costSettings));
+            _mentalityGauge = mentalityGauge ?? throw new ArgumentNullException(nameof(mentalityGauge));
+            _costSettings = costSettings ?? throw new ArgumentNullException(nameof(costSettings));
+            if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
 
             foreach (var emotion in AllEmotions)
                 _supportingIntensities[emotion] = 0;
@@ -59,8 +71,9 @@ namespace GameName.UI.Perfumery
             _view.AddToQueueRequested += OnAddToQueueRequested;
             _view.QueueItemRemoveRequested += OnQueueItemRemoveRequested;
             _view.CraftQueueRequested += OnCraftQueueRequested;
+            _mentalitySubscription = eventBus.Subscribe<MentalityChangedEvent>(_ => RefreshCraftQueueButtonEnabled());
 
-            // 정신력 8이 개수와 무관하게 1회만 소모된다는 사실을 플레이어가
+            // 정신력 비용이 개수와 무관하게 1회만 소모된다는 사실을 플레이어가
             // 몰라서는 판단할 수 없으므로 화면에 명시한다. 값은 IMentalityCostSettings
             // 에서 그대로 읽어와 매직 넘버로 박아두지 않는다.
             _view.SetCraftCostNotice(
@@ -183,7 +196,11 @@ namespace GameName.UI.Perfumery
             _view.SetAddToQueueButtonEnabled(canQueue);
         }
 
-        private void RefreshCraftQueueButtonEnabled() => _view.SetCraftQueueButtonEnabled(_queue.Items.Count > 0);
+        private void RefreshCraftQueueButtonEnabled()
+        {
+            var affordability = MentalityAffordabilityCalculator.Calculate(_mentalityGauge, _costSettings);
+            _view.SetCraftQueueButtonEnabled(_queue.Items.Count > 0 && affordability.CanCraftAmpoule);
+        }
 
         private static string DescribeFailure(AmpouleCraftingFailureReason reason)
         {
@@ -204,6 +221,7 @@ namespace GameName.UI.Perfumery
             _view.AddToQueueRequested -= OnAddToQueueRequested;
             _view.QueueItemRemoveRequested -= OnQueueItemRemoveRequested;
             _view.CraftQueueRequested -= OnCraftQueueRequested;
+            _mentalitySubscription.Dispose();
         }
     }
 }

@@ -31,7 +31,8 @@ namespace GameName.Core.Tests.EditMode
             MemoryGraphNodeId playerPosition,
             ClueDefinition clueDefinition,
             int initialMentality = 100,
-            bool collectIntoInventory = true)
+            bool collectIntoInventory = true,
+            bool collectIntoStorage = false)
         {
             var settings = new MentalityCostSettings(
                 initialMentality: initialMentality, maxMentality: 100,
@@ -41,14 +42,17 @@ namespace GameName.Core.Tests.EditMode
             var gauge = new MentalityGauge(settings, eventBus);
             var progress = new ClueAnalysisProgress();
             var inventory = new PlayerInventory(new InventorySettings(10), new SharedSlotInventoryPolicy());
+            var storage = new ClueStorage(new ClueStorageSettings(6));
             var tracker = new MemoryRoomClueTracker(new[] { clueDefinition });
             var location = new PlayerLocation(playerPosition);
 
             if (collectIntoInventory)
                 inventory.TryStore(clueDefinition.ToInfo());
+            if (collectIntoStorage)
+                storage.TryStore(clueDefinition.ToInfo());
 
             var analyzer = new ClueAnalyzer(
-                location, AnalysisRoom, gauge, settings, eventBus, progress, tracker, inventory);
+                location, AnalysisRoom, gauge, settings, eventBus, progress, tracker, inventory, storage);
 
             return new AnalyzerFixture
             {
@@ -100,7 +104,7 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 인벤토리에_없는_단서는_분석할_수_없다()
+        public void 인벤토리에도_보관대에도_없는_단서는_분석할_수_없다()
         {
             var clue = MakeClue(new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }));
             var fixture = MakeFixture(AnalysisRoom, clue, collectIntoInventory: false);
@@ -108,8 +112,19 @@ namespace GameName.Core.Tests.EditMode
             var result = fixture.Analyzer.Analyze(clue.Id, AnalysisDepth.Basic);
 
             Assert.IsFalse(result.Succeeded);
-            Assert.AreEqual(ClueAnalysisFailureReason.ClueNotInInventory, result.FailureReason);
+            Assert.AreEqual(ClueAnalysisFailureReason.ClueNotAccessible, result.FailureReason);
             Assert.AreEqual(100, fixture.Gauge.CurrentValue);
+        }
+
+        [Test]
+        public void 보관대에_있는_단서도_분석할_수_있다()
+        {
+            var clue = MakeClue(new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }));
+            var fixture = MakeFixture(AnalysisRoom, clue, collectIntoInventory: false, collectIntoStorage: true);
+
+            var result = fixture.Analyzer.Analyze(clue.Id, AnalysisDepth.Basic);
+
+            Assert.IsTrue(result.Succeeded);
         }
 
         [Test]

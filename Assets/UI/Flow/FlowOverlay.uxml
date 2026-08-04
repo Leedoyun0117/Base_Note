@@ -12,7 +12,8 @@
 
         <ui:VisualElement name="exit-confirm-panel" class="exit-confirm-panel">
             <ui:Label text="계단 앞에 서 있습니다." class="panel-title" />
-            <ui:Label name="exit-mentality-notice" text="" class="failure-message" />
+            <ui:Label text="충분히 살펴보았다면 언제든 현실로 돌아갈 수 있습니다." class="caption" />
+            <ui:Label name="exit-summary-notice" text="" class="failure-message" />
             <ui:Button name="request-exit-button" text="현실로 복귀" class="craft-button" />
 
             <ui:VisualElement name="exit-confirm-controls" class="exit-confirm-controls">

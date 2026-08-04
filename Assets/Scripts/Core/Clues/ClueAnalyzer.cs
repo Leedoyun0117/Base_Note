@@ -24,6 +24,12 @@ namespace GameName.Core.Clues
     // 시도는 막는다(AlreadyAnalyzedAtSameOrDeeperDepth) — 이미 아는 정보를
     // 다시 얻으려고 정신력만 낭비하는 셈이기 때문이다. 반대로 일반 분석을
     // 마친 단서를 고급 분석하는 것은 세기라는 새 정보를 얻으므로 허용한다.
+    //
+    // "인벤토리에 있어야만 분석 가능하다"는 예전 규칙을 "인벤토리 또는 분석실
+    // 보관대에 있으면 분석 가능하다"로 넓혔다 — 보관대의 존재 이유 자체가
+    // "분석을 마친 단서가 인벤토리 자리를 계속 차지하지 않게 하면서도 나중에
+    // 더 깊이 분석할 길은 남겨 두는 것"이라, 보관대로 옮긴 순간 분석이
+    // 막히면 그 목적이 무너진다.
     public sealed class ClueAnalyzer : IClueAnalyzer
     {
         private readonly IPlayerLocation _playerLocation;
@@ -34,6 +40,7 @@ namespace GameName.Core.Clues
         private readonly IClueAnalysisProgress _analysisProgress;
         private readonly IMemoryRoomClueTracker _clueTracker;
         private readonly IPlayerInventory _inventory;
+        private readonly IClueStorage _storage;
 
         public ClueAnalyzer(
             IPlayerLocation playerLocation,
@@ -43,7 +50,8 @@ namespace GameName.Core.Clues
             IEventBus eventBus,
             IClueAnalysisProgress analysisProgress,
             IMemoryRoomClueTracker clueTracker,
-            IPlayerInventory inventory)
+            IPlayerInventory inventory,
+            IClueStorage storage)
         {
             _playerLocation = playerLocation ?? throw new ArgumentNullException(nameof(playerLocation));
             _analysisRoomNodeId = analysisRoomNodeId;
@@ -53,6 +61,7 @@ namespace GameName.Core.Clues
             _analysisProgress = analysisProgress ?? throw new ArgumentNullException(nameof(analysisProgress));
             _clueTracker = clueTracker ?? throw new ArgumentNullException(nameof(clueTracker));
             _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
+            _storage = storage ?? throw new ArgumentNullException(nameof(storage));
         }
 
         public ClueAnalysisResult Analyze(ClueId clueId, AnalysisDepth depth)
@@ -64,13 +73,13 @@ namespace GameName.Core.Clues
                 return ClueAnalysisResult.Failure(ClueAnalysisFailureReason.AlreadyAnalyzedAtSameOrDeeperDepth);
 
             // 존재하지 않는 식별자는 호출부의 버그이므로 실패 결과가 아니라
-            // 예외로 드러낸다 — 인벤토리에 없어서 분석할 수 없는 정상적인
-            // 상황(ClueNotInInventory)과는 다른 문제다.
+            // 예외로 드러낸다 — 인벤토리/보관대에 없어서 분석할 수 없는 정상적인
+            // 상황(ClueNotAccessible)과는 다른 문제다.
             if (!_clueTracker.TryGetDefinition(clueId, out var definition))
                 throw new ArgumentException($"등록되지 않은 단서({clueId})를 분석할 수 없다.", nameof(clueId));
 
             if (!ContainsClue(definition))
-                return ClueAnalysisResult.Failure(ClueAnalysisFailureReason.ClueNotInInventory);
+                return ClueAnalysisResult.Failure(ClueAnalysisFailureReason.ClueNotAccessible);
 
             // CanAct 확인은 Consume 실패와 별개로 반드시 필요하다. 비용이 나중에
             // 0으로 조정되더라도(현재는 아니지만) Consume(0)은 그 자체로 항상
@@ -98,16 +107,20 @@ namespace GameName.Core.Clues
         // IPlayerInventory.Items는 IReadOnlyList라 LINQ 없이 직접 순회한다 — 이
         // 계층은 UnityEngine 의존성 없는 순수 C#만 쓰지만, 그와 별개로 굳이
         // System.Linq를 끌어오지 않아도 되는 곳에서는 쓰지 않는다.
+        //
+        // 인벤토리와 보관대 둘 다 확인한다 — 어느 쪽에 있든 분석 가능해야
+        // 한다는 규칙(클래스 주석 참고)이 실제 검사에 반영되는 지점이다.
         private bool ContainsClue(ClueDefinition definition)
         {
             var info = definition.ToInfo();
+
             foreach (var item in _inventory.Items)
             {
                 if (item.Equals(info))
                     return true;
             }
 
-            return false;
+            return _storage.Contains(definition.Id);
         }
 
         private static EmotionAnalysisResult BuildAnalysisResult(ClueDefinition clue, AnalysisDepth depth)

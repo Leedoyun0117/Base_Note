@@ -1,15 +1,11 @@
-using System;
-using System.Collections.Generic;
-using GameName.Core.MemoryRooms;
-using GameName.UI.Shared;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace GameName.UI.MemoryRoom
 {
-    // 이동 패널의 화면 요소 구성과 표시 갱신만 담당한다. 어디로 갈 수 있는지,
-    // 사다리가 잠겼는지, 비용이 얼마인지는 전혀 판단하지 않는다 — 컨트롤러가
-    // Core로 이미 얻은 결과를 그대로 그릴 뿐이다.
+    // 이동 패널의 화면 요소 구성과 표시 갱신만 담당한다. 현재 위치/정신력
+    // 표시만 그린다 — 어디로 갈 수 있는지는 이제 지도(MemoryMapView)가 전부
+    // 보여주므로, 이 View는 목록을 그리지 않는다.
     public sealed class RoomNavigationPanelView
     {
         private readonly Label _currentRoomLabel;
@@ -17,10 +13,8 @@ namespace GameName.UI.MemoryRoom
         private readonly VisualElement _mentalityBarFill;
         private readonly Label _mentalityValueLabel;
         private readonly Label _mentalityNoticeLabel;
-        private readonly VisualElement _neighborList;
+        private readonly Label _availableActionsLabel;
         private readonly Label _moveFailureLabel;
-
-        public event Action<MemoryGraphNodeId> MoveRequested;
 
         public RoomNavigationPanelView(VisualElement root)
         {
@@ -29,7 +23,7 @@ namespace GameName.UI.MemoryRoom
             _mentalityBarFill = root.Q<VisualElement>("mentality-bar-fill");
             _mentalityValueLabel = root.Q<Label>("mentality-value");
             _mentalityNoticeLabel = root.Q<Label>("mentality-notice");
-            _neighborList = root.Q<VisualElement>("neighbor-list");
+            _availableActionsLabel = root.Q<Label>("mentality-affordance-notice");
             _moveFailureLabel = root.Q<Label>("move-failure-message");
         }
 
@@ -53,62 +47,21 @@ namespace GameName.UI.MemoryRoom
             _mentalityNoticeLabel.style.display = string.IsNullOrEmpty(message) ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
-        // 인접 노드 목록. 이 화면에서 이동/허브 진입/계단 이탈이 전부 여기서
-        // 이루어진다.
-        public void SetNeighbors(IReadOnlyList<NeighborRowData> neighbors)
+        // 잔량으로 지금 무엇을 할 수 있는지 미리 알려준다 — 숫자만 보고 매번
+        // 계산하지 않아도 되게 한다. 문구는 컨트롤러가 이미 Core(Mentality
+        // AffordabilityCalculator)로 얻은 결론을 그대로 옮긴 것이다.
+        public void SetAvailableActions(string message)
         {
-            _neighborList.Clear();
-            if (neighbors.Count == 0)
-            {
-                var empty = new Label("갈 수 있는 곳이 없습니다.");
-                empty.AddToClassList("caption");
-                _neighborList.Add(empty);
+            if (_availableActionsLabel == null)
                 return;
-            }
 
-            foreach (var neighbor in neighbors)
-                _neighborList.Add(CreateNeighborRow(neighbor));
+            _availableActionsLabel.text = message ?? string.Empty;
         }
 
         public void SetMoveFailureMessage(string message)
         {
             _moveFailureLabel.text = message ?? string.Empty;
             _moveFailureLabel.style.display = string.IsNullOrEmpty(message) ? DisplayStyle.None : DisplayStyle.Flex;
-        }
-
-        private VisualElement CreateNeighborRow(NeighborRowData neighbor)
-        {
-            var row = new VisualElement();
-            row.AddToClassList("neighbor-row");
-
-            var nameLabel = new Label($"{neighbor.NodeId.Value} ({MemoryGraphNodeTypeDisplay.Label(neighbor.NodeType)})");
-            nameLabel.AddToClassList("neighbor-row__name");
-            row.Add(nameLabel);
-
-            if (neighbor.NodeType == MemoryGraphNodeType.Staircase)
-            {
-                var exitCaption = new Label("계단으로 가면 이 기억에서 나가게 됩니다.");
-                exitCaption.AddToClassList("caption");
-                row.Add(exitCaption);
-            }
-
-            if (neighbor.IsLocked)
-            {
-                var lockedBadge = new Label("사다리 잠김");
-                lockedBadge.AddToClassList("neighbor-row__locked-badge");
-                row.Add(lockedBadge);
-            }
-
-            var costLabel = new Label($"비용: 정신력 {neighbor.Cost}");
-            costLabel.AddToClassList("caption");
-            row.Add(costLabel);
-
-            var moveButton = new Button(() => MoveRequested?.Invoke(neighbor.NodeId)) { text = "이동" };
-            moveButton.AddToClassList("neighbor-row__move-button");
-            moveButton.SetEnabled(!neighbor.IsLocked);
-            row.Add(moveButton);
-
-            return row;
         }
     }
 }

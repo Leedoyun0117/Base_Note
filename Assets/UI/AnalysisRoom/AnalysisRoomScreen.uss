@@ -106,30 +106,9 @@
     background-color: var(--success);
 }
 
-.neighbor-list {
-    flex-grow: 1;
-}
-
-.neighbor-row {
-    background-color: var(--surface-raised);
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-    padding: var(--space-2);
-    margin-bottom: var(--space-2);
-}
-
-.neighbor-row__name {
-    font-size: 14px;
-    color: var(--text);
-}
-
-.neighbor-row__locked-badge {
-    margin-top: var(--space-1);
-    font-size: 11px;
-    color: var(--danger);
-}
-
+/* 이동 목록이 없어진 뒤에도 분석 패널의 "선택"/"접기" 버튼(AnalysisPanelView)이
+   같은 스타일을 계속 쓴다 — 이름은 이동 목록 시절 그대로지만, 지금은 이동과
+   무관한 버튼 하나만 이 클래스를 쓴다. */
 .neighbor-row__move-button {
     margin-top: var(--space-2);
     height: 28px;
@@ -142,8 +121,143 @@
     -unity-text-align: middle-center;
 }
 
-.neighbor-row__move-button:disabled {
-    opacity: 0.4;
+/* ── 기억 지도(재사용 컴포넌트, MemoryMapView) ────────────────
+   기억 방/조향실 화면(MemoryRoomScreen.uss/PerfumeryScreen.uss)과 같은
+   값을 그대로 둔다 — 화면마다 스타일시트가 독립적이라 값을 다시 선언해야
+   하지만, 값 자체는 동일하게 맞춘다.
+   지도는 항상 작은 미리보기(memory-map-preview)로만 패널 안에 보이고,
+   누르면 화면 대부분을 덮는 확대 오버레이(memory-map-expanded)가 뜬다. */
+
+.memory-map-preview {
+    height: 160px;
+    margin-top: var(--space-2);
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+}
+
+.memory-map-expanded {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+
+.memory-map-expanded-panel {
+    width: 80%;
+    height: 80%;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+}
+
+.memory-map-expanded-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.memory-map-close-button {
+    height: 28px;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+}
+
+.memory-map-scroll {
+    flex-grow: 1;
+    margin-top: var(--space-2);
+}
+
+.memory-map-root {
+    position: relative;
+}
+
+.memory-map-connections {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.memory-map-nodes {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+.memory-map-node {
+    position: absolute;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--surface-raised);
+    border-width: 2px;
+    border-color: var(--border);
+}
+
+/* 스프라이트 교체 지점: 기억 방/허브를 지금은 원/사각형 도형과 텍스트
+   라벨만으로 구분한다. 나중에 종류별 아이콘 스프라이트로 교체한다. */
+.memory-map-node--room {
+    border-radius: 100%;
+}
+
+.memory-map-node--hub {
+    border-radius: var(--radius);
+}
+
+.memory-map-node--current {
+    border-color: var(--text);
+    border-width: 3px;
+}
+
+.memory-map-node--restored {
+    background-color: var(--success);
+}
+
+.memory-map-node--unvisited {
+    opacity: 0.35;
+}
+
+.memory-map-node--selected {
+    border-color: var(--text);
+}
+
+/* 기억 진입/이탈 지점(계단) — 눌렀을 때 일반 이동이 아니라 즉시 이탈 지점
+   복귀가 일어나므로, 다른 허브 노드와 다르게 눈에 띄어야 한다. */
+.memory-map-node--exit {
+    background-color: var(--danger);
+    border-color: var(--danger);
+}
+
+.memory-map-node__label {
+    font-size: 9px;
+    color: var(--text);
+    -unity-text-align: middle-center;
+    white-space: normal;
+}
+
+.memory-map-selection-info {
+    margin-top: var(--space-2);
+    font-size: 11px;
+    color: var(--text-dim);
+    white-space: normal;
 }
 
 /* ── 분석 패널 ─────────────────────────────────────────────── */
@@ -182,6 +296,26 @@
     font-size: 11px;
     color: var(--text-dim);
     white-space: normal;
+}
+
+/* 보관대 패널의 "보관하기"/"인벤토리로" 버튼 — 기억 방 화면의
+   .ampoule-row__action-button과 같은 값을 쓴다. */
+.clue-row__action-button {
+    margin-top: var(--space-2);
+    height: 24px;
+    padding-left: var(--space-2);
+    padding-right: var(--space-2);
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 11px;
+    -unity-text-align: middle-center;
+}
+
+.clue-row__action-button:disabled {
+    opacity: 0.4;
 }
 
 .analysis-options {

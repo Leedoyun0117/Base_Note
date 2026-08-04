@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GameName.Core.Events;
 using GameName.Core.FinalCrafting;
 using GameName.Core.Judging;
 using GameName.Core.MemoryRooms;
@@ -22,19 +23,22 @@ namespace GameName.Core.Commissions
         private readonly IScentJudge _scentJudge;
         private readonly DisplayCollection _displayCollection;
         private readonly CommissionSession _commissionSession;
+        private readonly IEventBus _eventBus;
 
         public CommissionCompletionProcessor(
             IFinalCraftingBoard board,
             IMemoryRoomAnswerRepository answerRepository,
             IScentJudge scentJudge,
             DisplayCollection displayCollection,
-            CommissionSession commissionSession)
+            CommissionSession commissionSession,
+            IEventBus eventBus)
         {
             _board = board ?? throw new ArgumentNullException(nameof(board));
             _answerRepository = answerRepository ?? throw new ArgumentNullException(nameof(answerRepository));
             _scentJudge = scentJudge ?? throw new ArgumentNullException(nameof(scentJudge));
             _displayCollection = displayCollection ?? throw new ArgumentNullException(nameof(displayCollection));
             _commissionSession = commissionSession ?? throw new ArgumentNullException(nameof(commissionSession));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
         }
 
         public bool CanComplete(IReadOnlyList<MemoryRoomId> roomIds) => _board.IsCompleteFor(roomIds);
@@ -46,6 +50,12 @@ namespace GameName.Core.Commissions
 
             if (!CanComplete(roomIds))
                 return CommissionCompletionResult.Failure(CommissionCompletionFailureReason.RoomsIncomplete);
+
+            // 단계 확인을 판정/보상 계산보다 먼저 한다 — 이후 TryComplete()가
+            // 반드시 성공해야, 아래에서 이미 지급한 보상과 발행한 이벤트가
+            // "완료되지 않았는데 보상만 나간" 상태로 어긋나지 않는다.
+            if (_commissionSession.Stage != CommissionStage.ReturnedToReality)
+                return CommissionCompletionResult.Failure(CommissionCompletionFailureReason.WrongStage);
 
             var roomResults = new Dictionary<MemoryRoomId, ScentJudgementResult>(roomIds.Count);
             var resultList = new List<ScentJudgementResult>(roomIds.Count);
@@ -64,14 +74,23 @@ namespace GameName.Core.Commissions
                 resultList.Add(judgement);
             }
 
-            if (!_commissionSession.TryComplete())
-                return CommissionCompletionResult.Failure(CommissionCompletionFailureReason.WrongStage);
-
             var averageAccuracy = CommissionScorer.AverageAccuracy(resultList);
             var gift = rewardTable.Resolve(averageAccuracy);
             _displayCollection.Add(gift);
 
-            return CommissionCompletionResult.Success(averageAccuracy, gift, roomResults);
+            var result = CommissionCompletionResult.Success(averageAccuracy, gift, roomResults);
+
+            // CommissionStageChangedEvent(TryComplete가 발행)보다 반드시 먼저
+            // 발행해야 한다 — 그 이벤트를 구독하는 SceneScreenSwitcher가 완료
+            // 화면으로 즉시(동기적으로) 전환하므로, 전환이 일어나기 전에
+            // 결과를 GameSession에 먼저 기록해 둬야 완료 화면이 첫 렌더링부터
+            // 올바른 결과를 보여줄 수 있다.
+            _eventBus.Publish(new CommissionCompletedEvent(result));
+
+            // 위에서 이미 단계를 확인했으므로 여기서 실패할 수 없다.
+            _commissionSession.TryComplete();
+
+            return result;
         }
     }
 }

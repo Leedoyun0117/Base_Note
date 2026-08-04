@@ -17,9 +17,9 @@ namespace GameName.Core.Tests.EditMode
         {
             var nodes = new[]
             {
-                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom),
+                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase, new MemoryGraphCoordinate(0, 0)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 2)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 1)),
             };
 
             var openConnections = new[] { new OpenConnection(Staircase, MemoryGraphNodeId.OfRoom(Room1)) };

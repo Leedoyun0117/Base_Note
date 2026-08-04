@@ -136,6 +136,12 @@ namespace GameName.Core.MemoryRooms
 
         public void Reset() => _visitedRoomIds.Clear();
 
+        // 그 방에 한 번이라도 가 본 적이 있는지 읽기만 한다 — 지도가 "아직
+        // 가보지 않은 방"을 다르게 표시하기 위한 조회 전용 메서드다. 이동
+        // 비용 계산에 쓰는 것과 같은 상태를 그대로 노출할 뿐, 새 상태를
+        // 만들지 않는다.
+        public bool HasVisited(MemoryRoomId roomId) => _visitedRoomIds.Contains(roomId);
+
         // 노드 종류만으로 정해지는 "명목상" 비용. 0-정신력 면제는 여기에 넣지
         // 않는다 — 그 면제는 "지금 정신력이 얼마인가"라는 순간의 상태에 달려
         // 있어서 노드 종류만 보는 이 계산과는 층위가 다르기 때문이다.

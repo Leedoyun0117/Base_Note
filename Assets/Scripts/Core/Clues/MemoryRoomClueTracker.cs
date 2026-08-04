@@ -64,6 +64,14 @@ namespace GameName.Core.Clues
             _collectedClueIds.Add(clueId);
         }
 
+        public void MarkReturned(ClueId clueId)
+        {
+            if (!_definitionsById.ContainsKey(clueId))
+                throw new ArgumentException($"등록되지 않은 단서({clueId})를 되돌릴 수 없다.", nameof(clueId));
+
+            _collectedClueIds.Remove(clueId);
+        }
+
         public IReadOnlyList<ClueInfo> GetAvailableClueInfos(MemoryRoomId roomId)
         {
             var result = new List<ClueInfo>();

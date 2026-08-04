@@ -25,6 +25,7 @@ namespace GameName.UI.Tests.EditMode
         private static readonly MemoryGraphNodeId Staircase = new MemoryGraphNodeId("staircase");
         private static readonly MemoryGraphNodeId AnalysisRoom = new MemoryGraphNodeId("analysis-room");
         private static readonly MemoryGraphNodeId PerfumeryRoom = new MemoryGraphNodeId("perfumery-room");
+        private static readonly MemoryGraphNodeId MemoryExit = new MemoryGraphNodeId("memory-exit");
 
         private static readonly MemoryRoomId RoomA = new MemoryRoomId("room-a");
         private static readonly MemoryRoomId RoomB = new MemoryRoomId("room-b");
@@ -33,15 +34,17 @@ namespace GameName.UI.Tests.EditMode
         {
             var hubNodes = new List<MemoryGraphNode>
             {
-                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase),
-                new MemoryGraphNode(AnalysisRoom, MemoryGraphNodeType.AnalysisRoom),
-                new MemoryGraphNode(PerfumeryRoom, MemoryGraphNodeType.PerfumeryRoom),
+                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase, new MemoryGraphCoordinate(0, 0)),
+                new MemoryGraphNode(AnalysisRoom, MemoryGraphNodeType.AnalysisRoom, new MemoryGraphCoordinate(1, 0)),
+                new MemoryGraphNode(PerfumeryRoom, MemoryGraphNodeType.PerfumeryRoom, new MemoryGraphCoordinate(2, 0)),
+                new MemoryGraphNode(MemoryExit, MemoryGraphNodeType.Exit, new MemoryGraphCoordinate(1, 1)),
             };
             var hubOpenConnections = new List<OpenConnection>
             {
                 new OpenConnection(Staircase, AnalysisRoom),
                 new OpenConnection(Staircase, PerfumeryRoom),
                 new OpenConnection(AnalysisRoom, PerfumeryRoom),
+                new OpenConnection(Staircase, MemoryExit),
             };
 
             commission1 = MakeCommission("commission-1", RoomA, "clue-a", "첫 번째 의뢰 대사");
@@ -49,7 +52,8 @@ namespace GameName.UI.Tests.EditMode
 
             var data = new GameSessionData(
                 hubNodes, hubOpenConnections,
-                memoryEntryNodeId: Staircase, perfumeryRoomNodeId: PerfumeryRoom, analysisRoomNodeId: AnalysisRoom,
+                memoryEntryNodeId: Staircase, memoryExitNodeId: MemoryExit,
+                perfumeryRoomNodeId: PerfumeryRoom, analysisRoomNodeId: AnalysisRoom,
                 commissions: new[] { commission1, commission2 });
 
             var mentalityCostSettings = new MentalityCostSettings(
@@ -65,6 +69,7 @@ namespace GameName.UI.Tests.EditMode
                     minSupportingEmotionCount: 1, maxSupportingEmotionCount: 4, allowSupportingEmotionSameAsBase: false),
                 new InventorySettings(4),
                 new AmpouleStorageSettings(3),
+                new ClueStorageSettings(6),
                 new GuidAmpouleIdGenerator(),
                 new UpgradeCatalog(Array.Empty<UpgradeOption>()));
 
@@ -76,7 +81,7 @@ namespace GameName.UI.Tests.EditMode
         {
             var roomNodes = new List<MemoryGraphNode>
             {
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(roomId), MemoryGraphNodeType.MemoryRoom),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(roomId), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 1)),
             };
             var openConnections = new List<OpenConnection>
             {

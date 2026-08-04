@@ -92,6 +92,37 @@ namespace GameName.Core.Commissions
             return true;
         }
 
+        // 지도 위 어디에 있든 "이 기억은 충분히 살펴봤다"는 결심 하나로 계단
+        // (기억 진입/이탈 지점)까지 곧장 돌아갈 수 있게 한다. 일반 탐색 이동
+        // (MemoryRoomMovementProcessor.Move)과 달리 인접 여부나 비용을 전혀
+        // 따지지 않는다 — 그 다음 걸어야 할 경로를 찾는 것 자체가 이 행동의
+        // 목적이 아니라, 이탈이라는 결심을 표현하는 행동이기 때문이다. 위치만
+        // 옮길 뿐 단계를 바꾸지는 않는다 — 실제 이탈 확정은 여전히
+        // TryReturnToReality()가 별도로 확인한다. 그래서 계단이라는 장소
+        // 자체는 사라지지 않는다: 이탈 확인 화면은 여전히 "계단 위에 있는가"를
+        // 전제로만 뜬다.
+        public bool TryReturnToEntryPoint()
+        {
+            if (Stage != CommissionStage.InMemory)
+                return false;
+
+            var previous = _playerLocationMover.Current;
+            if (!previous.Equals(_memoryEntryNodeId))
+            {
+                _playerLocationMover.MoveTo(_memoryEntryNodeId);
+                _eventBus.Publish(new MemoryRoomMoveCompletedEvent(previous, _memoryEntryNodeId));
+            }
+
+            // 위치 이동 여부와 무관하게 항상 발행한다 — 이미 계단 위에 있는
+            // 상태에서 다시 눌러도(예: 취소 후 재요청) 여전히 "이탈하겠다"는
+            // 의사 표시이기 때문이다. 이 이벤트가 곧 "이탈 확인 화면을 띄워도
+            // 되는 유일한 신호"다 — 기억 진입 시 시작 위치가 우연히 계단인
+            // 것과는 구분된다(TryAdvanceToMemory는 이 이벤트를 발행하지 않는다).
+            _eventBus.Publish(new MemoryExitRequestedEvent());
+
+            return true;
+        }
+
         // 계단(기억 안 시작 지점과 같은 노드)에 서 있을 때만 현실로 복귀할 수
         // 있다. 확인 절차는 화면(되돌릴 수 없는 전환이므로 확정 버튼을 따로
         // 둔다) 쪽 책임이고, 이 메서드는 그 확정이 눌렸을 때 한 번만 호출된다.

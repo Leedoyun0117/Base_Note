@@ -1,5 +1,6 @@
 using GameName.UI.Journal;
 using GameName.UI.Session;
+using GameName.UI.Shared;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -27,9 +28,11 @@ namespace GameName.UI.MemoryRoom
             var root = GetComponent<UIDocument>().rootVisualElement;
 
             var navigationView = new RoomNavigationPanelView(root.Q<VisualElement>("navigation-panel"));
-            var navigationController = new RoomNavigationPanelController(
-                navigationView, session.Graph, session.RestorationTracker, session.MentalityGauge,
-                session.MovementProcessor, session.PlayerLocation, session.RoomIds, session.EventBus);
+            var mapView = new MemoryMapView(root);
+            var navigationController = new MemoryRoomMapNavigationController(
+                navigationView, mapView, session.Graph, session.RestorationTracker, session.MentalityGauge,
+                session.MentalityCostSettings, session.MovementProcessor, session.PlayerLocation, session.RoomIds,
+                session.CommissionSession, session.MemoryExitNodeId, session.EventBus);
 
             var clueView = new ClueCollectionPanelView(root.Q<VisualElement>("clue-panel"));
             var clueController = new ClueCollectionPanelController(
@@ -37,7 +40,8 @@ namespace GameName.UI.MemoryRoom
                 session.RoomIds, session.EventBus);
 
             var inventoryView = new MemoryRoomInventoryPanelView(root.Q<VisualElement>("inventory-panel"));
-            var inventoryController = new MemoryRoomInventoryPanelController(inventoryView, session.Inventory);
+            var inventoryController = new MemoryRoomInventoryPanelController(
+                inventoryView, session.Inventory, session.ClueReturnProcessor);
 
             var testingView = new ScentTestingPanelView(root.Q<VisualElement>("scent-test-panel"));
             var testingController = new ScentTestingPanelController(

@@ -18,11 +18,16 @@ namespace GameName.UI.Session
         public IReadOnlyList<MemoryGraphNode> HubNodes { get; }
         public IReadOnlyList<OpenConnection> HubOpenConnections { get; }
 
-        // 기억으로 들어갈 때 시작하는 지점이자, 계단을 통해 현실로 복귀할 때
-        // 반드시 서 있어야 하는 지점 — 같은 노드다(계단으로 들어가 계단으로
-        // 나간다). 허브 소속 고정 지점이므로 의뢰가 바뀌어도 값 자체는
-        // 바뀌지 않는다.
+        // 기억으로 들어갈 때 시작하는 지점이자, 현실로 복귀할 때 반드시 서
+        // 있어야 하는 지점(계단). 허브 소속 고정 지점이므로 의뢰가 바뀌어도
+        // 값 자체는 바뀌지 않는다.
         public MemoryGraphNodeId MemoryEntryNodeId { get; }
+
+        // 계단과는 별개의 공간이다 — 지도에서 이 노드를 누르면 곧장 계단으로
+        // 돌아가 이탈 확인 절차가 시작된다(CommissionSession.TryReturnToEntryPoint).
+        // 계단 자체는 여전히 평범한 허브 지점으로 남아 있고, 이 노드만 "나가는
+        // 곳"이다.
+        public MemoryGraphNodeId MemoryExitNodeId { get; }
 
         public MemoryGraphNodeId PerfumeryRoomNodeId { get; }
         public MemoryGraphNodeId AnalysisRoomNodeId { get; }
@@ -33,6 +38,7 @@ namespace GameName.UI.Session
             IReadOnlyList<MemoryGraphNode> hubNodes,
             IReadOnlyList<OpenConnection> hubOpenConnections,
             MemoryGraphNodeId memoryEntryNodeId,
+            MemoryGraphNodeId memoryExitNodeId,
             MemoryGraphNodeId perfumeryRoomNodeId,
             MemoryGraphNodeId analysisRoomNodeId,
             IReadOnlyList<CommissionData> commissions)
@@ -40,6 +46,7 @@ namespace GameName.UI.Session
             HubNodes = hubNodes ?? throw new ArgumentNullException(nameof(hubNodes));
             HubOpenConnections = hubOpenConnections ?? throw new ArgumentNullException(nameof(hubOpenConnections));
             MemoryEntryNodeId = memoryEntryNodeId;
+            MemoryExitNodeId = memoryExitNodeId;
             PerfumeryRoomNodeId = perfumeryRoomNodeId;
             AnalysisRoomNodeId = analysisRoomNodeId;
 

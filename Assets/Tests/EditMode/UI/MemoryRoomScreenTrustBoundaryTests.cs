@@ -17,7 +17,7 @@ namespace GameName.UI.Tests.EditMode
         private static readonly Type[] ScreenTypes =
         {
             typeof(RoomNavigationPanelView),
-            typeof(RoomNavigationPanelController),
+            typeof(MemoryRoomMapNavigationController),
             typeof(ClueCollectionPanelView),
             typeof(ClueCollectionPanelController),
             typeof(MemoryRoomInventoryPanelView),
@@ -25,7 +25,6 @@ namespace GameName.UI.Tests.EditMode
             typeof(ScentTestingPanelView),
             typeof(ScentTestingPanelController),
             typeof(MemoryRoomScreenController),
-            typeof(NeighborRowData),
             typeof(AmpouleTestRowData),
         };
 

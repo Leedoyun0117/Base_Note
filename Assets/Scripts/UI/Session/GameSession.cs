@@ -43,6 +43,7 @@ namespace GameName.UI.Session
         public IMemoryRoomAnswerRepository AnswerRepository { get; }
         public IMemoryRoomPublicInfoRepository PublicInfoRepository { get; }
         public IMemoryRoomClueTracker ClueTracker { get; }
+        public IClueStorage ClueStorage { get; }
         public IMemoryRoomGraph Graph { get; }
         public IMemoryRoomRestorationTracker RestorationTracker { get; }
 
@@ -57,6 +58,8 @@ namespace GameName.UI.Session
         public ScentTestingProcessor ScentTestingProcessor { get; }
         public AmpouleCraftingProcessor CraftingProcessor { get; }
         public AmpouleTransferProcessor TransferProcessor { get; }
+        public ClueTransferProcessor ClueTransferProcessor { get; }
+        public ClueReturnProcessor ClueReturnProcessor { get; }
         public ClueAnalyzer ClueAnalyzer { get; }
         public IClueAnalysisProgress AnalysisProgress { get; }
         public IDialogueProgressor DialogueProgressor { get; }
@@ -73,6 +76,7 @@ namespace GameName.UI.Session
         public MemoryGraphNodeId PerfumeryRoomNodeId { get; }
         public MemoryGraphNodeId AnalysisRoomNodeId { get; }
         public MemoryGraphNodeId MemoryEntryNodeId { get; }
+        public MemoryGraphNodeId MemoryExitNodeId { get; }
 
         // 지금 진행 중인 의뢰의 원본 데이터 — 보상 등급표처럼 "의뢰마다 다른
         // 값 하나"가 필요한 화면(완료 화면)이 매번 GameSessionData 전체를
@@ -133,9 +137,12 @@ namespace GameName.UI.Session
             _clueTracker = new MemoryRoomClueTracker(Array.Empty<ClueDefinition>());
             ClueTracker = _clueTracker;
 
+            ClueStorage = new ClueStorage(settings.ClueStorageSettings);
+
             RestorationTracker = new MemoryRoomRestorationTracker(EventBus);
 
             MemoryEntryNodeId = data.MemoryEntryNodeId;
+            MemoryExitNodeId = data.MemoryExitNodeId;
             var playerLocation = new PlayerLocation(MemoryEntryNodeId);
             PlayerLocation = playerLocation;
 
@@ -160,7 +167,12 @@ namespace GameName.UI.Session
             AnalysisProgress = new ClueAnalysisProgress();
             ClueAnalyzer = new ClueAnalyzer(
                 playerLocation, AnalysisRoomNodeId, MentalityGauge, MentalityCostSettings, EventBus,
-                AnalysisProgress, _clueTracker, Inventory);
+                AnalysisProgress, _clueTracker, Inventory, ClueStorage);
+
+            ClueTransferProcessor = new ClueTransferProcessor(
+                playerLocation, AnalysisRoomNodeId, ClueStorage, Inventory);
+
+            ClueReturnProcessor = new ClueReturnProcessor(playerLocation, Inventory, _clueTracker, EventBus);
 
             Journal = new PlayerJournal(EventBus, AmpouleStorage, Inventory);
 
@@ -192,6 +204,7 @@ namespace GameName.UI.Session
                 (IResettable)AnalysisProgress,
                 (IResettable)AmpouleCraftingQueue,
                 (IResettable)FinalCraftingBoard,
+                (IResettable)ClueStorage,
                 MovementProcessor,
             };
 
@@ -199,7 +212,14 @@ namespace GameName.UI.Session
                 EventBus, resettableSystems, Journal, DialogueProgressor, playerLocation, MemoryEntryNodeId);
 
             CommissionCompletionProcessor = new CommissionCompletionProcessor(
-                FinalCraftingBoard, _answerRepository, judge, DisplayCollection, CommissionSession);
+                FinalCraftingBoard, _answerRepository, judge, DisplayCollection, CommissionSession, EventBus);
+
+            // CommissionCompletionProcessor가 완료 직전에 발행하는 결과를 여기서
+            // 받아 둔다 — 반드시 CommissionSession.TryComplete()가 발행하는
+            // CommissionStageChangedEvent보다 먼저 발행되도록 그 처리기 내부에서
+            // 순서를 보장하므로, 완료 화면으로 전환되는 시점에는 이미
+            // LastCompletionResult가 채워져 있다.
+            EventBus.Subscribe<CommissionCompletedEvent>(e => RecordCompletionResult(e.Result));
 
             UpgradeShop = new UpgradeShop(
                 settings.UpgradeCatalog, DisplayCollection, Inventory, AmpouleStorage, settings.MentalityCostAdjuster);

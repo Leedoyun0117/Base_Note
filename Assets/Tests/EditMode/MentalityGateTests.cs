@@ -47,9 +47,11 @@ namespace GameName.Core.Tests.EditMode
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }),
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }));
             var tracker = new MemoryRoomClueTracker(new[] { clue });
+            var storage = new ClueStorage(new ClueStorageSettings(6));
             inventory.TryStore(clue.ToInfo());
 
-            var analyzer = new ClueAnalyzer(location, AnalysisRoom, gauge, settings, eventBus, progress, tracker, inventory);
+            var analyzer = new ClueAnalyzer(
+                location, AnalysisRoom, gauge, settings, eventBus, progress, tracker, inventory, storage);
 
             var result = analyzer.Analyze(clue.Id, AnalysisDepth.Basic);
 

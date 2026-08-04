@@ -30,8 +30,10 @@ namespace GameName.UI.Flow
             root.pickingMode = PickingMode.Ignore;
 
             _controller = new FlowOverlayController(
-                root, session.CommissionSession, session.DialogueProgressor, session.MentalityGauge,
-                session.PlayerLocation, session.MemoryEntryNodeId, session.EventBus);
+                root, session.CommissionSession, session.DialogueProgressor,
+                session.PlayerLocation, session.MemoryEntryNodeId,
+                session.Inventory, session.ClueStorage, session.AnalysisProgress, session.RoomIds,
+                session.RestorationTracker, session.EventBus);
 
             if (_dialogueInput != null)
                 _dialogueInput.Initialize(_controller.DialogueController);

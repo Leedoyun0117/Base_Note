@@ -34,6 +34,7 @@ namespace GameName.UI.Session
         public static readonly MemoryGraphNodeId Staircase = new MemoryGraphNodeId("staircase");
         public static readonly MemoryGraphNodeId AnalysisRoom = new MemoryGraphNodeId("analysis-room");
         public static readonly MemoryGraphNodeId PerfumeryRoom = new MemoryGraphNodeId("perfumery-room");
+        public static readonly MemoryGraphNodeId MemoryExit = new MemoryGraphNodeId("memory-exit");
 
         public static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
         public static readonly MemoryRoomId Room2 = new MemoryRoomId("room-2");
@@ -44,11 +45,22 @@ namespace GameName.UI.Session
 
         public static GameSessionData CreateWorldData()
         {
+            // 허브는 전부 Row 0 — "가장 현재"인 지점들이다. 가로로만 삼각형
+            // 모양으로 늘어놓는다(문 연결이라 Column에는 규칙이 없다).
+            //
+            // 이탈 공간(MemoryExit)은 계단과는 별개의 노드다. 계단 바로
+            // 아래(Column 1, Row 1)에 매달아 둬서 계단을 거쳐야 닿을 수 있게
+            // 하면서도 지도에서 분명히 다른 자리로 보이게 한다 — 음수 좌표는
+            // 쓰지 않는다(MemoryMapView의 지도 컨테이너 크기 계산이 좌표
+            // 최댓값만 보고 정하므로, 0보다 작은 좌표는 컨테이너 밖으로 잘려
+            // 그려진다). 이 자리는 어느 의뢰의 방과도 겹치지 않는다 — 의뢰 1의
+            // 방들은 Column 3, 의뢰 2의 방들은 Row 1의 Column 0/2를 쓴다.
             var hubNodes = new List<MemoryGraphNode>
             {
-                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase),
-                new MemoryGraphNode(AnalysisRoom, MemoryGraphNodeType.AnalysisRoom),
-                new MemoryGraphNode(PerfumeryRoom, MemoryGraphNodeType.PerfumeryRoom),
+                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase, new MemoryGraphCoordinate(1, 0)),
+                new MemoryGraphNode(AnalysisRoom, MemoryGraphNodeType.AnalysisRoom, new MemoryGraphCoordinate(0, 0)),
+                new MemoryGraphNode(PerfumeryRoom, MemoryGraphNodeType.PerfumeryRoom, new MemoryGraphCoordinate(2, 0)),
+                new MemoryGraphNode(MemoryExit, MemoryGraphNodeType.Exit, new MemoryGraphCoordinate(1, 1)),
             };
 
             var hubOpenConnections = new List<OpenConnection>
@@ -56,6 +68,7 @@ namespace GameName.UI.Session
                 new OpenConnection(Staircase, AnalysisRoom),
                 new OpenConnection(Staircase, PerfumeryRoom),
                 new OpenConnection(AnalysisRoom, PerfumeryRoom),
+                new OpenConnection(Staircase, MemoryExit),
             };
 
             var commissions = new List<CommissionData>
@@ -68,6 +81,7 @@ namespace GameName.UI.Session
                 hubNodes,
                 hubOpenConnections,
                 memoryEntryNodeId: Staircase,
+                memoryExitNodeId: MemoryExit,
                 perfumeryRoomNodeId: PerfumeryRoom,
                 analysisRoomNodeId: AnalysisRoom,
                 commissions: commissions);
@@ -77,11 +91,20 @@ namespace GameName.UI.Session
         // 방으로 바로 들어가는 지름길도 있다.
         private static CommissionData CreateCommission1()
         {
+            // 사다리로 이어진 세 방은 한 줄로 세운다. Room1이 허브에서 가장
+            // 먼저 들어가는 방이라 Row가 가장 크다(가장 과거) — 사다리를 타고
+            // 올라갈수록(Room2 -> Room3) Row가 작아져 점점 "현재"에 가까워진다.
+            //
+            // Column은 계단(1)·분석실(0) 어느 쪽과도 겹치지 않는 3을 쓴다 —
+            // 계단과 같은 줄(Column 1)에 두면, 계단-Room1 직선 연결이 화면에서
+            // 그 사이에 낀 Room2/Room3 자리를 그대로 관통해 지나가면서 마치
+            // 계단이 Room2/Room3과도 연결된 것처럼 보이는 착시가 생긴다(실제
+            // 연결은 계단↔Room1, 분석실↔Room1뿐이다).
             var roomNodes = new List<MemoryGraphNode>
             {
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room3), MemoryGraphNodeType.MemoryRoom),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(3, 3)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(3, 2)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room3), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(3, 1)),
             };
 
             var openConnections = new List<OpenConnection>
@@ -119,10 +142,12 @@ namespace GameName.UI.Session
         // 모양 자체가 다르다는 것을 보여주기 위한 구성이다.
         private static CommissionData CreateCommission2()
         {
+            // 사다리가 없으니 서로 겹치지만 않으면 된다 — 허브 바로 아래
+            // Row 1에, 분석실/조향실 쪽에 하나씩 걸쳐 놓는다.
             var roomNodes = new List<MemoryGraphNode>
             {
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room4), MemoryGraphNodeType.MemoryRoom),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room5), MemoryGraphNodeType.MemoryRoom),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room4), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 1)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room5), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(2, 1)),
             };
 
             var openConnections = new List<OpenConnection>
@@ -180,10 +205,18 @@ namespace GameName.UI.Session
 
         public static GameSessionSettings CreateSettings()
         {
+            // 조향 비용(예전 8)이 "이동 다음으로 싼 행동"이라 잔량이 어중간할
+            // 때 무엇을 할 수 있는지를 사실상 이 값이 정한다 — 이동(1)은 항상
+            // 무료로 면제되므로, 진짜 "이동밖에 할 수 없는" 죽은 구간의 폭은
+            // 조향 비용보다 1 작다. 8일 때는 그 폭이 7이었다(잔량 1~7). 5로
+            // 낮춰 폭을 4(잔량 1~4)로 줄인다 — 분석 비용(20/30)은 이 폭에
+            // 영향을 주지 않으므로(조향이 이미 더 싸다) 그대로 둔다. 자세한
+            // 근거와 남은 정신력으로 가능한 행동 횟수 계산은 이 조정을 만든
+            // 대화 기록을 참고.
             var mentalityCostSettings = new MentalityCostSettings(
                 initialMentality: 100, maxMentality: 100,
                 memoryRoomMoveCost: 1, basicAnalysisCost: 20, advancedAnalysisCost: 30,
-                ampouleCraftingCost: 8, memoryRoomFullRestorationRecovery: 20);
+                ampouleCraftingCost: 5, memoryRoomFullRestorationRecovery: 20);
 
             var judgementSettings = new ScentJudgementSettings(highAccuracyThreshold: 0.8);
 
@@ -192,6 +225,14 @@ namespace GameName.UI.Session
 
             var inventorySettings = new InventorySettings(initialCapacity: 4);
             var storageSettings = new AmpouleStorageSettings(maxStoredAmpoules: 3);
+
+            // 데모 의뢰 1의 단서 총합(방1 2개 + 방2 1개 + 방3 1개 = 4개)보다
+            // 여유 있게 잡아, 정상적으로 플레이하면 보관대 부족으로 막히지
+            // 않게 한다. 그렇다고 무제한으로 두지는 않는다 — 그러면 "무엇을
+            // 인벤토리에 남기고 무엇을 보관대로 옮길지" 라는 선택 자체가
+            // 사라져, 이 기능이 풀려던 자원 관리 문제(2번 문단)가 다시
+            // "사실상 무한 인벤토리"로 되돌아간다.
+            var clueStorageSettings = new ClueStorageSettings(maxStoredClues: 6);
 
             var upgradeCatalog = new UpgradeCatalog(new[]
             {
@@ -208,6 +249,7 @@ namespace GameName.UI.Session
                 compositionPolicy,
                 inventorySettings,
                 storageSettings,
+                clueStorageSettings,
                 new GuidAmpouleIdGenerator(),
                 upgradeCatalog);
         }

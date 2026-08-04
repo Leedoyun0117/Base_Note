@@ -13,7 +13,10 @@ namespace GameName.UI.MemoryRoom
     //
     // 이동 완료 이벤트를 구독해서만 목록을 다시 그린다 — 방을 옮기면 보여줄
     // 단서 목록 자체가 바뀌기 때문이다. 습득은 그 자리에서 결과가 바로
-    // 나오므로 별도 이벤트 없이 직접 새로고침한다.
+    // 나오므로 별도 이벤트 없이 직접 새로고침한다. 되돌려놓기는 인벤토리
+    // 패널(다른 컨트롤러)에서 일어나므로, ClueReturnedEvent를 구독해서만
+    // 그 결과를 반영한다 — 되돌린 단서가 이 방의 것이 아니어도 그냥 다시
+    // 그리기만 하면 되므로 방 일치 여부를 따로 걸러낼 필요가 없다.
     public sealed class ClueCollectionPanelController : IDisposable
     {
         private readonly ClueCollectionPanelView _view;
@@ -22,6 +25,7 @@ namespace GameName.UI.MemoryRoom
         private readonly ClueCollector _clueCollector;
         private readonly IReadOnlyList<MemoryRoomId> _roomIds;
         private readonly IDisposable _moveSubscription;
+        private readonly IDisposable _clueReturnedSubscription;
 
         // 습득에 성공하면 인벤토리 내용이 바뀐다 — 인벤토리 패널은 이 화면의
         // 다른 컨트롤러가 소유하므로, 화면 컨트롤러가 이 이벤트를 듣고
@@ -45,6 +49,7 @@ namespace GameName.UI.MemoryRoom
 
             _view.CollectRequested += OnCollectRequested;
             _moveSubscription = eventBus.Subscribe<MemoryRoomMoveCompletedEvent>(_ => Refresh());
+            _clueReturnedSubscription = eventBus.Subscribe<ClueReturnedEvent>(_ => Refresh());
 
             Refresh();
         }
@@ -91,6 +96,7 @@ namespace GameName.UI.MemoryRoom
         {
             _view.CollectRequested -= OnCollectRequested;
             _moveSubscription.Dispose();
+            _clueReturnedSubscription.Dispose();
         }
     }
 }

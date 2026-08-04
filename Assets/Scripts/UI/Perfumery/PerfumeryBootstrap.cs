@@ -1,6 +1,7 @@
 using GameName.UI.Journal;
 using GameName.UI.MemoryRoom;
 using GameName.UI.Session;
+using GameName.UI.Shared;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -31,12 +32,16 @@ namespace GameName.UI.Perfumery
             var root = GetComponent<UIDocument>().rootVisualElement;
 
             // 조향실도 그래프 위의 노드 하나다 — 계단·분석실로 나가는 이동은
-            // 기억 방/분석실 화면과 같은 재사용 컨트롤러가 담당한다. 좌측
-            // "기억 방" 패널 위쪽에 함께 그려진다(같은 root-panel 하위 요소).
+            // 기억 방/분석실 화면과 같은 지도 조합(MemoryMapView +
+            // MemoryRoomMapNavigationController)을 그대로 재사용한다. 조향
+            // 목표 방 선택은 이동과 다른 동작이라 별도로 둔다 — 최종 조향
+            // 화면과 같은 RoomSelectionPanelView/Controller(목록)를 재사용한다.
             var navigationView = new RoomNavigationPanelView(root.Q<VisualElement>("room-panel"));
-            var navigationController = new RoomNavigationPanelController(
-                navigationView, session.Graph, session.RestorationTracker, session.MentalityGauge,
-                session.MovementProcessor, session.PlayerLocation, session.RoomIds, session.EventBus);
+            var mapView = new MemoryMapView(root);
+            var navigationController = new MemoryRoomMapNavigationController(
+                navigationView, mapView, session.Graph, session.RestorationTracker, session.MentalityGauge,
+                session.MentalityCostSettings, session.MovementProcessor, session.PlayerLocation, session.RoomIds,
+                session.CommissionSession, session.MemoryExitNodeId, session.EventBus);
 
             var roomView = new RoomSelectionPanelView(root.Q<VisualElement>("room-panel"));
             var roomController = new RoomSelectionPanelController(
@@ -45,7 +50,7 @@ namespace GameName.UI.Perfumery
             var compositionView = new PerfumeryCompositionPanelView(root.Q<VisualElement>("perfumery-panel"));
             var compositionController = new PerfumeryCompositionPanelController(
                 compositionView, session.CompositionValidator, session.AmpouleStorage,
-                session.AmpouleCraftingQueue, session.MentalityCostSettings);
+                session.AmpouleCraftingQueue, session.MentalityGauge, session.MentalityCostSettings, session.EventBus);
 
             var statusView = new StatusPanelView(root.Q<VisualElement>("status-panel"));
             var statusController = new StatusPanelController(
@@ -53,7 +58,8 @@ namespace GameName.UI.Perfumery
                 session.TransferProcessor, session.EventBus);
 
             _screenController = new PerfumeryScreenController(
-                navigationController, roomController, compositionController, statusController, session.CraftingProcessor);
+                navigationController, roomController, compositionController, statusController,
+                session.CraftingProcessor);
 
             // ── 기록지 화면 조립 ────────────────────────────────────────
             if (_journalVisibility != null)

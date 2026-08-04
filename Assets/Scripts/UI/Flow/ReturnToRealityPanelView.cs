@@ -15,7 +15,7 @@ namespace GameName.UI.Flow
         private readonly Button _requestButton;
         private readonly Button _confirmButton;
         private readonly Button _cancelButton;
-        private readonly Label _mentalityNoticeLabel;
+        private readonly Label _summaryLabel;
 
         public event Action ExitRequested;
         public event Action ExitConfirmed;
@@ -28,7 +28,7 @@ namespace GameName.UI.Flow
             _requestButton = root.Q<Button>("request-exit-button");
             _confirmButton = root.Q<Button>("confirm-exit-button");
             _cancelButton = root.Q<Button>("cancel-exit-button");
-            _mentalityNoticeLabel = root.Q<Label>("exit-mentality-notice");
+            _summaryLabel = root.Q<Label>("exit-summary-notice");
 
             _requestButton.clicked += () => ExitRequested?.Invoke();
             _confirmButton.clicked += () => ExitConfirmed?.Invoke();
@@ -42,10 +42,10 @@ namespace GameName.UI.Flow
         public void SetConfirmVisible(bool visible) =>
             _confirmControls.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
 
-        public void SetMentalityNotice(string message)
+        public void SetSummary(string message)
         {
-            _mentalityNoticeLabel.text = message ?? string.Empty;
-            _mentalityNoticeLabel.style.display = string.IsNullOrEmpty(message) ? DisplayStyle.None : DisplayStyle.Flex;
+            _summaryLabel.text = message ?? string.Empty;
+            _summaryLabel.style.display = string.IsNullOrEmpty(message) ? DisplayStyle.None : DisplayStyle.Flex;
         }
     }
 }

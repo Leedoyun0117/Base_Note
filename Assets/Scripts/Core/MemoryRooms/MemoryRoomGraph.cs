@@ -22,6 +22,17 @@ namespace GameName.Core.MemoryRooms
             new HashSet<(MemoryGraphNodeId, MemoryGraphNodeId)>();
         private readonly List<LadderConnection> _ladderConnections = new List<LadderConnection>();
 
+        // 지도가 그리는 데 필요한 "원본 그대로의" 목록 — 위 _openConnections는
+        // AreOpenlyConnected를 O(1)로 검사하려고 양방향을 전부 저장해 두므로,
+        // 문 하나당 두 번씩 그려지는 것을 막기 위해 원본 개수 그대로인 목록을
+        // 따로 둔다.
+        private readonly List<MemoryGraphNode> _nodeList = new List<MemoryGraphNode>();
+        private readonly List<OpenConnection> _canonicalOpenConnections = new List<OpenConnection>();
+
+        public IReadOnlyList<MemoryGraphNode> Nodes => _nodeList;
+        public IReadOnlyList<OpenConnection> OpenConnections => _canonicalOpenConnections;
+        public IReadOnlyList<LadderConnection> LadderConnections => _ladderConnections;
+
         public MemoryRoomGraph(
             IReadOnlyList<MemoryGraphNode> nodes,
             IReadOnlyList<OpenConnection> openConnections,
@@ -44,6 +55,8 @@ namespace GameName.Core.MemoryRooms
             _nodesById.Clear();
             _openConnections.Clear();
             _ladderConnections.Clear();
+            _nodeList.Clear();
+            _canonicalOpenConnections.Clear();
 
             foreach (var node in nodes)
             {
@@ -51,6 +64,7 @@ namespace GameName.Core.MemoryRooms
                     throw new ArgumentException($"노드 식별자가 중복되었다({node.Id}).", nameof(nodes));
 
                 _nodesById.Add(node.Id, node);
+                _nodeList.Add(node);
             }
 
             foreach (var connection in openConnections)
@@ -59,6 +73,7 @@ namespace GameName.Core.MemoryRooms
                 RequireKnownNode(connection.NodeB);
                 _openConnections.Add((connection.NodeA, connection.NodeB));
                 _openConnections.Add((connection.NodeB, connection.NodeA));
+                _canonicalOpenConnections.Add(connection);
             }
 
             foreach (var ladder in ladderConnections)
