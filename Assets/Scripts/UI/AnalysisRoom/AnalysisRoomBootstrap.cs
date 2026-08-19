@@ -1,4 +1,5 @@
 using GameName.UI.Journal;
+using GameName.UI.Overlays;
 using GameName.UI.MemoryRoom;
 using GameName.UI.Session;
 using GameName.UI.Shared;
@@ -19,9 +20,11 @@ namespace GameName.UI.AnalysisRoom
     {
         [SerializeField] private GameSessionBootstrap _gameSession;
 
-        // 기록지는 다른 화면과 마찬가지로 별도 UIDocument로 띄운다. 같은
-        // JournalVisibilityController를 재사용한다 — 화면마다 새로 만들지 않는다.
-        [SerializeField] private JournalVisibilityController _journalVisibility;
+        // 기록지는 화면 전체를 덮는 별도 UIDocument(별도 GameObject)로 띄운다.
+        // 그 가시성은 이 화면이 아니라 씬에 하나뿐인 OverlayPanelHost가 관리한다
+        // — 화면마다 자기 오버레이를 따로 여닫으면 인벤토리 오버레이가 생긴
+        // 지금 두 화면이 동시에 뜨는 것을 막을 곳이 없어지기 때문이다.
+        [SerializeField] private OverlayPanelHost _overlayPanels;
 
         private AnalysisRoomScreenController _screenController;
         private JournalScreenController _journalScreenController;
@@ -50,11 +53,12 @@ namespace GameName.UI.AnalysisRoom
 
             _screenController = new AnalysisRoomScreenController(navigationController, analysisController, storageController);
 
-            if (_journalVisibility != null)
+            var journalRoot = _overlayPanels == null ? null : _overlayPanels.RootOf(OverlayPanel.Journal);
+            if (journalRoot != null)
             {
-                var journalView = new JournalScreenView(_journalVisibility.Document.rootVisualElement);
+                var journalView = new JournalScreenView(journalRoot);
                 _journalScreenController = new JournalScreenController(journalView, session.Journal);
-                _journalVisibility.Initialize(_journalScreenController);
+                _overlayPanels.Bind(OverlayPanel.Journal, _journalScreenController.Refresh);
             }
         }
 

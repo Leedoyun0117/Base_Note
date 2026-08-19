@@ -92,7 +92,7 @@ namespace GameName.UI.Tests.EditMode
                 roomId,
                 new Scent(EmotionType.Joy, new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) })));
             var clue = new ClueDefinition(
-                new ClueId(clueId), roomId,
+                new ClueId(clueId), ClueKind.FloorObject, new CluePositionRatio(0.5f),
                 apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }),
                 trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }));
 

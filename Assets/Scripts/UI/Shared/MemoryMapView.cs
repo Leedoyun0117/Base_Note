@@ -93,6 +93,15 @@ namespace GameName.UI.Shared
             // 한다 — 그래야 노드가 없는 빈 배경을 눌렀을 때 그 클릭이 아래
             // 프레임까지 내려가 "확대" 트리거로 이어진다(컨테이너를 Ignore로
             // 둬도 그 자식 요소 각각의 pickingMode는 영향받지 않는다).
+            // 미리보기는 선택 사항이다 — 기억 방 화면은 플레이 공간을 가리지
+            // 않으려고 축소 지도를 두지 않고 상단 바의 버튼으로만 지도를 연다.
+            // 조향실·분석실은 그대로 미리보기를 쓴다.
+            if (_previewFrame == null)
+            {
+                WirePreviewIndependentParts();
+                return;
+            }
+
             _previewDrawLayer = new VisualElement { pickingMode = PickingMode.Ignore };
             _previewDrawLayer.style.position = Position.Absolute;
             _previewDrawLayer.style.left = 0;
@@ -121,6 +130,12 @@ namespace GameName.UI.Shared
             });
             _previewDrawLayer.RegisterCallback<GeometryChangedEvent>(_ => RebuildPreviewNodes());
 
+            WirePreviewIndependentParts();
+        }
+
+        // 미리보기가 있든 없든 필요한 배선. 생성자에서 두 경로가 공유한다.
+        private void WirePreviewIndependentParts()
+        {
             if (_closeButton != null)
                 _closeButton.clicked += () => SetExpanded(false);
 
@@ -135,6 +150,9 @@ namespace GameName.UI.Shared
 
             SetExpanded(false);
         }
+
+        // 미리보기 없이 지도를 여는 통로. 기억 방 상단 바의 "지도" 버튼이 쓴다.
+        public void Open() => SetExpanded(true);
 
         public void SetMap(IReadOnlyList<MemoryMapNodeData> nodes, IReadOnlyList<MemoryMapConnectionData> connections)
         {
@@ -163,6 +181,11 @@ namespace GameName.UI.Shared
             _mapContainer.style.height = contentHeight;
 
             _connectionsLayer.MarkDirtyRepaint();
+
+            // 미리보기를 쓰지 않는 화면에서는 다시 그릴 것이 없다.
+            if (_previewDrawLayer == null)
+                return;
+
             _previewDrawLayer.MarkDirtyRepaint();
             RebuildPreviewNodes();
         }

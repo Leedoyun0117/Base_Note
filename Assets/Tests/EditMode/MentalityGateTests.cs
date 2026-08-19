@@ -43,10 +43,10 @@ namespace GameName.Core.Tests.EditMode
             var inventory = new PlayerInventory(new InventorySettings(10), new SharedSlotInventoryPolicy());
 
             var clue = new ClueDefinition(
-                new ClueId("clue-1"), TargetRoom,
+                new ClueId("clue-1"), ClueKind.FloorObject, new CluePositionRatio(0.5f),
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }),
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }));
-            var tracker = new MemoryRoomClueTracker(new[] { clue });
+            var tracker = new MemoryRoomClueTracker(new[] { new CluePlacement(TargetRoom, clue) });
             var storage = new ClueStorage(new ClueStorageSettings(6));
             inventory.TryStore(clue.ToInfo());
 

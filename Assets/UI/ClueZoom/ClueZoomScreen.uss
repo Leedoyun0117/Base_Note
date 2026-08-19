@@ -1,0 +1,151 @@
+/* 단서 확대 화면.
+   왼쪽이 단서를 크게 보여주는 무대, 오른쪽이 세로 사이드바다.
+   인벤토리 칸은 사이드바 너비의 절반씩 차지해 줄바꿈으로 두 칸씩 놓인다 —
+   칸 개수는 Core 설정값(IPlayerInventory.Capacity)이 정하므로, 여기에 2x2를
+   전제한 고정 개수를 적지 않는다. 칸이 여섯이면 자연히 2x3이 된다. */
+
+.clue-zoom-screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    flex-direction: row;
+    background-color: rgba(10, 10, 14, 0.94);
+}
+
+.clue-zoom-stage {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+}
+
+.clue-zoom-exit-button {
+    position: absolute;
+    left: 24px;
+    top: 24px;
+    width: 96px;
+    height: 44px;
+    background-color: rgb(184, 46, 46);
+    border-width: 0;
+    border-radius: 6px;
+    color: rgb(250, 240, 240);
+    font-size: 16px;
+}
+
+.clue-zoom-exit-button:hover {
+    background-color: rgb(214, 62, 62);
+}
+
+.clue-zoom-clue {
+    width: 46%;
+    height: 62%;
+    min-width: 260px;
+    min-height: 260px;
+    align-items: center;
+    justify-content: center;
+    background-color: rgb(48, 44, 58);
+    border-width: 2px;
+    border-color: rgb(120, 112, 140);
+    border-radius: 10px;
+}
+
+/* 드래그 중에는 반투명하게 보인다. */
+.clue-zoom-clue--dragging {
+    opacity: 0.5;
+}
+
+.clue-zoom-clue__swatches {
+    flex-direction: row;
+    margin-bottom: 18px;
+}
+
+.clue-zoom-clue__swatch {
+    width: 56px;
+    height: 56px;
+    margin-right: 10px;
+    border-radius: 6px;
+}
+
+.clue-zoom-clue__kind {
+    color: rgb(198, 190, 214);
+    font-size: 15px;
+    margin-bottom: 6px;
+}
+
+.clue-zoom-clue__summary {
+    color: rgb(230, 226, 238);
+    font-size: 18px;
+}
+
+.clue-zoom-message {
+    position: absolute;
+    bottom: 28px;
+    color: rgb(240, 150, 150);
+    font-size: 15px;
+}
+
+.clue-zoom-sidebar {
+    width: 300px;
+    background-color: rgb(26, 24, 32);
+    border-left-width: 1px;
+    border-left-color: rgb(70, 66, 84);
+}
+
+/* 상단 여백 영역 — 나중에 단서 이름/설명이 들어올 자리다. */
+.clue-zoom-sidebar__header {
+    height: 200px;
+    border-bottom-width: 1px;
+    border-bottom-color: rgb(70, 66, 84);
+}
+
+.clue-zoom-inventory-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 10px;
+}
+
+.clue-zoom-slot {
+    width: 50%;
+    height: 120px;
+    padding: 6px;
+}
+
+.clue-zoom-slot__inner {
+    flex-grow: 1;
+    align-items: center;
+    justify-content: center;
+    border-width: 2px;
+    border-radius: 8px;
+    border-color: rgb(88, 84, 104);
+    background-color: rgb(38, 35, 46);
+}
+
+.clue-zoom-slot--filled .clue-zoom-slot__inner {
+    border-color: rgb(140, 132, 164);
+    background-color: rgb(52, 48, 64);
+}
+
+/* 드래그 중인 단서가 이 칸 위에 있을 때. */
+.clue-zoom-slot--hovered .clue-zoom-slot__inner {
+    border-color: rgb(255, 255, 255);
+}
+
+.clue-zoom-slot__label {
+    color: rgb(190, 184, 206);
+    font-size: 13px;
+}
+
+.clue-zoom-slot__swatch {
+    width: 26px;
+    height: 26px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+}
+
+/* 감정별 색 — 다른 화면과 같은 클래스 이름을 쓴다. */
+.emotion--joy { background-color: rgb(240, 200, 90); }
+.emotion--love { background-color: rgb(228, 120, 150); }
+.emotion--anger { background-color: rgb(214, 88, 72); }
+.emotion--sadness { background-color: rgb(96, 140, 216); }
+.emotion--fear { background-color: rgb(128, 108, 190); }

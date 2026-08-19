@@ -11,6 +11,10 @@ namespace GameName.Core.Clues
     // 애초에 진실 데이터를 들고 있을 필요가 없어야 하기 때문이다. 진실
     // 데이터는 IMemoryRoomClueTracker 안에만 있고, 인벤토리에는 ToInfo()로 변환한
     // 안전한 정보만 들어간다.
+    //
+    // "그 단서가 어느 방에 있는가"도 더 이상 정의에서 읽지 않고 추적기에
+    // 물어본다 — 버리기로 소속 방이 바뀔 수 있게 된 뒤로 그 사실의 유일한
+    // 진실 원천이 추적기이기 때문이다.
     public sealed class ClueCollector
     {
         private readonly IPlayerLocation _playerLocation;
@@ -27,10 +31,10 @@ namespace GameName.Core.Clues
 
         public ClueCollectionResult Collect(ClueId clueId)
         {
-            if (!_clueTracker.TryGetAvailableDefinition(clueId, out var definition))
+            if (!_clueTracker.TryGetPlacedClue(clueId, out var definition, out var roomId))
                 return ClueCollectionResult.Failure(ClueCollectionFailureReason.NotAvailable);
 
-            if (!_playerLocation.Current.Equals(MemoryGraphNodeId.OfRoom(definition.RoomId)))
+            if (!_playerLocation.Current.Equals(MemoryGraphNodeId.OfRoom(roomId)))
                 return ClueCollectionResult.Failure(ClueCollectionFailureReason.WrongRoom);
 
             var storeResult = _inventory.TryStore(definition.ToInfo());

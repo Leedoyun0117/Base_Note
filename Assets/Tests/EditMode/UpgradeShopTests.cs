@@ -90,7 +90,7 @@ namespace GameName.Core.Tests.EditMode
 
             // 인벤토리에 무언가를 담아 둔 뒤, 새 의뢰가 시작되는 상황을 흉내낸다.
             inventory.TryStore(new ClueInfo(
-                new ClueId("clue-1"), new MemoryRoomId("room-1"),
+                new ClueId("clue-1"), ClueKind.FloorObject, new CluePositionRatio(0.5f),
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) })));
 
             var mentalityGauge = new MentalityGauge(costSettings, eventBus);

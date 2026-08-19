@@ -13,7 +13,8 @@ namespace GameName.Core.Tests.EditMode
         private static ClueInfo MakeClueInfo(string id) =>
             new ClueInfo(
                 new ClueId(id),
-                new MemoryRoomId("room-1"),
+                ClueKind.FloorObject,
+                new CluePositionRatio(0.5f),
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) }));
 
         [Test]

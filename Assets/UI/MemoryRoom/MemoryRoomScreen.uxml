@@ -1,53 +1,57 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
     <Style src="MemoryRoomScreen.uss" />
 
-    <ui:VisualElement name="screen" class="screen">
+    <!-- 기억 방은 2D 씬으로 그려진다. 이 UIDocument에 남은 것은 화면 맨 위에
+         얇게 걸치는 상태 표시줄과, 필요할 때만 뜨는 두 패널(지도·시향)뿐이다.
 
-        <ui:VisualElement name="navigation-panel" class="panel">
-            <ui:Label text="기억 방" class="panel-title" />
+         picking-mode를 배경 컨테이너마다 Ignore로 꺼 둔다 — 그래야 클릭이
+         씬까지 내려가 단서를 집을 수 있다. 실제로 눌러야 하는 것(버튼, 모달)만
+         기본값(Position)으로 남겨 포인터를 받는다. -->
+    <ui:VisualElement name="screen" class="hud" picking-mode="Ignore">
 
-            <ui:Label name="current-room-label" text="-" class="current-room-label" />
-            <ui:Label name="current-room-restored-badge" text="복원됨" class="restored-badge" />
+        <!-- 상단 바. 방 천장 위쪽 여백에만 걸치도록 얇게 유지한다(카메라가
+             방 높이에 여백을 더해 잡으므로 그 띠가 항상 비어 있다). -->
+        <ui:VisualElement name="hud-bar" class="hud-bar" picking-mode="Ignore">
 
-            <ui:Label text="정신력" class="section-label" />
-            <ui:VisualElement class="mentality-bar-track">
-                <ui:VisualElement name="mentality-bar-fill" class="mentality-bar-fill" />
+            <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">
+                <ui:Label name="current-room-label" text="-" class="current-room-label" />
+                <ui:Label name="current-room-restored-badge" text="복원됨" class="restored-badge" />
             </ui:VisualElement>
-            <ui:Label name="mentality-value" text="- / -" class="caption" />
-            <ui:Label name="mentality-affordance-notice" text="" class="caption" />
+
+            <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">
+                <ui:Label text="정신력" class="hud-bar__label" />
+                <ui:VisualElement class="mentality-bar-track" picking-mode="Ignore">
+                    <ui:VisualElement name="mentality-bar-fill" class="mentality-bar-fill" picking-mode="Ignore" />
+                </ui:VisualElement>
+                <ui:Label name="mentality-value" text="- / -" class="hud-bar__label" />
+            </ui:VisualElement>
+
+            <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">
+                <ui:Button name="hud-map-button" text="지도" class="hud-bar__button" />
+                <ui:Button name="hud-scent-button" text="시향" class="hud-bar__button" />
+                <ui:Label name="hud-key-hints" text="" class="hud-bar__hint" />
+            </ui:VisualElement>
+
+        </ui:VisualElement>
+
+        <!-- 상황 안내. 배경을 칠하지 않아 뒤의 방이 그대로 보인다. -->
+        <ui:VisualElement name="hud-messages" class="hud-messages" picking-mode="Ignore">
             <ui:Label name="mentality-notice" text="" class="failure-message" />
             <ui:Label name="move-failure-message" text="" class="failure-message" />
         </ui:VisualElement>
 
-        <ui:VisualElement name="memory-map-panel" class="panel">
-            <ui:Label text="기억 지도" class="panel-title" />
-            <ui:Label text="누르면 크게 볼 수 있습니다." class="caption" />
-            <ui:VisualElement name="memory-map-preview" class="memory-map-preview" />
-        </ui:VisualElement>
-
-        <ui:VisualElement name="clue-panel" class="panel">
-            <ui:Label text="단서" class="panel-title" />
-            <ui:Label text="아직 줍지 않은 단서 (방 배경 오브젝트로 교체될 자리)" class="caption" />
-            <ui:ScrollView name="clue-list" class="clue-list" />
-            <ui:Label name="clue-collect-failure-message" text="" class="failure-message" />
-        </ui:VisualElement>
-
-        <ui:VisualElement name="inventory-panel" class="panel">
-            <ui:Label text="인벤토리" class="panel-title" />
-            <ui:Label name="inventory-count" text="- / -" class="caption" />
-            <ui:Label
-                name="inventory-full-notice"
-                text="인벤토리가 가득 찼습니다. 단서는 분석실 보관대로 옮기거나 이 방의 것이라면 되돌려놓을 수 있습니다."
-                class="failure-message" />
-            <ui:VisualElement name="inventory-slot-list" class="inventory-slot-list" />
-            <ui:Label name="clue-return-failure-message" text="" class="failure-message" />
-        </ui:VisualElement>
-
-        <ui:VisualElement name="scent-test-panel" class="panel">
-            <ui:Label text="시향" class="panel-title" />
-            <ui:Label text="목표 방이 지금 있는 방과 같은 앰플만 시향할 수 있습니다." class="caption" />
-            <ui:ScrollView name="scent-test-list" class="scent-test-list" />
-            <ui:VisualElement name="scent-test-result" class="scent-test-result" />
+        <!-- 여기부터는 필요할 때만 뜨는 패널이다. 화면을 덮으므로 포인터를
+             그대로 받아 씬 클릭을 막는다(picking-mode를 끄지 않는다). -->
+        <ui:VisualElement name="scent-test-panel" class="modal">
+            <ui:VisualElement class="modal__panel">
+                <ui:VisualElement class="modal__header">
+                    <ui:Label text="시향" class="panel-title" />
+                    <ui:Button name="scent-test-close-button" text="닫기" class="modal__close-button" />
+                </ui:VisualElement>
+                <ui:Label text="목표 방이 지금 있는 방과 같은 앰플만 시향할 수 있습니다." class="caption" />
+                <ui:ScrollView name="scent-test-list" class="scent-test-list" />
+                <ui:VisualElement name="scent-test-result" class="scent-test-result" />
+            </ui:VisualElement>
         </ui:VisualElement>
 
         <ui:VisualElement name="memory-map-expanded" class="memory-map-expanded">

@@ -25,7 +25,9 @@ namespace GameName.Core.Tests.EditMode
         private static readonly MemoryGraphNodeId OtherRoom = new MemoryGraphNodeId("other-room");
 
         private static ClueDefinition MakeClue(EmotionBlend apparent, EmotionBlend actual = null) =>
-            new ClueDefinition(new ClueId("clue-1"), new MemoryRoomId("room-1"), apparent, actual ?? apparent);
+            new ClueDefinition(
+                new ClueId("clue-1"), ClueKind.FloorObject, new CluePositionRatio(0.5f),
+                apparent, actual ?? apparent);
 
         private static AnalyzerFixture MakeFixture(
             MemoryGraphNodeId playerPosition,
@@ -43,7 +45,7 @@ namespace GameName.Core.Tests.EditMode
             var progress = new ClueAnalysisProgress();
             var inventory = new PlayerInventory(new InventorySettings(10), new SharedSlotInventoryPolicy());
             var storage = new ClueStorage(new ClueStorageSettings(6));
-            var tracker = new MemoryRoomClueTracker(new[] { clueDefinition });
+            var tracker = new MemoryRoomClueTracker(new[] { new CluePlacement(new MemoryRoomId("room-1"), clueDefinition) });
             var location = new PlayerLocation(playerPosition);
 
             if (collectIntoInventory)

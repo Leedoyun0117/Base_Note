@@ -1,0 +1,113 @@
+/* I 키로 여닫는 인벤토리 오버레이.
+   칸 개수는 Core의 IPlayerInventory.Capacity가 정하므로 여기에 고정 개수를
+   전제한 규칙을 두지 않는다 — 칸은 줄바꿈으로 알아서 채워진다. */
+
+.inventory-screen {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(10, 10, 14, 0.88);
+}
+
+.inventory-panel {
+    width: 560px;
+    padding: 22px;
+    background-color: rgb(30, 28, 36);
+    border-width: 1px;
+    border-color: rgb(78, 74, 92);
+    border-radius: 10px;
+}
+
+.inventory-title {
+    color: rgb(236, 232, 244);
+    font-size: 22px;
+    margin-bottom: 6px;
+}
+
+.inventory-caption {
+    color: rgb(166, 160, 182);
+    font-size: 13px;
+    margin-bottom: 4px;
+    white-space: normal;
+}
+
+.inventory-slot-grid {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-top: 12px;
+}
+
+.inventory-slot {
+    width: 50%;
+    padding: 6px;
+}
+
+.inventory-slot__inner {
+    height: 132px;
+    align-items: center;
+    justify-content: center;
+    border-width: 2px;
+    border-radius: 8px;
+    border-color: rgb(88, 84, 104);
+    background-color: rgb(40, 37, 48);
+}
+
+.inventory-slot--filled .inventory-slot__inner {
+    border-color: rgb(140, 132, 164);
+    background-color: rgb(54, 50, 66);
+}
+
+.inventory-slot__swatch-row {
+    flex-direction: row;
+    margin-bottom: 6px;
+}
+
+.inventory-slot__swatch {
+    width: 22px;
+    height: 22px;
+    margin-right: 4px;
+    border-radius: 4px;
+}
+
+.inventory-slot__category {
+    color: rgb(206, 200, 220);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.inventory-slot__drop-button {
+    height: 28px;
+    padding-left: 12px;
+    padding-right: 12px;
+    border-width: 0;
+    border-radius: 6px;
+    background-color: rgb(96, 90, 120);
+    color: rgb(238, 234, 246);
+    font-size: 13px;
+}
+
+.inventory-slot__drop-button:hover {
+    background-color: rgb(120, 112, 150);
+}
+
+.inventory-message {
+    margin-top: 10px;
+    color: rgb(240, 150, 150);
+    font-size: 14px;
+    white-space: normal;
+}
+
+.emotion--joy { background-color: rgb(240, 200, 90); }
+.emotion--love { background-color: rgb(228, 120, 150); }
+.emotion--anger { background-color: rgb(214, 88, 72); }
+.emotion--sadness { background-color: rgb(96, 140, 216); }
+.emotion--fear { background-color: rgb(128, 108, 190); }
+
+/* 끌고 있는 칸은 반투명해진다 — 확대 화면에서 단서를 끌 때와 같은 신호다. */
+.inventory-slot--dragging {
+    opacity: 0.5;
+}

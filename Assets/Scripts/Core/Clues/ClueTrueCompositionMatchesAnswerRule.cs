@@ -9,6 +9,13 @@ namespace GameName.Core.Clues
     // "사실"이어야 한다.
     // 다만 이런 단서를 완전히 금지할지는 기획에서 아직 정하지 않았으므로
     // 오류가 아니라 경고로 남긴다.
+    //
+    // 이 규칙은 저작 시점의 배치만 검사한다. 플레이어가 단서를 다른 방에
+    // 버리면 그 단서는 그 방 소속이 되므로, 여기서 "정답과 어울린다"고 판정한
+    // 짝짓기가 플레이 중에는 얼마든지 어긋날 수 있다 — 재배정된 단서에는 이
+    // 검사가 다시 돌지 않는다(그럴 자리 자체가 없다). 그래서 이 경고는
+    // "기획 데이터가 처음부터 이상하지는 않은가"를 봐주는 저작 도구일 뿐이고,
+    // 런타임 규칙으로 승격시켜서는 안 된다.
     public sealed class ClueTrueCompositionMatchesAnswerRule : IRoomDataConsistencyRule
     {
         public IReadOnlyList<RoomDataIssue> Check(MemoryRoomData data)

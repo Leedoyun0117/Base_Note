@@ -18,9 +18,11 @@ namespace GameName.Core.Tests.EditMode
         private static readonly MemoryRoomId Room2 = new MemoryRoomId("room-2");
         private static readonly MemoryRoomId Room3 = new MemoryRoomId("room-3");
 
-        private static ClueInfo MakeClueInfo(string id, MemoryRoomId roomId) =>
+        // ClueInfo는 더 이상 소속 방을 담지 않는다 — 이 계산은 애초에 방을
+        // 보지 않고 "분석했는가"만 세므로 영향이 없다.
+        private static ClueInfo MakeClueInfo(string id) =>
             new ClueInfo(
-                new ClueId(id), roomId,
+                new ClueId(id), ClueKind.FloorObject, new CluePositionRatio(0.5f),
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) }));
 
         [Test]
@@ -32,10 +34,10 @@ namespace GameName.Core.Tests.EditMode
             var eventBus = new EventBus(new NoOpEventExceptionHandler());
             var restorationTracker = new MemoryRoomRestorationTracker(eventBus);
 
-            inventory.TryStore(MakeClueInfo("clue-1", Room1)); // 미분석
-            inventory.TryStore(MakeClueInfo("clue-2", Room1));
+            inventory.TryStore(MakeClueInfo("clue-1")); // 미분석
+            inventory.TryStore(MakeClueInfo("clue-2"));
             analysisProgress.RecordDepth(new ClueId("clue-2"), AnalysisDepth.Basic); // 분석 완료
-            clueStorage.TryStore(MakeClueInfo("clue-3", Room1)); // 미분석
+            clueStorage.TryStore(MakeClueInfo("clue-3")); // 미분석
 
             var summary = MemoryExitSummaryCalculator.Calculate(
                 inventory, clueStorage, analysisProgress, new[] { Room1 }, restorationTracker);

@@ -30,6 +30,13 @@ namespace GameName.UI.MemoryRoom
 
         private Ampoule _armedAmpoule;
 
+        // 지금 이 방에서 실제로 시향할 수 있는 앰플을 들고 있는가. 상단 바가
+        // 시향 버튼을 보여줄지 정하는 데 쓴다 — 눌러도 아무 것도 못 하는
+        // 버튼은 "여기서 뭔가 할 수 있다"는 잘못된 신호가 된다.
+        public bool IsTestPossible { get; private set; }
+
+        public event Action<bool> AvailabilityChanged;
+
         // 시향에 성공하면 인벤토리에서 앰플이 사라진다 — 인벤토리 패널은 이
         // 화면의 다른 컨트롤러가 소유하므로, 화면 컨트롤러가 이 이벤트를 듣고
         // 인벤토리 패널에 새로고침을 지시한다.
@@ -55,16 +62,26 @@ namespace GameName.UI.MemoryRoom
             _view.TestRequested += OnTestRequested;
             _view.ConfirmTestRequested += OnConfirmTestRequested;
             _view.CancelTestRequested += OnCancelTestRequested;
+            _view.CloseRequested += Close;
             _moveSubscription = eventBus.Subscribe<MemoryRoomMoveCompletedEvent>(_ => OnMoved());
 
             Refresh();
         }
 
+        // 시향 화면은 항상 떠 있지 않는다 — 상단 바의 버튼으로 연다.
+        public void Open() => _view.SetVisible(true);
+
+        public void Close() => _view.SetVisible(false);
+
+        public bool IsOpen => _view.IsVisible;
+
         private void OnMoved()
         {
             // 방을 옮기면 대기 중이던 확정 요청은 더 이상 의미가 없다(대상
-            // 방과의 관계 자체가 바뀐다).
+            // 방과의 관계 자체가 바뀐다). 지난 방에서 받은 결과 문구도 마찬가지다
+            // — 그대로 두면 새 방에서 방금 시향한 것처럼 읽힌다.
             _armedAmpoule = null;
+            _view.ClearResult();
             Refresh();
         }
 
@@ -122,6 +139,22 @@ namespace GameName.UI.MemoryRoom
             }
 
             _view.SetAmpoules(rows);
+
+            var isPossible = false;
+            foreach (var row in rows)
+            {
+                if (!row.Eligible)
+                    continue;
+
+                isPossible = true;
+                break;
+            }
+
+            if (isPossible == IsTestPossible)
+                return;
+
+            IsTestPossible = isPossible;
+            AvailabilityChanged?.Invoke(isPossible);
         }
 
         public void Dispose()
@@ -129,6 +162,7 @@ namespace GameName.UI.MemoryRoom
             _view.TestRequested -= OnTestRequested;
             _view.ConfirmTestRequested -= OnConfirmTestRequested;
             _view.CancelTestRequested -= OnCancelTestRequested;
+            _view.CloseRequested -= Close;
             _moveSubscription.Dispose();
         }
     }

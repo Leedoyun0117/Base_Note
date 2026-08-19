@@ -223,10 +223,13 @@ namespace GameName.UI.Session
             var compositionPolicy = new EmotionCompositionPolicy(
                 minSupportingEmotionCount: 2, maxSupportingEmotionCount: 4, allowSupportingEmotionSameAsBase: false);
 
+            // 확대 화면의 인벤토리 사이드바가 2x2로 그려지는 것과 맞물리는
+            // 값이다. 다만 그 화면이 4를 전제로 그리는 것이 아니라, 이 값을 읽어
+            // 칸 개수를 정한다 — 여기서 6으로 올리면 화면도 여섯 칸을 그린다.
             var inventorySettings = new InventorySettings(initialCapacity: 4);
             var storageSettings = new AmpouleStorageSettings(maxStoredAmpoules: 3);
 
-            // 데모 의뢰 1의 단서 총합(방1 2개 + 방2 1개 + 방3 1개 = 4개)보다
+            // 데모 의뢰 1의 단서 총합(방마다 포스터 1 + 바닥 물건 1 = 6개)보다
             // 여유 있게 잡아, 정상적으로 플레이하면 보관대 부족으로 막히지
             // 않게 한다. 그렇다고 무제한으로 두지는 않는다 — 그러면 "무엇을
             // 인벤토리에 남기고 무엇을 보관대로 옮길지" 라는 선택 자체가
@@ -265,6 +268,11 @@ namespace GameName.UI.Session
                 new ScentJudgementResult(isBaseEmotionCorrect: true, stage: FeedbackStage.PianoAndViolinAndDrum, accuracy: 1.0));
         }
 
+        // 단서의 가로 자리는 방 길이에 대한 비율이다(0 = 왼쪽 끝, 1 = 오른쪽
+        // 끝). 방마다 포스터와 바닥 물건을 서로 다른 자리에 두어, 배치가 코드가
+        // 아니라 이 데이터에서 온다는 것이 눈으로 보이게 한다. 세로는 여기
+        // 적지 않는다 — 포스터는 벽, 바닥 물건은 바닥이라는 것이 종류만으로
+        // 이미 정해진다.
         private static MemoryRoomData CreateRoom1()
         {
             var answer = new MemoryRoomAnswer(
@@ -278,11 +286,11 @@ namespace GameName.UI.Session
             var clues = new List<ClueDefinition>
             {
                 new ClueDefinition(
-                    new ClueId("clue-room1-photo"), Room1,
+                    new ClueId("clue-room1-photo"), ClueKind.Poster, new CluePositionRatio(0.18f),
                     apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 8) }),
                     trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 8) })),
                 new ClueDefinition(
-                    new ClueId("clue-room1-letter"), Room1,
+                    new ClueId("clue-room1-letter"), ClueKind.FloorObject, new CluePositionRatio(0.72f),
                     apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Fear, 7) }),
                     trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Fear, 7) })),
             };
@@ -303,11 +311,15 @@ namespace GameName.UI.Session
 
             var clues = new List<ClueDefinition>
             {
+                new ClueDefinition(
+                    new ClueId("clue-room2-poster"), ClueKind.Poster, new CluePositionRatio(0.82f),
+                    apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Sadness, 5) }),
+                    trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Sadness, 5) })),
                 // 겉보기와 실제가 다른 거짓 단서 하나 — 분석실에서 고급 분석까지
                 // 해도 겉보기 구성(Joy)만 드러난다. 실제 구성(Anger)은 화면
                 // 어디에도 노출되지 않는다.
                 new ClueDefinition(
-                    new ClueId("clue-room2-diary"), Room2,
+                    new ClueId("clue-room2-diary"), ClueKind.FloorObject, new CluePositionRatio(0.28f),
                     apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 5) }),
                     trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Anger, 5) })),
             };
@@ -328,7 +340,11 @@ namespace GameName.UI.Session
             var clues = new List<ClueDefinition>
             {
                 new ClueDefinition(
-                    new ClueId("clue-room3-ring"), Room3,
+                    new ClueId("clue-room3-poster"), ClueKind.Poster, new CluePositionRatio(0.35f),
+                    apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Anger, 4) }),
+                    trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Anger, 4) })),
+                new ClueDefinition(
+                    new ClueId("clue-room3-ring"), ClueKind.FloorObject, new CluePositionRatio(0.88f),
                     apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 6) }),
                     trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 6) })),
             };
@@ -349,7 +365,11 @@ namespace GameName.UI.Session
             var clues = new List<ClueDefinition>
             {
                 new ClueDefinition(
-                    new ClueId("clue-room4-note"), Room4,
+                    new ClueId("clue-room4-poster"), ClueKind.Poster, new CluePositionRatio(0.15f),
+                    apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Sadness, 6) }),
+                    trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Sadness, 6) })),
+                new ClueDefinition(
+                    new ClueId("clue-room4-note"), ClueKind.FloorObject, new CluePositionRatio(0.62f),
                     apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Fear, 6) }),
                     trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Fear, 6) })),
             };
@@ -370,7 +390,11 @@ namespace GameName.UI.Session
             var clues = new List<ClueDefinition>
             {
                 new ClueDefinition(
-                    new ClueId("clue-room5-ribbon"), Room5,
+                    new ClueId("clue-room5-poster"), ClueKind.Poster, new CluePositionRatio(0.70f),
+                    apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Sadness, 3) }),
+                    trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Sadness, 3) })),
+                new ClueDefinition(
+                    new ClueId("clue-room5-ribbon"), ClueKind.FloorObject, new CluePositionRatio(0.24f),
                     apparentComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 5) }),
                     trueComposition: new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 5) })),
             };

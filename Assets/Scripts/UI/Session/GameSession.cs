@@ -15,6 +15,7 @@ using GameName.Core.MemoryRooms;
 using GameName.Core.Rewards;
 using GameName.Core.Upgrades;
 using GameName.Core.Validation;
+using GameName.UI.MemoryRoom.Space;
 
 namespace GameName.UI.Session
 {
@@ -59,9 +60,13 @@ namespace GameName.UI.Session
         public AmpouleCraftingProcessor CraftingProcessor { get; }
         public AmpouleTransferProcessor TransferProcessor { get; }
         public ClueTransferProcessor ClueTransferProcessor { get; }
-        public ClueReturnProcessor ClueReturnProcessor { get; }
+        public ClueDropProcessor ClueDropProcessor { get; }
         public ClueAnalyzer ClueAnalyzer { get; }
         public IClueAnalysisProgress AnalysisProgress { get; }
+
+        // 단서를 버린 자리(표시 전용). Core 객체가 아니지만 수명이 의뢰 하나와
+        // 같아야 해서 여기서 함께 소유한다 — 아래 초기화 목록에 들어간다.
+        public DroppedCluePositions DroppedCluePositions { get; }
         public IDialogueProgressor DialogueProgressor { get; }
         public PlayerJournal Journal { get; }
         public CommissionSession CommissionSession { get; }
@@ -134,7 +139,7 @@ namespace GameName.UI.Session
             AnswerRepository = _answerRepository;
             PublicInfoRepository = _answerRepository;
 
-            _clueTracker = new MemoryRoomClueTracker(Array.Empty<ClueDefinition>());
+            _clueTracker = new MemoryRoomClueTracker(Array.Empty<CluePlacement>());
             ClueTracker = _clueTracker;
 
             ClueStorage = new ClueStorage(settings.ClueStorageSettings);
@@ -172,7 +177,9 @@ namespace GameName.UI.Session
             ClueTransferProcessor = new ClueTransferProcessor(
                 playerLocation, AnalysisRoomNodeId, ClueStorage, Inventory);
 
-            ClueReturnProcessor = new ClueReturnProcessor(playerLocation, Inventory, _clueTracker, EventBus);
+            ClueDropProcessor = new ClueDropProcessor(playerLocation, _graph, Inventory, _clueTracker, EventBus);
+
+            DroppedCluePositions = new DroppedCluePositions();
 
             Journal = new PlayerJournal(EventBus, AmpouleStorage, Inventory);
 
@@ -206,6 +213,10 @@ namespace GameName.UI.Session
                 (IResettable)FinalCraftingBoard,
                 (IResettable)ClueStorage,
                 MovementProcessor,
+
+                // 버린 자리는 이번 의뢰 한 번의 흔적이다 — 다음 의뢰는 단서
+                // 자체가 다른 것으로 갈리므로 남겨 둘 이유가 없다.
+                DroppedCluePositions,
             };
 
             CommissionSession = new CommissionSession(
@@ -260,18 +271,26 @@ namespace GameName.UI.Session
             _graph.Load(allNodes, allOpenConnections, data.LadderConnections);
 
             var answers = new List<MemoryRoomAnswer>(data.RoomData.Count);
-            var clueDefinitions = new List<ClueDefinition>();
             var roomIds = new List<MemoryRoomId>(data.RoomData.Count);
+
+            // 단서의 최초 소속 방은 "그 단서가 담겨 있던 MemoryRoomData가 어느
+            // 방의 것인가"로 정해진다 — 예전처럼 ClueDefinition이 방을 따로 들고
+            // 있지 않으므로, 같은 사실이 두 곳에 적히는 일도 없어졌다. 여기서
+            // 만들어 넘기는 것은 어디까지나 시작 배치이고, 그 뒤의 소속 변경은
+            // 전부 추적기 안에서 일어난다.
+            var placements = new List<CluePlacement>();
             foreach (var roomData in data.RoomData)
             {
                 answers.Add(roomData.Answer);
                 roomIds.Add(roomData.Answer.RoomId);
-                clueDefinitions.AddRange(roomData.Clues);
+
+                foreach (var clue in roomData.Clues)
+                    placements.Add(new CluePlacement(roomData.Answer.RoomId, clue));
             }
             RoomIds = roomIds;
 
             _answerRepository.Load(answers);
-            _clueTracker.Load(clueDefinitions);
+            _clueTracker.Load(placements);
 
             CurrentCommissionData = data;
             CommissionSession.Begin(data.Id);

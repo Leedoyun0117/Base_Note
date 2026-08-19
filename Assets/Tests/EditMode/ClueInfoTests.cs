@@ -29,7 +29,8 @@ namespace GameName.Core.Tests.EditMode
                 new[]
                 {
                     nameof(ClueInfo.Id),
-                    nameof(ClueInfo.RoomId),
+                    nameof(ClueInfo.Kind),
+                    nameof(ClueInfo.AuthoredPosition),
                     nameof(ClueInfo.ApparentComposition),
                     nameof(ClueInfo.Category),
                 },
@@ -41,7 +42,8 @@ namespace GameName.Core.Tests.EditMode
         {
             var apparent = new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 5) });
             var truth = new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Fear, 9) });
-            var definition = new ClueDefinition(new ClueId("clue-1"), new MemoryRoomId("room-1"), apparent, truth);
+            var definition = new ClueDefinition(
+                new ClueId("clue-1"), ClueKind.Poster, new CluePositionRatio(0.25f), apparent, truth);
 
             // info의 정적 타입(ClueInfo) 자체가 TrueComposition을 노출하지 않으므로,
             // "info.TrueComposition"과 같은 코드는 애초에 컴파일되지 않는다.
@@ -50,7 +52,8 @@ namespace GameName.Core.Tests.EditMode
             var info = definition.ToInfo();
 
             Assert.AreEqual(definition.Id, info.Id);
-            Assert.AreEqual(definition.RoomId, info.RoomId);
+            Assert.AreEqual(definition.Kind, info.Kind);
+            Assert.AreEqual(definition.AuthoredPosition, info.AuthoredPosition);
             Assert.AreEqual(apparent, info.ApparentComposition);
         }
     }

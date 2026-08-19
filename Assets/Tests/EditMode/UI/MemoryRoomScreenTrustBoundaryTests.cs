@@ -3,7 +3,10 @@ using System.Linq;
 using System.Reflection;
 using GameName.Core.Clues;
 using GameName.Core.MemoryRooms;
+using GameName.UI.ClueZoom;
+using GameName.UI.Inventory;
 using GameName.UI.MemoryRoom;
+using GameName.UI.MemoryRoom.Space;
 using NUnit.Framework;
 
 namespace GameName.UI.Tests.EditMode
@@ -12,20 +15,36 @@ namespace GameName.UI.Tests.EditMode
     // 시그니처에 절대 노출하지 않는지 리플렉션으로 증명한다. 런타임 값이 아니라
     // 타입 자체를 검사하므로, 나중에 누가 실수로 필드/매개변수를 추가해도 이
     // 테스트가 즉시 잡아낸다 — 이 프로젝트에서 이미 여러 번 어긴 규칙이다.
+    //
+    // 화면이 2D 씬으로 다시 만들어지면서 검사 대상에 씬 쪽 타입들이 함께
+    // 들어왔다. 씬 오브젝트에 대한 더 강한 조건(공개 표면뿐 아니라 비공개
+    // 필드까지)은 MemoryRoomSceneObjectBoundaryTests가 따로 증명한다.
     public class MemoryRoomScreenTrustBoundaryTests
     {
         private static readonly Type[] ScreenTypes =
         {
             typeof(RoomNavigationPanelView),
             typeof(MemoryRoomMapNavigationController),
-            typeof(ClueCollectionPanelView),
-            typeof(ClueCollectionPanelController),
-            typeof(MemoryRoomInventoryPanelView),
-            typeof(MemoryRoomInventoryPanelController),
             typeof(ScentTestingPanelView),
             typeof(ScentTestingPanelController),
             typeof(MemoryRoomScreenController),
             typeof(AmpouleTestRowData),
+
+            typeof(MemoryRoomSpaceView),
+            typeof(MemoryRoomSpaceController),
+            typeof(ClueSceneObject),
+            typeof(RoomExitSceneObject),
+            typeof(ClueSceneItem),
+            typeof(RoomExitSceneItem),
+            typeof(CluePlacementLayout),
+            typeof(DroppedCluePlacement),
+            typeof(RoomGeometry),
+            typeof(RoomExitLayout),
+
+            typeof(ClueZoomScreenView),
+            typeof(ClueZoomScreenController),
+            typeof(InventoryScreenView),
+            typeof(InventoryScreenController),
         };
 
         private static readonly Type[] ForbiddenTypes = { typeof(ClueDefinition), typeof(MemoryRoomAnswer) };
@@ -61,13 +80,25 @@ namespace GameName.UI.Tests.EditMode
         // C# 이벤트는 add_X/remove_X 공개 메서드로 컴파일되므로 GetMethods만으로
         // 이벤트 델리게이트의 매개변수 타입(Action<T>의 T)까지 함께 잡힌다.
         private static Type[] CollectMethodSignatureTypes(Type type) =>
-            type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)
+            type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
                 .SelectMany(m => m.GetParameters().Select(p => p.ParameterType).Concat(new[] { m.ReturnType }))
+                .SelectMany(Unwrap)
                 .ToArray();
 
         private static Type[] CollectPropertyTypes(Type type) =>
-            type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)
                 .Select(p => p.PropertyType)
+                .SelectMany(Unwrap)
                 .ToArray();
+
+        // Action<ClueDefinition>이나 IReadOnlyList<ClueDefinition>처럼 감싸인
+        // 형태로도 새어 나가지 못하게 제네릭 인자까지 펼쳐서 본다.
+        private static Type[] Unwrap(Type type)
+        {
+            if (!type.IsGenericType)
+                return new[] { type };
+
+            return new[] { type }.Concat(type.GetGenericArguments().SelectMany(Unwrap)).ToArray();
+        }
     }
 }

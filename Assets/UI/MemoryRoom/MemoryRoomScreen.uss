@@ -29,35 +29,11 @@
     --radius: 3px;
 }
 
-.screen {
-    flex-direction: row;
-    flex-grow: 1;
-    background-color: var(--bg);
-}
-
-.panel {
-    flex-grow: 1;
-    flex-basis: 0;
-    background-color: var(--surface);
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-    margin: var(--space-2);
-    padding: var(--space-4);
-}
-
 .panel-title {
     font-size: 20px;
     -unity-font-style: bold;
     color: var(--text);
     margin-bottom: var(--space-4);
-}
-
-.section-label {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: var(--space-4);
-    margin-bottom: var(--space-2);
 }
 
 .caption {
@@ -105,17 +81,6 @@
 /* 이동 목록이 없어진 뒤에도 단서 패널의 "줍기" 버튼(ClueCollectionPanelView)이
    같은 스타일을 계속 쓴다 — 이름은 이동 목록 시절 그대로지만, 지금은 이동과
    무관한 버튼 하나만 이 클래스를 쓴다. */
-.neighbor-row__move-button {
-    margin-top: var(--space-2);
-    height: 28px;
-    background-color: var(--surface);
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-size: 12px;
-    -unity-text-align: middle-center;
-}
 
 /* ── 기억 지도(재사용 컴포넌트, MemoryMapView) ────────────────
    조향실/분석실 화면(PerfumeryScreen.uss/AnalysisRoomScreen.uss)에도 같은
@@ -123,15 +88,6 @@
    하지만, 값 자체는 동일하게 맞춘다.
    지도는 항상 작은 미리보기(memory-map-preview)로만 패널 안에 보이고,
    누르면 화면 대부분을 덮는 확대 오버레이(memory-map-expanded)가 뜬다. */
-
-.memory-map-preview {
-    height: 160px;
-    margin-top: var(--space-2);
-    background-color: var(--surface-raised);
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-}
 
 .memory-map-expanded {
     display: none;
@@ -256,114 +212,6 @@
     white-space: normal;
 }
 
-/* ── 단서 패널 ─────────────────────────────────────────────── */
-
-.clue-list {
-    flex-grow: 1;
-    margin-top: var(--space-2);
-}
-
-.clue-row {
-    flex-direction: row;
-    align-items: center;
-    background-color: var(--surface-raised);
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-    padding: var(--space-2);
-    margin-bottom: var(--space-2);
-}
-
-.clue-row__swatches {
-    flex-direction: row;
-    margin-right: var(--space-2);
-}
-
-.clue-row__swatch {
-    width: 12px;
-    height: 12px;
-    border-radius: var(--radius);
-    margin-right: var(--space-1);
-}
-
-.clue-row__summary {
-    font-size: 11px;
-    color: var(--text-dim);
-    flex-grow: 1;
-    flex-shrink: 1;
-    white-space: normal;
-}
-
-/* ── 인벤토리 패널 ─────────────────────────────────────────── */
-
-.inventory-slot-list {
-    flex-direction: row;
-    flex-wrap: wrap;
-    margin-top: var(--space-2);
-}
-
-.inventory-slot {
-    width: 88px;
-    height: 88px;
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-    margin-right: var(--space-2);
-    margin-bottom: var(--space-2);
-    align-items: center;
-    justify-content: center;
-    padding: var(--space-1);
-}
-
-.inventory-slot--empty {
-    background-color: var(--surface);
-    opacity: 0.5;
-}
-
-.inventory-slot--filled {
-    background-color: var(--surface-raised);
-}
-
-.inventory-slot__swatch-row {
-    flex-direction: row;
-}
-
-.inventory-slot__swatch {
-    width: 14px;
-    height: 14px;
-    border-radius: var(--radius);
-    margin: 1px;
-}
-
-.inventory-slot__category {
-    margin-top: var(--space-1);
-    font-size: 11px;
-    -unity-font-style: bold;
-    color: var(--text);
-}
-
-.inventory-slot__summary {
-    margin-top: var(--space-1);
-    font-size: 9px;
-    color: var(--text-dim);
-    white-space: normal;
-    -unity-text-align: middle-center;
-}
-
-.inventory-slot__action-button {
-    margin-top: var(--space-1);
-    height: 20px;
-    padding-left: var(--space-1);
-    padding-right: var(--space-1);
-    background-color: var(--surface);
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-    color: var(--text);
-    font-size: 9px;
-    -unity-text-align: middle-center;
-}
-
 /* ── 시향 패널 ─────────────────────────────────────────────── */
 
 .scent-test-list {
@@ -472,3 +320,117 @@
 .emotion--anger { background-color: var(--anger); }
 .emotion--sadness { background-color: var(--sadness); }
 .emotion--fear { background-color: var(--fear); }
+
+/* 화면 전체를 차지하되 아무것도 칠하지 않는다 — 뒤의 2D 방이 그대로
+   보여야 한다. 포인터도 받지 않는다(UXML의 picking-mode="Ignore"). */
+.hud {
+    flex-grow: 1;
+}
+
+/* ── 상단 상태 표시줄 ───────────────────────────────────────────
+   플레이 공간이 화면의 주인공이므로 HUD는 화면 맨 위에 얇게만 걸친다.
+   위쪽을 고른 이유: 카메라가 방 높이에 위아래 여백을 더해 잡기 때문에
+   천장 위에 늘 빈 띠가 생긴다. 아래쪽은 바닥 물건 단서가 놓이는 자리라
+   같은 두께라도 플레이를 가린다.
+
+   높이를 px로 못박지 않고 내용 높이 + 간격 토큰으로 정한다 — 해상도가
+   달라져도 천장 위 여백 안에 머물게 하기 위함이다. */
+.hud-bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: var(--space-4);
+    padding-right: var(--space-4);
+    padding-top: var(--space-2);
+    padding-bottom: var(--space-2);
+    background-color: rgba(22, 24, 27, 0.72);
+    border-bottom-width: 1px;
+    border-bottom-color: var(--border);
+}
+
+.hud-bar__group {
+    flex-direction: row;
+    align-items: center;
+}
+
+.hud-bar__label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: var(--space-2);
+    margin-right: var(--space-2);
+}
+
+.hud-bar__button {
+    height: 24px;
+    margin-left: var(--space-2);
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 11px;
+}
+
+.hud-bar__button:hover {
+    border-color: var(--text-dim);
+}
+
+/* 조작 가능한 키를 상시 노출한다 — 인벤토리(버리기)와 기록지는 화면에
+   버튼이 없어서, 알려주지 않으면 존재 자체를 알 수 없다. */
+.hud-bar__hint {
+    margin-left: var(--space-4);
+    font-size: 11px;
+    color: var(--text-faint);
+}
+
+/* 상단 바 바로 아래. 배경을 칠하지 않아 뒤의 방이 그대로 보인다. */
+.hud-messages {
+    align-items: center;
+    margin-top: var(--space-2);
+}
+
+/* ── 필요할 때만 뜨는 패널 ─────────────────────────────────────
+   지도와 시향은 항상 볼 필요가 없다. 뜰 때는 화면을 덮어 포인터를 그대로
+   받으므로, 떠 있는 동안 씬 클릭이 자연히 막힌다. */
+.modal {
+    display: none;
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    align-items: center;
+    justify-content: center;
+}
+
+.modal__panel {
+    width: 60%;
+    max-height: 70%;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-4);
+}
+
+.modal__header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-2);
+}
+
+.modal__close-button {
+    height: 28px;
+    padding-left: var(--space-3);
+    padding-right: var(--space-3);
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-size: 12px;
+}

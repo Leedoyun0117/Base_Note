@@ -1,0 +1,18 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="InventoryScreen.uss" />
+
+    <ui:VisualElement name="inventory-screen" class="inventory-screen">
+        <ui:VisualElement name="inventory-panel" class="inventory-panel">
+            <ui:Label text="인벤토리" class="inventory-title" />
+            <ui:Label name="inventory-count" text="- / -" class="inventory-caption" />
+            <ui:Label
+                name="inventory-hint"
+                text="칸을 격자 바깥으로 끌어다 놓거나 '버리기'를 누르면, 서 있던 자리에 단서를 내려놓습니다. 버린 단서는 그 방의 것이 됩니다."
+                class="inventory-caption" />
+
+            <ui:VisualElement name="inventory-slot-grid" class="inventory-slot-grid" />
+
+            <ui:Label name="inventory-message" text="" class="inventory-message" />
+        </ui:VisualElement>
+    </ui:VisualElement>
+</ui:UXML>

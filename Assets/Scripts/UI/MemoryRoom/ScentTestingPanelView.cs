@@ -15,17 +15,52 @@ namespace GameName.UI.MemoryRoom
     // 눌러야 실제로 ConfirmTestRequested가 올라간다.
     public sealed class ScentTestingPanelView
     {
+        private readonly VisualElement _root;
         private readonly VisualElement _ampouleList;
         private readonly VisualElement _resultArea;
+        private readonly Button _closeButton;
+        private readonly long _resultDisplayMilliseconds;
+
+        private IVisualElementScheduledItem _resultExpiry;
 
         public event Action<Ampoule> TestRequested;
         public event Action ConfirmTestRequested;
         public event Action CancelTestRequested;
+        public event Action CloseRequested;
 
-        public ScentTestingPanelView(VisualElement root)
+        // 결과가 얼마나 오래 남을지는 연출 감각의 문제라 코드가 정하지 않고
+        // 주입받는다.
+        public ScentTestingPanelView(VisualElement root, float resultDisplaySeconds)
         {
+            _root = root ?? throw new ArgumentNullException(nameof(root));
             _ampouleList = root.Q<VisualElement>("scent-test-list");
             _resultArea = root.Q<VisualElement>("scent-test-result");
+            _closeButton = root.Q<Button>("scent-test-close-button");
+            _resultDisplayMilliseconds = (long)(resultDisplaySeconds * 1000f);
+
+            if (_closeButton != null)
+                _closeButton.clicked += () => CloseRequested?.Invoke();
+
+            SetVisible(false);
+        }
+
+        public bool IsVisible => _root.style.display.value == DisplayStyle.Flex;
+
+        public void SetVisible(bool visible)
+        {
+            _root.style.display = visible ? DisplayStyle.Flex : DisplayStyle.None;
+
+            // 닫으면 결과도 함께 치운다 — 다음에 열었을 때 지난 시향 결과가
+            // 남아 있으면 방금 한 것으로 오해한다.
+            if (!visible)
+                ClearResult();
+        }
+
+        public void ClearResult()
+        {
+            _resultExpiry?.Pause();
+            _resultExpiry = null;
+            _resultArea.Clear();
         }
 
         public void SetAmpoules(IReadOnlyList<AmpouleTestRowData> rows)
@@ -48,7 +83,7 @@ namespace GameName.UI.MemoryRoom
         // 여기서는 텍스트로만 결과를 그린다.
         public void SetResult(FeedbackStage? stage, bool isRestored)
         {
-            _resultArea.Clear();
+            ClearResult();
             if (stage == null)
                 return;
 
@@ -62,6 +97,15 @@ namespace GameName.UI.MemoryRoom
                 restoredBanner.AddToClassList("scent-test-restored-banner");
                 _resultArea.Add(restoredBanner);
             }
+
+            // 결과는 방금 한 행동에 대한 답이지 방의 상태 표시가 아니다 —
+            // 계속 떠 있으면 나중에 들어온 방에서도 "복원되었습니다"가 남아
+            // 있는 것처럼 읽힌다. 그래서 시간이 지나면 스스로 사라진다.
+            // (방을 옮기거나 다시 시향하거나 창을 닫을 때 사라지는 것은
+            // 컨트롤러와 SetVisible이 각각 처리한다.)
+            _resultExpiry = _resultArea.schedule
+                .Execute(ClearResult)
+                .StartingIn(_resultDisplayMilliseconds);
         }
 
         private VisualElement CreateAmpouleRow(AmpouleTestRowData data)

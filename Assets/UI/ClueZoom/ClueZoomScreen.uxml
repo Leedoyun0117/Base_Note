@@ -1,0 +1,24 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="ClueZoomScreen.uss" />
+
+    <ui:VisualElement name="clue-zoom-screen" class="clue-zoom-screen">
+
+        <ui:VisualElement name="clue-zoom-stage" class="clue-zoom-stage">
+            <ui:Button name="clue-zoom-exit-button" text="나가기" class="clue-zoom-exit-button" />
+
+            <ui:VisualElement name="clue-zoom-clue" class="clue-zoom-clue">
+                <ui:VisualElement name="clue-zoom-clue-swatches" class="clue-zoom-clue__swatches" />
+                <ui:Label name="clue-zoom-clue-kind" text="" class="clue-zoom-clue__kind" />
+                <ui:Label name="clue-zoom-clue-summary" text="" class="clue-zoom-clue__summary" />
+            </ui:VisualElement>
+
+            <ui:Label name="clue-zoom-message" text="" class="clue-zoom-message" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="clue-zoom-sidebar" class="clue-zoom-sidebar">
+            <ui:VisualElement name="clue-zoom-sidebar-header" class="clue-zoom-sidebar__header" />
+            <ui:VisualElement name="clue-zoom-inventory-grid" class="clue-zoom-inventory-grid" />
+        </ui:VisualElement>
+
+    </ui:VisualElement>
+</ui:UXML>

@@ -15,7 +15,7 @@ namespace GameName.UI.Tests.EditMode
         public void 앰플은_분석_대상_목록에_나타나지_않는다()
         {
             var clue = new ClueInfo(
-                new ClueId("clue-1"), new MemoryRoomId("room-1"),
+                new ClueId("clue-1"), ClueKind.Poster, new CluePositionRatio(0.5f),
                 new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }));
             var ampoule = new Ampoule(
                 new AmpouleId("ampoule-1"), new MemoryRoomId("room-1"),

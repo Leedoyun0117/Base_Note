@@ -106,6 +106,12 @@ namespace GameName.UI.MemoryRoom
             _statusView.SetMoveFailureMessage(result.Succeeded ? null : DescribeFailure(result.FailureReason.Value));
         }
 
+        // 지도가 아닌 곳에서 생긴 안내/실패 문구도 이 화면의 같은 자리에 띄운다
+        // — 씬의 출입구를 눌러 이동에 실패했을 때가 그렇다. 문구를 담는 자리는
+        // 이 컨트롤러가 소유한 상태 패널이므로, 그 자리를 여러 곳에서 직접
+        // 만지지 않도록 통로 하나만 열어 둔다.
+        public void ShowMessage(string message) => _statusView.SetMoveFailureMessage(message);
+
         private void Refresh()
         {
             var current = _playerLocation.Current;
