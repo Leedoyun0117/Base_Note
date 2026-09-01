@@ -13,33 +13,26 @@ namespace GameName.UI.Session
     // 여기 한 파일에 모아 둔다.
     internal static class DemoGameData
     {
-        public static readonly MemoryGraphNodeId Staircase = new MemoryGraphNodeId("staircase");
-
         public static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
         public static readonly MemoryRoomId Room2 = new MemoryRoomId("room-2");
         public static readonly MemoryRoomId Room3 = new MemoryRoomId("room-3");
 
         public static GameSessionData CreateWorldData()
         {
-            // 사다리로 이어진 세 방을 한 줄로 세운다. Room1이 허브에서 가장
-            // 먼저 들어가는 방이라 Row가 가장 크다(가장 과거) — 사다리를 타고
-            // 올라갈수록(Room2 -> Room3) Row가 작아진다.
-            //
-            // Column은 계단(1)과 겹치지 않는 3을 쓴다 — 계단과 같은 줄에 두면
-            // 계단-Room1 직선 연결이 그 사이에 낀 Room2/Room3 자리를 관통해
-            // 지나가면서 마치 계단이 그 방들과도 연결된 것처럼 보인다.
+            // 사다리로 이어진 세 방을 한 줄로 세운 선형 구조다.
+            // Row가 클수록 과거이므로 Room1이 가장 크고, 사다리를 타고
+            // 올라갈수록(Room2 -> Room3) 작아진다 — LadderRespectsDepthOrderRule이
+            // 검사하는 것이 이 순서다. 한 줄이라 Column은 전부 같다.
             var nodes = new List<MemoryGraphNode>
             {
-                new MemoryGraphNode(Staircase, MemoryGraphNodeType.Staircase, new MemoryGraphCoordinate(1, 0)),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(3, 3)),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(3, 2)),
-                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room3), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(3, 1)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 2)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 1)),
+                new MemoryGraphNode(MemoryGraphNodeId.OfRoom(Room3), MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 0)),
             };
 
-            var openConnections = new List<OpenConnection>
-            {
-                new OpenConnection(Staircase, MemoryGraphNodeId.OfRoom(Room1)),
-            };
+            // 방과 방 사이가 전부 사다리라 문(OpenConnection)은 쓰지 않는다.
+            // 그래프와 화면은 여전히 문을 지원한다 — 이 데모가 안 쓸 뿐이다.
+            var openConnections = new List<OpenConnection>();
 
             var ladderConnections = new List<LadderConnection>
             {
@@ -56,9 +49,9 @@ namespace GameName.UI.Session
 
             return new GameSessionData(
                 nodes, openConnections, ladderConnections, cluePlacements, roomIds,
-                // 시작 지점은 반드시 기억 방이어야 한다 — 허브(계단)에는 방이
-                // 그려지지 않아(MemoryRoomSpaceController.Refresh) 출입구 오브젝트도
-                // 없고, 그러면 씬에서 빠져나갈 방법이 없다.
+                // 시작 지점은 반드시 기억 방이어야 한다 — 기억 방이 아닌 노드에는
+                // 방이 그려지지 않아(MemoryRoomSpaceController.Refresh) 출입구
+                // 오브젝트도 없고, 그러면 씬에서 빠져나갈 방법이 없다.
                 startNodeId: MemoryGraphNodeId.OfRoom(Room1));
         }
 

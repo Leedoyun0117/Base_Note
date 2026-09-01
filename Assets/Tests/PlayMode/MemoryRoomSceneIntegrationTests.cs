@@ -29,10 +29,7 @@ namespace GameName.Tests.PlayMode
         // 이 씬이 Build Settings에 등록되어 있어야 한다(등록되어 있다).
         private const string SceneName = "LDY_GameScene";
         private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
-
-        // 데모 데이터가 정한 시작 지점. DemoGameData는 GameName.UI 안의 internal
-        // 타입이라 여기서 참조할 수 없으므로 같은 식별자를 그대로 적는다.
-        private static readonly MemoryGraphNodeId Staircase = new MemoryGraphNodeId("staircase");
+        private static readonly MemoryRoomId Room2 = new MemoryRoomId("room-2");
 
         private GameSession _session;
 
@@ -136,8 +133,9 @@ namespace GameName.Tests.PlayMode
 
             var exits = FindSpaceView().GetComponentsInChildren<RoomExitSceneObject>(includeInactive: true);
 
-            // 데모 데이터의 방 1은 계단으로 열려 있고 방 2로 사다리가 있다.
-            Assert.AreEqual(2, exits.Length, "드나드는 지점 개수가 그래프와 다르다.");
+            // 데모 데이터는 방1-방2-방3 선형 사다리라 방1의 드나드는 지점은
+            // 방2로 가는 사다리 하나뿐이다.
+            Assert.AreEqual(1, exits.Length, "드나드는 지점 개수가 그래프와 다르다.");
         }
 
         [UnityTest]
@@ -152,8 +150,8 @@ namespace GameName.Tests.PlayMode
             var clueId = ReadClueId(FindClueObjects(view)[0]);
             Assert.IsTrue(_session.ClueCollector.Collect(clueId).Succeeded, "단서를 집지 못했다.");
 
-            // 방을 나갔다 돌아오면 방이 다시 그려진다.
-            _session.MovementProcessor.Move(Staircase);
+            // 옆 방에 갔다 돌아오면 방이 다시 그려진다.
+            _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room2));
             yield return null;
             _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room1));
             yield return null;
@@ -217,20 +215,6 @@ namespace GameName.Tests.PlayMode
 
             var grid = host.RootOf(OverlayPanel.Inventory).Q<VisualElement>("inventory-slot-grid");
             Assert.AreEqual(_session.Inventory.Capacity, grid.childCount);
-        }
-
-        [UnityTest]
-        public IEnumerator 기억_방을_벗어나면_방이_보이지_않는다()
-        {
-            yield return EnterFirstMemoryRoom();
-
-            var room = FindSpaceView().transform.Find("Room");
-            Assert.IsTrue(room.gameObject.activeInHierarchy);
-
-            _session.MovementProcessor.Move(Staircase);
-            yield return null;
-
-            Assert.IsFalse(room.gameObject.activeInHierarchy, "계단에 있는데도 기억 방이 그려져 있다.");
         }
 
         private static DisplayStyle ZoomDisplay()
