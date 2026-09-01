@@ -1,6 +1,5 @@
 using System;
 using GameName.Core.Clues;
-using GameName.Core.Emotions;
 using GameName.Core.Events;
 using GameName.Core.Inventory;
 using GameName.Core.MemoryRooms;
@@ -17,7 +16,7 @@ namespace GameName.UI.Tests.EditMode
     {
         private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
         private static readonly MemoryGraphNodeId Room1Node = MemoryGraphNodeId.OfRoom(Room1);
-        private static readonly MemoryGraphNodeId AnalysisRoomNode = new MemoryGraphNodeId("analysis-room");
+        private static readonly MemoryGraphNodeId StaircaseNode = new MemoryGraphNodeId("staircase");
 
         private static VisualElement MakeInventoryRoot()
         {
@@ -30,20 +29,18 @@ namespace GameName.UI.Tests.EditMode
 
         private static ClueDefinition MakeDefinition(string id) =>
             new ClueDefinition(
-                new ClueId(id), ClueKind.FloorObject, new CluePositionRatio(0.5f),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 3) }),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 3) }));
+                new ClueId(id), ClueKind.FloorObject, new CluePositionRatio(0.5f));
 
         private static MemoryRoomGraph MakeGraph()
         {
             var nodes = new[]
             {
                 new MemoryGraphNode(Room1Node, MemoryGraphNodeType.MemoryRoom, new MemoryGraphCoordinate(0, 1)),
-                new MemoryGraphNode(AnalysisRoomNode, MemoryGraphNodeType.AnalysisRoom, new MemoryGraphCoordinate(0, 0)),
+                new MemoryGraphNode(StaircaseNode, MemoryGraphNodeType.Staircase, new MemoryGraphCoordinate(0, 0)),
             };
 
             return new MemoryRoomGraph(
-                nodes, new[] { new OpenConnection(AnalysisRoomNode, Room1Node) }, Array.Empty<LadderConnection>());
+                nodes, new[] { new OpenConnection(StaircaseNode, Room1Node) }, Array.Empty<LadderConnection>());
         }
 
         private static (InventoryScreenController Controller, VisualElement Root, PlayerLocation Location)
@@ -101,7 +98,7 @@ namespace GameName.UI.Tests.EditMode
         public void 기억_방이_아닌_곳에서는_사유가_뜨고_그대로_남는다()
         {
             var (controller, root, location) = MakeFixture(capacity: 4);
-            location.MoveTo(AnalysisRoomNode);
+            location.MoveTo(StaircaseNode);
 
             controller.RequestDrop(new ClueId("clue-1"));
 

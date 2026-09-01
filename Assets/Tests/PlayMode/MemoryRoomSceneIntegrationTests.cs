@@ -30,6 +30,10 @@ namespace GameName.Tests.PlayMode
         private const string SceneName = "LDY_GameScene";
         private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
 
+        // 데모 데이터가 정한 시작 지점. DemoGameData는 GameName.UI 안의 internal
+        // 타입이라 여기서 참조할 수 없으므로 같은 식별자를 그대로 적는다.
+        private static readonly MemoryGraphNodeId Staircase = new MemoryGraphNodeId("staircase");
+
         private GameSession _session;
 
         [UnitySetUp]
@@ -48,24 +52,13 @@ namespace GameName.Tests.PlayMode
             Assert.IsNotNull(_session, "GameSession이 조립되지 않았다.");
         }
 
-        // 대화를 끝까지 넘긴 뒤 기억으로 들어가고, 첫 기억 방까지 이동한다.
-        // 화면 전환(SceneScreenSwitcher)은 이벤트로 저절로 따라온다.
+        // 데모 데이터의 시작 지점이 곧 첫 기억 방이다 — 허브에서는 방이 그려지지
+        // 않아 출입구 오브젝트도 없으므로, 시작 지점은 반드시 기억 방이어야 한다.
         private IEnumerator EnterFirstMemoryRoom()
         {
-            // 대본이 선형이라 옵션 0만 계속 고르면 끝난다. 그래도 무한 루프에
-            // 빠지지 않도록 상한을 둔다 — 대본이 바뀌어 진행되지 않게 되면
-            // 테스트가 멈추는 대신 실패해야 한다.
-            var guard = 0;
-            while (!_session.DialogueProgressor.IsFinished && guard++ < 100)
-                _session.DialogueProgressor.Advance(0);
-
-            Assert.IsTrue(_session.DialogueProgressor.IsFinished, "대화가 끝나지 않았다.");
-
-            Assert.IsTrue(_session.CommissionSession.TryAdvanceToMemory(), "기억으로 진입하지 못했다.");
-            yield return null;
-
-            var moveResult = _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room1));
-            Assert.IsTrue(moveResult.Succeeded, "첫 기억 방으로 이동하지 못했다.");
+            Assert.AreEqual(
+                MemoryGraphNodeId.OfRoom(Room1), _session.PlayerLocation.Current,
+                "시작 지점이 첫 기억 방이 아니다.");
             yield return null;
         }
 
@@ -143,8 +136,8 @@ namespace GameName.Tests.PlayMode
 
             var exits = FindSpaceView().GetComponentsInChildren<RoomExitSceneObject>(includeInactive: true);
 
-            // 데모 의뢰 1의 방 1은 계단·분석실로 열려 있고 방 2로 사다리가 있다.
-            Assert.AreEqual(3, exits.Length, "드나드는 지점 개수가 그래프와 다르다.");
+            // 데모 데이터의 방 1은 계단으로 열려 있고 방 2로 사다리가 있다.
+            Assert.AreEqual(2, exits.Length, "드나드는 지점 개수가 그래프와 다르다.");
         }
 
         [UnityTest]
@@ -160,7 +153,7 @@ namespace GameName.Tests.PlayMode
             Assert.IsTrue(_session.ClueCollector.Collect(clueId).Succeeded, "단서를 집지 못했다.");
 
             // 방을 나갔다 돌아오면 방이 다시 그려진다.
-            _session.MovementProcessor.Move(_session.MemoryEntryNodeId);
+            _session.MovementProcessor.Move(Staircase);
             yield return null;
             _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room1));
             yield return null;
@@ -207,9 +200,9 @@ namespace GameName.Tests.PlayMode
             yield return null;
             Assert.AreEqual(DisplayStyle.Flex, DisplayOf(host, OverlayPanel.Inventory));
 
-            host.Show(OverlayPanel.Journal);
+            host.Show(OverlayPanel.ClueZoom);
             yield return null;
-            Assert.AreEqual(DisplayStyle.Flex, DisplayOf(host, OverlayPanel.Journal));
+            Assert.AreEqual(DisplayStyle.Flex, DisplayOf(host, OverlayPanel.ClueZoom));
             Assert.AreEqual(DisplayStyle.None, DisplayOf(host, OverlayPanel.Inventory), "두 오버레이가 함께 떠 있다.");
         }
 
@@ -234,7 +227,7 @@ namespace GameName.Tests.PlayMode
             var room = FindSpaceView().transform.Find("Room");
             Assert.IsTrue(room.gameObject.activeInHierarchy);
 
-            _session.MovementProcessor.Move(_session.MemoryEntryNodeId);
+            _session.MovementProcessor.Move(Staircase);
             yield return null;
 
             Assert.IsFalse(room.gameObject.activeInHierarchy, "계단에 있는데도 기억 방이 그려져 있다.");

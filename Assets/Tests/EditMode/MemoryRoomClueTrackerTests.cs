@@ -1,6 +1,5 @@
 using System.Linq;
 using GameName.Core.Clues;
-using GameName.Core.Emotions;
 using GameName.Core.MemoryRooms;
 using NUnit.Framework;
 
@@ -12,9 +11,7 @@ namespace GameName.Core.Tests.EditMode
             new ClueDefinition(
                 new ClueId(id),
                 kind,
-                new CluePositionRatio(0.5f),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) }),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) }));
+                new CluePositionRatio(0.5f));
 
         private static CluePlacement Place(MemoryRoomId roomId, string id, ClueKind kind = ClueKind.FloorObject) =>
             new CluePlacement(roomId, MakeClueDefinition(id, kind));

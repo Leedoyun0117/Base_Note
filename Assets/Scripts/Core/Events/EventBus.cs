@@ -11,7 +11,7 @@ namespace GameName.Core.Events
     //
     // 한 구독자가 예외를 던져도 나머지 구독자는 계속 알림을 받아야 하고, Publish
     // 자체도 예외 없이 끝나야 한다 — 발행자가 이미 상태를 바꾼 뒤에 발행하는
-    // 경우가 많아(예: 정신력 게이지), 구독자 예외가 발행자 쪽으로 역류하면 UI
+    // 경우가 많아, 구독자 예외가 발행자 쪽으로 역류하면 UI
     // 구독자 하나의 버그로 게임 로직 전체가 멈춰버리기 때문이다. 그렇다고 조용히
     // 버리지는 않고 IEventExceptionHandler에 위임해 처리 방침을 밖에서 정하게 한다.
     public sealed class EventBus : IEventBus

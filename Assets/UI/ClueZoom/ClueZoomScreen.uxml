@@ -7,9 +7,7 @@
             <ui:Button name="clue-zoom-exit-button" text="나가기" class="clue-zoom-exit-button" />
 
             <ui:VisualElement name="clue-zoom-clue" class="clue-zoom-clue">
-                <ui:VisualElement name="clue-zoom-clue-swatches" class="clue-zoom-clue__swatches" />
                 <ui:Label name="clue-zoom-clue-kind" text="" class="clue-zoom-clue__kind" />
-                <ui:Label name="clue-zoom-clue-summary" text="" class="clue-zoom-clue__summary" />
             </ui:VisualElement>
 
             <ui:Label name="clue-zoom-message" text="" class="clue-zoom-message" />

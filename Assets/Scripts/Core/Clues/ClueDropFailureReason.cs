@@ -8,7 +8,7 @@ namespace GameName.Core.Clues
     {
         ClueNotInInventory,
 
-        // 계단/분석실/조향실처럼 기억 방이 아닌 곳에 서 있다.
+        // 계단처럼 기억 방이 아닌 허브에 서 있다.
         NotInMemoryRoom
     }
 }

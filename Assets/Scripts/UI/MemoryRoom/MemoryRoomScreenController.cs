@@ -4,7 +4,6 @@ using GameName.UI.ClueZoom;
 using GameName.UI.Inventory;
 using GameName.UI.MemoryRoom.Space;
 using GameName.UI.Overlays;
-using GameName.UI.Shared;
 
 namespace GameName.UI.MemoryRoom
 {
@@ -12,61 +11,44 @@ namespace GameName.UI.MemoryRoom
     //
     // 조각이 세 종류로 나뉘어 있다:
     //   · 2D 씬(MemoryRoomSpaceController) — 방 공간과 단서 오브젝트
-    //   · 상단 바(MemoryRoomHudView, RoomNavigationPanelView) — 얇게 걸치는 상태 표시
-    //   · 필요할 때만 뜨는 화면 — 지도·시향(이 문서 안), 기록지·인벤토리·확대(오버레이)
+    //   · 상단 바(MemoryRoomHudView) — 얇게 걸치는 조작 안내와 상황 문구
+    //   · 필요할 때만 뜨는 오버레이 — 인벤토리·확대 화면
     // 이들을 서로 잇는 일은 전부 여기서 한다. 각 조각은 서로를 알지 못한다.
     //
-    // 규칙은 여전히 하나도 계산하지 않는다 — 단서를 담을 수 있는지, 갈 수
-    // 있는지는 각 컨트롤러가 이미 Core에서 얻은 결론이고, 여기서는 "그러면
-    // 어느 조각을 다시 그려야 하는가"만 정한다.
+    // 규칙은 하나도 계산하지 않는다 — 단서를 담을 수 있는지, 갈 수 있는지는
+    // 각 컨트롤러가 이미 Core에서 얻은 결론이고, 여기서는 "그러면 어느 조각을
+    // 다시 그려야 하는가"만 정한다.
     public sealed class MemoryRoomScreenController : IDisposable
     {
-        private readonly MemoryRoomMapNavigationController _navigationPanel;
         private readonly MemoryRoomHudView _hud;
-        private readonly MemoryMapView _mapView;
-        private readonly ScentTestingPanelController _testingPanel;
         private readonly MemoryRoomSpaceController _space;
         private readonly ClueZoomScreenController _clueZoom;
         private readonly InventoryScreenController _inventory;
         private readonly OverlayPanelHost _overlayPanels;
 
         public MemoryRoomScreenController(
-            MemoryRoomMapNavigationController navigationPanel,
             MemoryRoomHudView hud,
-            MemoryMapView mapView,
-            ScentTestingPanelController testingPanel,
             MemoryRoomSpaceController space,
             ClueZoomScreenController clueZoom,
             InventoryScreenController inventory,
             OverlayPanelHost overlayPanels)
         {
-            _navigationPanel = navigationPanel ?? throw new ArgumentNullException(nameof(navigationPanel));
             _hud = hud ?? throw new ArgumentNullException(nameof(hud));
-            _mapView = mapView ?? throw new ArgumentNullException(nameof(mapView));
-            _testingPanel = testingPanel ?? throw new ArgumentNullException(nameof(testingPanel));
             _space = space ?? throw new ArgumentNullException(nameof(space));
             _clueZoom = clueZoom ?? throw new ArgumentNullException(nameof(clueZoom));
             _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             _overlayPanels = overlayPanels ?? throw new ArgumentNullException(nameof(overlayPanels));
 
             _space.ClueActivated += OnClueActivated;
-            _space.MessageChanged += _navigationPanel.ShowMessage;
-
-            _hud.MapRequested += _mapView.Open;
-            _hud.ScentTestRequested += _testingPanel.Open;
-
-            _testingPanel.AvailabilityChanged += _hud.SetScentTestAvailable;
-            _testingPanel.AmpouleTested += OnInventoryChanged;
+            _space.MessageChanged += _hud.SetMessage;
 
             _clueZoom.CloseRequested += OnClueZoomCloseRequested;
             _clueZoom.ClueStored += OnClueStored;
 
             // 전체 화면 오버레이가 떠 있는 동안에는 뒤의 방을 건드릴 수 없다.
-            // 예전에는 확대 화면만 이 처리를 따로 했는데, 기록지나 인벤토리가
-            // 떠 있을 때도 똑같이 막혀야 하므로 라우터의 알림 하나로 통일한다.
+            // 확대 화면만 이 처리를 따로 하지 않고 라우터의 알림 하나로 통일한다.
             _overlayPanels.VisibleChanged += OnOverlayVisibilityChanged;
 
-            _hud.SetScentTestAvailable(_testingPanel.IsTestPossible);
             ApplyOverlayBlocking();
         }
 
@@ -81,7 +63,7 @@ namespace GameName.UI.MemoryRoom
         private void OnClueZoomCloseRequested() => _overlayPanels.Hide(OverlayPanel.ClueZoom);
 
         // 확대 화면이 실제로 숨겨진 시점에 불린다 — 나가기 버튼으로 닫혔든,
-        // 기록지를 여느라 밀려났든 똑같이 드래그 상태를 정리해야 하기 때문에
+        // 다른 오버레이에 밀려났든 똑같이 드래그 상태를 정리해야 하기 때문에
         // "닫아 달라는 요청"이 아니라 "닫혔다는 사실"에 반응한다.
         public void OnClueZoomHidden() => _clueZoom.OnHidden();
 
@@ -95,29 +77,19 @@ namespace GameName.UI.MemoryRoom
             // 발행하지 않으므로(그 자리에서 결과가 바로 나온다) 두 조각을
             // 여기서 직접 다시 그리게 한다.
             _space.Refresh();
-            OnInventoryChanged();
+            _inventory.Refresh();
         }
-
-        private void OnInventoryChanged() => _inventory.Refresh();
 
         public void Dispose()
         {
             _space.ClueActivated -= OnClueActivated;
-            _space.MessageChanged -= _navigationPanel.ShowMessage;
-
-            _hud.MapRequested -= _mapView.Open;
-            _hud.ScentTestRequested -= _testingPanel.Open;
-
-            _testingPanel.AvailabilityChanged -= _hud.SetScentTestAvailable;
-            _testingPanel.AmpouleTested -= OnInventoryChanged;
+            _space.MessageChanged -= _hud.SetMessage;
 
             _clueZoom.CloseRequested -= OnClueZoomCloseRequested;
             _clueZoom.ClueStored -= OnClueStored;
 
             _overlayPanels.VisibleChanged -= OnOverlayVisibilityChanged;
 
-            _navigationPanel.Dispose();
-            _testingPanel.Dispose();
             _space.Dispose();
             _clueZoom.Dispose();
             _inventory.Dispose();

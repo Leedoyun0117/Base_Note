@@ -4,7 +4,6 @@ namespace GameName.Core.Inventory
     // 싶을 때 참조하는 최소한의 분류다.
     public enum InventoryItemCategory
     {
-        Clue,
-        Ampoule
+        Clue
     }
 }

@@ -37,13 +37,9 @@ namespace GameName.Tests.PlayMode
 
             _session = Object.FindFirstObjectByType<GameSessionBootstrap>(FindObjectsInactive.Include).Session;
 
-            var guard = 0;
-            while (!_session.DialogueProgressor.IsFinished && guard++ < 100)
-                _session.DialogueProgressor.Advance(0);
-
-            _session.CommissionSession.TryAdvanceToMemory();
-            yield return null;
-            _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room1));
+            Assert.AreEqual(
+                MemoryGraphNodeId.OfRoom(Room1), _session.PlayerLocation.Current,
+                "시작 지점이 첫 기억 방이 아니다.");
 
             // UI가 실제 크기를 잡아야 Pick이 의미 있는 답을 준다.
             yield return null;
@@ -152,11 +148,11 @@ namespace GameName.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator 배경은_클릭을_통과시키고_버튼은_그대로_받는다()
+        public IEnumerator HUD_배경은_클릭을_통과시킨다()
         {
             // 통과 규칙이 "UI를 통째로 무시한다"가 아니라 "조작 대상 위에서만
-            // 막는다"임을 확인한다 — 배경 컨테이너는 꺼져 있어야 하고, 버튼은
-            // 여전히 포인터를 받아야 한다(눌렀는데 뒤의 단서까지 집히면 안 된다).
+            // 막는다"임을 확인한다 — 상태 표시줄의 배경 컨테이너는 포인터를
+            // 가로채지 않아야 클릭이 씬까지 내려가 단서를 집을 수 있다.
             var hudRoot = Object.FindFirstObjectByType<MemoryRoomBootstrap>(FindObjectsInactive.Include)
                 .GetComponent<UIDocument>().rootVisualElement;
 
@@ -168,15 +164,6 @@ namespace GameName.Tests.PlayMode
                     PickingMode.Ignore, container.pickingMode,
                     $"{containerName}이 포인터를 가로챈다.");
             }
-
-            var mapButton = hudRoot.Q<Button>("hud-map-button");
-            Assert.IsNotNull(mapButton, "상단 바에 지도 버튼이 없다.");
-
-            var picked = mapButton.panel.Pick(mapButton.worldBound.center);
-            Assert.IsNotNull(picked, "지도 버튼이 포인터를 받지 못한다.");
-            Assert.IsTrue(
-                ReferenceEquals(picked, mapButton) || mapButton.Contains(picked),
-                "지도 버튼 자리에서 다른 요소가 집힌다.");
 
             yield return null;
         }

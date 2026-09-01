@@ -55,27 +55,10 @@
     opacity: 0.5;
 }
 
-.clue-zoom-clue__swatches {
-    flex-direction: row;
-    margin-bottom: 18px;
-}
-
-.clue-zoom-clue__swatch {
-    width: 56px;
-    height: 56px;
-    margin-right: 10px;
-    border-radius: 6px;
-}
-
 .clue-zoom-clue__kind {
     color: rgb(198, 190, 214);
     font-size: 15px;
     margin-bottom: 6px;
-}
-
-.clue-zoom-clue__summary {
-    color: rgb(230, 226, 238);
-    font-size: 18px;
 }
 
 .clue-zoom-message {
@@ -136,16 +119,3 @@
     font-size: 13px;
 }
 
-.clue-zoom-slot__swatch {
-    width: 26px;
-    height: 26px;
-    margin-bottom: 6px;
-    border-radius: 4px;
-}
-
-/* 감정별 색 — 다른 화면과 같은 클래스 이름을 쓴다. */
-.emotion--joy { background-color: rgb(240, 200, 90); }
-.emotion--love { background-color: rgb(228, 120, 150); }
-.emotion--anger { background-color: rgb(214, 88, 72); }
-.emotion--sadness { background-color: rgb(96, 140, 216); }
-.emotion--fear { background-color: rgb(128, 108, 190); }

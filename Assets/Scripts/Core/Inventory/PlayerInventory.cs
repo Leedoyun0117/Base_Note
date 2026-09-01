@@ -4,7 +4,7 @@ using System.Collections.Generic;
 namespace GameName.Core.Inventory
 {
     // IPlayerInventory 기본 구현.
-    // 실제로 담을 수 있는지 여부는 IInventorySlotPolicy에 위임한다 — 단서/앰플이
+    // 실제로 담을 수 있는지 여부는 IInventorySlotPolicy에 위임한다 — 물건 종류가
     // 슬롯을 공유하는지 나누는지는 이 타입이 알지 못하고, 정책 구현체를
     // 갈아끼우는 것만으로 규칙을 바꿀 수 있다.
     //
@@ -12,7 +12,7 @@ namespace GameName.Core.Inventory
     // 담을 수 없다"는 규칙은 슬롯을 어떻게 나누느냐와 무관하게 항상 성립해야
     // 하는 인벤토리 자체의 불변식이기 때문이다. "같음"의 판단은 각 아이템
     // 타입의 Equals 구현(예: ClueInfo는 ClueId로 비교)에 맡긴다.
-    public sealed class PlayerInventory : IPlayerInventory, IResettable
+    public sealed class PlayerInventory : IPlayerInventory
     {
         private readonly List<IInventoryItem> _items = new List<IInventoryItem>();
         private readonly IInventorySlotPolicy _slotPolicy;
@@ -59,7 +59,5 @@ namespace GameName.Core.Inventory
                 ? InventoryRemoveResult.Success()
                 : InventoryRemoveResult.Failure(InventoryRemoveFailureReason.NotFound);
         }
-
-        public void Reset() => _items.Clear();
     }
 }

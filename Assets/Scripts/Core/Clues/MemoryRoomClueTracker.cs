@@ -7,7 +7,7 @@ namespace GameName.Core.Clues
     // IMemoryRoomClueTracker 기본 구현.
     //
     // 상태를 두 사전으로 나눠 든다:
-    //   _definitionsById  — "이 식별자가 무엇인가"(의뢰가 바뀌기 전까지 불변)
+    //   _definitionsById  — "이 식별자가 무엇인가"(Load 전까지 불변)
     //   _roomIdByClueId   — "지금 어느 방에 놓여 있는가"(플레이 중에 바뀜)
     //
     // 습득 여부를 별도 HashSet으로 두지 않는다. 습득했다는 것은 곧 "어느 방에도
@@ -16,9 +16,9 @@ namespace GameName.Core.Clues
     // 모순 상태가 표현 가능해지고, 그 모순을 막는 책임이 이 타입 여기저기로
     // 흩어진다 — 애초에 표현할 수 없게 만드는 쪽을 택한다.
     //
-    // IMemoryRoomClueLoader도 함께 구현한다 — 새 의뢰는 정의 자체가 다르므로
-    // "습득 기록만 지우는 Reset"은 의미가 없다. 그래서 별도 IResettable 없이
-    // Load 하나로 정의 교체와 배치 초기화를 함께 처리한다.
+    // IMemoryRoomClueLoader도 함께 구현한다 — 단서 구성을 바꾼다는 것은 정의
+    // 자체가 달라진다는 뜻이라 "습득 기록만 지우는" 초기화로는 표현할 수 없다.
+    // 그래서 Load 하나로 정의 교체와 배치 초기화를 함께 처리한다.
     public sealed class MemoryRoomClueTracker : IMemoryRoomClueTracker, IMemoryRoomClueLoader
     {
         private readonly Dictionary<ClueId, ClueDefinition> _definitionsById = new Dictionary<ClueId, ClueDefinition>();

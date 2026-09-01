@@ -51,13 +51,6 @@ namespace GameName.Tests.PlayMode
 
             _session = Object.FindFirstObjectByType<GameSessionBootstrap>(FindObjectsInactive.Include).Session;
 
-            var guard = 0;
-            while (!_session.DialogueProgressor.IsFinished && guard++ < 100)
-                _session.DialogueProgressor.Advance(0);
-
-            _session.CommissionSession.TryAdvanceToMemory();
-            yield return null;
-            _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room1));
             yield return null;
         }
 
@@ -87,18 +80,6 @@ namespace GameName.Tests.PlayMode
 
             yield return TapKey(_keyboard.iKey);
             Assert.AreEqual(DisplayStyle.None, DisplayOf(OverlayPanel.Inventory), "I 키로 닫히지 않았다.");
-        }
-
-        [UnityTest]
-        public IEnumerator Tab_키는_기록지를_열고_인벤토리와_동시에_뜨지_않는다()
-        {
-            yield return TapKey(_keyboard.iKey);
-            Assert.AreEqual(DisplayStyle.Flex, DisplayOf(OverlayPanel.Inventory));
-
-            yield return TapKey(_keyboard.tabKey);
-
-            Assert.AreEqual(DisplayStyle.Flex, DisplayOf(OverlayPanel.Journal), "Tab 키에 반응하지 않았다.");
-            Assert.AreEqual(DisplayStyle.None, DisplayOf(OverlayPanel.Inventory), "두 오버레이가 함께 떠 있다.");
         }
 
         [UnityTest]

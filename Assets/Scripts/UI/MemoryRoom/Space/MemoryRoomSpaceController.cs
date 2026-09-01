@@ -16,8 +16,8 @@ namespace GameName.UI.MemoryRoom.Space
     //
     // 이 컨트롤러도 규칙을 계산하지 않는다: 방에 무엇이 남아 있는지는
     // IMemoryRoomClueTracker에게, 어디로 이어지는지는 IMemoryRoomGraph에게,
-    // 이동 가능 여부와 비용은 MemoryRoomMovementProcessor에게 묻는다. 여기서
-    // 직접 정하는 것은 "그 결과를 화면 어디에 놓을 것인가"(좌표)뿐이다.
+    // 이동 가능 여부는 MemoryRoomMovementProcessor에게 묻는다. 여기서 직접
+    // 정하는 것은 "그 결과를 화면 어디에 놓을 것인가"(좌표)뿐이다.
     //
     // 방이 다시 그려지는 계기는 전부 Refresh 하나로 모인다(이동 완료, 버리기,
     // 습득). 계기마다 화면을 조금씩 다르게 손대기 시작하면 어느 경로에서는
@@ -92,10 +92,9 @@ namespace GameName.UI.MemoryRoom.Space
 
         public void Refresh()
         {
-            // 계단·분석실·조향실처럼 아직 공간이 만들어지지 않은 곳에 서 있으면
-            // 방을 통째로 치운다 — 그 화면들은 이번 범위가 아니다. 감추는 것으로
-            // 그치지 않고 실제로 비우는 이유는 MemoryRoomSpaceView.HideRoom 주석에
-            // 적었다.
+            // 계단처럼 공간이 만들어지지 않은 허브에 서 있으면 방을 통째로
+            // 치운다. 감추는 것으로 그치지 않고 실제로 비우는 이유는
+            // MemoryRoomSpaceView.HideRoom 주석에 적었다.
             if (!CurrentRoomResolver.TryResolve(_playerLocation.Current, _roomIds, out var roomId))
             {
                 _visibleCluesById.Clear();
@@ -213,9 +212,7 @@ namespace GameName.UI.MemoryRoom.Space
                 return;
             }
 
-            // 비용은 화면이 다시 계산하지 않고 처리기의 미리보기 하나만 믿는다.
-            var cost = _movementProcessor.PreviewCost(nodeId);
-            MessageChanged?.Invoke($"{DescribeNode(nodeId)}(으)로 이동 · 정신력 {cost}");
+            MessageChanged?.Invoke($"{DescribeNode(nodeId)}(으)로 이동");
         }
 
         private void OnClueDropped(ClueDroppedEvent dropped)
@@ -283,8 +280,6 @@ namespace GameName.UI.MemoryRoom.Space
             switch (reason)
             {
                 case MemoryGraphMoveFailureReason.NoConnection: return "그 곳으로 이어지는 길이 없습니다.";
-                case MemoryGraphMoveFailureReason.LadderLocked: return "사다리가 잠겨 있습니다.";
-                case MemoryGraphMoveFailureReason.InsufficientMentality: return "정신력이 부족합니다.";
                 default: return "이동에 실패했습니다.";
             }
         }

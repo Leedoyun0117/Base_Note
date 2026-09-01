@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using GameName.Core.Ampoules;
 using GameName.Core.Clues;
 using GameName.Core.Inventory;
-using GameName.UI.Shared;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -15,16 +13,13 @@ namespace GameName.UI.ClueZoom
     //
     // 인벤토리 칸을 몇 개 그릴지도 스스로 정하지 않는다. SetInventorySlots가
     // 받은 용량만큼 그린다 — 그 값은 Core의 IPlayerInventory.Capacity에서
-    // 그대로 온다. 화면 구성이 2x2를 전제하더라도 칸 개수를 코드에 적지 않는
-    // 이유는, 업그레이드로 칸이 늘어나는 것이 이미 게임 규칙에 있기 때문이다
-    // (UpgradeCategory.InventoryCapacity).
+    // 그대로 온다. 화면 구성이 2x2를 전제하더라도 칸 개수를 코드에 적지
+    // 않는다(용량은 플레이 중에 늘어날 수 있다).
     public sealed class ClueZoomScreenView
     {
         private readonly VisualElement _stage;
         private readonly VisualElement _clueElement;
-        private readonly VisualElement _swatchRow;
         private readonly Label _kindLabel;
-        private readonly Label _summaryLabel;
         private readonly VisualElement _inventoryGrid;
         private readonly Label _messageLabel;
         private readonly Button _exitButton;
@@ -48,9 +43,7 @@ namespace GameName.UI.ClueZoom
         {
             _stage = root.Q<VisualElement>("clue-zoom-stage");
             _clueElement = root.Q<VisualElement>("clue-zoom-clue");
-            _swatchRow = root.Q<VisualElement>("clue-zoom-clue-swatches");
             _kindLabel = root.Q<Label>("clue-zoom-clue-kind");
-            _summaryLabel = root.Q<Label>("clue-zoom-clue-summary");
             _inventoryGrid = root.Q<VisualElement>("clue-zoom-inventory-grid");
             _messageLabel = root.Q<Label>("clue-zoom-message");
             _exitButton = root.Q<Button>("clue-zoom-exit-button");
@@ -102,17 +95,7 @@ namespace GameName.UI.ClueZoom
             // 않았다.
             _acceptsStageClose = false;
 
-            _swatchRow.Clear();
-            foreach (var emotion in clue.ApparentComposition.Emotions)
-            {
-                var swatch = new VisualElement();
-                swatch.AddToClassList("clue-zoom-clue__swatch");
-                swatch.AddToClassList(EmotionDisplay.ColorClass(emotion));
-                _swatchRow.Add(swatch);
-            }
-
             _kindLabel.text = clue.Kind == ClueKind.Poster ? "벽에 붙은 포스터" : "바닥에 떨어진 물건";
-            _summaryLabel.text = ScentSummaryFormatter.Summarize(clue.ApparentComposition);
 
             ResetCluePosition();
         }
@@ -160,33 +143,12 @@ namespace GameName.UI.ClueZoom
 
         private static void FillSlot(VisualElement inner, IInventoryItem item)
         {
-            if (item is ClueInfo clue)
-            {
-                foreach (var emotion in clue.ApparentComposition.Emotions)
-                {
-                    var swatch = new VisualElement();
-                    swatch.AddToClassList("clue-zoom-slot__swatch");
-                    swatch.AddToClassList(EmotionDisplay.ColorClass(emotion));
-                    inner.Add(swatch);
-                }
-
-                var label = new Label("단서");
-                label.AddToClassList("clue-zoom-slot__label");
-                inner.Add(label);
+            if (!(item is ClueInfo clue))
                 return;
-            }
 
-            if (item is Ampoule ampoule)
-            {
-                var swatch = new VisualElement();
-                swatch.AddToClassList("clue-zoom-slot__swatch");
-                swatch.AddToClassList(EmotionDisplay.ColorClass(ampoule.Scent.BaseEmotion));
-                inner.Add(swatch);
-
-                var label = new Label("앰플");
-                label.AddToClassList("clue-zoom-slot__label");
-                inner.Add(label);
-            }
+            var label = new Label(clue.Kind == ClueKind.Poster ? "포스터" : "물건");
+            label.AddToClassList("clue-zoom-slot__label");
+            inner.Add(label);
         }
 
         private void OnCluePointerDown(PointerDownEvent evt)

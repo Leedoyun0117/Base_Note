@@ -16,7 +16,7 @@ namespace GameName.Core.MemoryRooms
         }
 
         // 기억 방의 MemoryRoomId를 그대로 그래프 노드 식별자로 쓰기 위한 변환.
-        // 그래프 밖(정답, 기록지 등)에서 쓰이는 방 식별자와 그래프 안에서 쓰이는
+        // 그래프 밖에서 쓰이는 방 식별자와 그래프 안에서 쓰이는
         // 식별자가 서로 다른 문자열이 되어 혼선이 생기는 일을 막기 위해, 방을
         // 가리키는 노드는 항상 이 팩토리를 거쳐 만든다.
         public static MemoryGraphNodeId OfRoom(MemoryRoomId roomId) => new MemoryGraphNodeId(roomId.Value);

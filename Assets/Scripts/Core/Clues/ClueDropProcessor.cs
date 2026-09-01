@@ -15,13 +15,9 @@ namespace GameName.Core.Clues
     //
     // 규칙이 느슨해진 만큼 남은 검사는 두 가지뿐이다: 실제로 들고 있는
     // 단서인가, 그리고 지금 서 있는 곳이 기억 방인가. 두 번째 검사가 필요한
-    // 이유는 계단/분석실/조향실 같은 허브에는 "단서가 놓인 방"이라는 개념
+    // 이유는 계단 같은 허브에는 "단서가 놓인 방"이라는 개념
     // 자체가 없기 때문이다. 그 판단은 그래프 노드 종류로 하며, 이 처리기가
     // 방 목록을 따로 들고 다니지 않는다.
-    //
-    // 분석 진행도(IClueAnalysisProgress)와 기록지는 전혀 건드리지 않는다 —
-    // 물건의 위치와 그 물건에서 알아낸 정보는 서로 다른 층위이기 때문이다.
-    // 그래서 단서를 어디로 옮겨도 이미 분석한 내용과 기록은 그대로 남는다.
     public sealed class ClueDropProcessor
     {
         private readonly IPlayerLocation _playerLocation;

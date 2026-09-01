@@ -3,10 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using GameName.Core.Clues;
-using GameName.Core.Emotions;
 using GameName.Core.Events;
 using GameName.Core.Inventory;
-using GameName.Core.Mentality;
 using GameName.Core.MemoryRooms;
 using GameName.UI.MemoryRoom.Space;
 using NUnit.Framework;
@@ -56,9 +54,7 @@ namespace GameName.UI.Tests.EditMode
 
         private static ClueDefinition MakeClue(string id, float position, ClueKind kind = ClueKind.FloorObject) =>
             new ClueDefinition(
-                new ClueId(id), kind, new CluePositionRatio(position),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) }),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) }));
+                new ClueId(id), kind, new CluePositionRatio(position));
 
         // 방 하나와 계단만 있는 최소 구성. 단서는 저작 자리를 서로 다르게 준다.
         private static Fixture MakeFixture(float roomLength = 7f)
@@ -84,12 +80,7 @@ namespace GameName.UI.Tests.EditMode
 
             var playerLocation = new PlayerLocation(RoomNode);
             var inventory = new PlayerInventory(new InventorySettings(5), new SharedSlotInventoryPolicy());
-            var costSettings = new MentalityCostSettings(100, 100, 1, 20, 30, 5, 20);
-            var gauge = new MentalityGauge(costSettings, eventBus);
-            var restorationTracker = new MemoryRoomRestorationTracker(eventBus);
-
-            var movementProcessor = new MemoryRoomMovementProcessor(
-                graph, restorationTracker, gauge, costSettings, playerLocation, eventBus);
+            var movementProcessor = new MemoryRoomMovementProcessor(graph, playerLocation, eventBus);
 
             var spaceObject = new GameObject("Space");
             var view = spaceObject.AddComponent<MemoryRoomSpaceView>();
@@ -225,7 +216,7 @@ namespace GameName.UI.Tests.EditMode
         private static float ExpectedDropX(MemoryRoomLayout layout, float playerX) =>
             playerX + (layout.PlayerWidth + layout.FloorObjectSize) / 2f;
 
-        // 버린 자리는 표시용 기록이지만 의뢰 하나만큼은 살아 있어야 한다 —
+        // 버린 자리는 표시용 기록이지만 세션 하나만큼은 살아 있어야 한다 —
         // 방을 나갔다 돌아왔다고 제자리로 튀어 돌아가면 안 된다.
         [Test]
         public void 버린_자리는_방을_나갔다_와도_유지된다()
@@ -246,19 +237,6 @@ namespace GameName.UI.Tests.EditMode
                     ExpectedDropX(fixture.Layout, dropX),
                     PlacedPositions(fixture.View)["clue-middle"].x, 0.0001f);
             }
-        }
-
-        [Test]
-        public void 버린_자리는_다음_의뢰로_넘어가면_사라진다()
-        {
-            // 보관소를 직접 세워 초기화 규칙만 확인한다 — 의뢰 교체 절차 전체는
-            // GameSession의 몫이고, 여기서는 그 목록에 들어갈 자격을 본다.
-            var positions = new DroppedCluePositions();
-            positions.Record(new ClueId("clue-1"), new CluePositionRatio(0.8f));
-
-            positions.Reset();
-
-            Assert.IsFalse(positions.TryGet(new ClueId("clue-1"), out _));
         }
     }
 }

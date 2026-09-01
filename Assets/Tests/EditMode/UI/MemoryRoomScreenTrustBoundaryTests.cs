@@ -2,7 +2,6 @@ using System;
 using System.Linq;
 using System.Reflection;
 using GameName.Core.Clues;
-using GameName.Core.MemoryRooms;
 using GameName.UI.ClueZoom;
 using GameName.UI.Inventory;
 using GameName.UI.MemoryRoom;
@@ -11,8 +10,8 @@ using NUnit.Framework;
 
 namespace GameName.UI.Tests.EditMode
 {
-    // 기억 방 화면의 공개 타입들이 진실 데이터(ClueDefinition, MemoryRoomAnswer)를
-    // 시그니처에 절대 노출하지 않는지 리플렉션으로 증명한다. 런타임 값이 아니라
+    // 기억 방 화면의 공개 타입들이 저작 데이터(ClueDefinition)를 시그니처에
+    // 절대 노출하지 않는지 리플렉션으로 증명한다. 런타임 값이 아니라
     // 타입 자체를 검사하므로, 나중에 누가 실수로 필드/매개변수를 추가해도 이
     // 테스트가 즉시 잡아낸다 — 이 프로젝트에서 이미 여러 번 어긴 규칙이다.
     //
@@ -23,12 +22,8 @@ namespace GameName.UI.Tests.EditMode
     {
         private static readonly Type[] ScreenTypes =
         {
-            typeof(RoomNavigationPanelView),
-            typeof(MemoryRoomMapNavigationController),
-            typeof(ScentTestingPanelView),
-            typeof(ScentTestingPanelController),
+            typeof(MemoryRoomHudView),
             typeof(MemoryRoomScreenController),
-            typeof(AmpouleTestRowData),
 
             typeof(MemoryRoomSpaceView),
             typeof(MemoryRoomSpaceController),
@@ -47,10 +42,10 @@ namespace GameName.UI.Tests.EditMode
             typeof(InventoryScreenController),
         };
 
-        private static readonly Type[] ForbiddenTypes = { typeof(ClueDefinition), typeof(MemoryRoomAnswer) };
+        private static readonly Type[] ForbiddenTypes = { typeof(ClueDefinition) };
 
         [Test]
-        public void 기억_방_화면_타입은_정답이나_단서_진실_타입을_시그니처에_노출하지_않는다()
+        public void 기억_방_화면_타입은_단서_저작_타입을_시그니처에_노출하지_않는다()
         {
             foreach (var screenType in ScreenTypes)
             {

@@ -8,16 +8,11 @@ namespace GameName.UI.Overlays
 {
     // 오버레이 화면들을 한데 모아 두는 씬 컴포넌트. 씬에 하나만 둔다.
     //
-    // 예전에는 기록지만 자기 전용 컴포넌트(JournalVisibilityController)로
-    // Tab 키와 가시성을 함께 들고 있었다. 인벤토리 화면이 생기면서 같은 구조를
-    // 하나 더 만들면 동시에 둘이 뜨는 상태를 막을 곳이 없어지고, 나중에 둘을
-    // 탭으로 합칠 때 두 컴포넌트를 하나로 되돌리는 작업이 남는다. 그래서 지금
-    // 미리 한 자리로 모은다 — 합치는 것 자체는 이번에 하지 않는다.
+    // 가시성을 화면마다 따로 들고 있으면 "동시에 둘이 뜨는 상태"를 막을 곳이
+    // 사라지므로, 여기 한 자리로 모아 OverlayPanelRouter에게 맡긴다.
     //
-    // 키를 인스펙터에서 바꿀 수 있게 직렬화 필드로 둔다. 지금 인벤토리가 I인
-    // 것은 Tab이 이미 기록지에 쓰이고 있어 충돌을 피하려는 임시 조치이므로,
-    // 이 값이 코드에 상수로 박혀 있으면 안 된다 — 통합 시점에는 둘 다 Tab이
-    // 되고 화면 안에서 탭으로 갈린다.
+    // 키를 인스펙터에서 바꿀 수 있게 직렬화 필드로 둔다 — 이 값이 코드에
+    // 상수로 박혀 있으면 화면 안내와 조용히 어긋날 수 있다.
     //
     // 레거시 UnityEngine.Input이 아니라 새 Input System(Keyboard.current)을
     // 쓴다 — 이 프로젝트의 Active Input Handling이 Input System Package 단독이라
@@ -31,11 +26,9 @@ namespace GameName.UI.Overlays
     [DefaultExecutionOrder(-90)]
     public sealed class OverlayPanelHost : MonoBehaviour
     {
-        [SerializeField] private UIDocument _journalDocument;
         [SerializeField] private UIDocument _inventoryDocument;
         [SerializeField] private UIDocument _clueZoomDocument;
 
-        [SerializeField] private Key _journalKey = Key.Tab;
         [SerializeField] private Key _inventoryKey = Key.I;
 
         private readonly OverlayPanelRouter _router = new OverlayPanelRouter();
@@ -67,7 +60,6 @@ namespace GameName.UI.Overlays
         {
             switch (panel)
             {
-                case OverlayPanel.Journal: return _journalKey.ToString();
                 case OverlayPanel.Inventory: return _inventoryKey.ToString();
                 default: return string.Empty;
             }
@@ -77,7 +69,6 @@ namespace GameName.UI.Overlays
         {
             switch (panel)
             {
-                case OverlayPanel.Journal: return _journalDocument;
                 case OverlayPanel.Inventory: return _inventoryDocument;
                 case OverlayPanel.ClueZoom: return _clueZoomDocument;
                 default: return null;
@@ -86,12 +77,11 @@ namespace GameName.UI.Overlays
 
         // 초기 숨김은 반드시 여기(Awake)에서 정한다 — Bind()가 언제 호출되는지에
         // 기대지 않기 위함이다. Bind는 각 화면의 Bootstrap이 자기 OnEnable에서
-        // 부르는데, 화면들은 의뢰 단계가 InMemory가 되기 전까지 전부 비활성이라
-        // 그때까지 아예 호출되지 않는다. 그 사이 오버레이가 UXML 기본값(보이는
-        // 상태)에 노출되어 있으면 Play 진입 즉시 화면을 덮어 버린다.
+        // 부르는데, 화면이 비활성인 동안에는 아예 호출되지 않는다. 그 사이
+        // 오버레이가 UXML 기본값(보이는 상태)에 노출되어 있으면 Play 진입 즉시
+        // 화면을 덮어 버린다.
         private void Awake()
         {
-            RegisterIfPresent(OverlayPanel.Journal, _journalDocument);
             RegisterIfPresent(OverlayPanel.Inventory, _inventoryDocument);
             RegisterIfPresent(OverlayPanel.ClueZoom, _clueZoomDocument);
             _router.HideAll();
@@ -133,9 +123,7 @@ namespace GameName.UI.Overlays
             if (keyboard == null)
                 return;
 
-            if (keyboard[_journalKey].wasPressedThisFrame)
-                _router.Toggle(OverlayPanel.Journal);
-            else if (keyboard[_inventoryKey].wasPressedThisFrame)
+            if (keyboard[_inventoryKey].wasPressedThisFrame)
                 _router.Toggle(OverlayPanel.Inventory);
         }
     }

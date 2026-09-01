@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using GameName.Core.Ampoules;
 using GameName.Core.Clues;
 using GameName.Core.Inventory;
-using GameName.UI.Shared;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -74,17 +72,6 @@ namespace GameName.UI.Inventory
 
             if (item is ClueInfo clue)
             {
-                var swatchRow = new VisualElement();
-                swatchRow.AddToClassList("inventory-slot__swatch-row");
-                foreach (var emotion in clue.ApparentComposition.Emotions)
-                {
-                    var swatch = new VisualElement();
-                    swatch.AddToClassList("inventory-slot__swatch");
-                    swatch.AddToClassList(EmotionDisplay.ColorClass(emotion));
-                    swatchRow.Add(swatch);
-                }
-                inner.Add(swatchRow);
-
                 var categoryLabel = new Label(clue.Kind == ClueKind.Poster ? "단서 · 포스터" : "단서 · 물건");
                 categoryLabel.AddToClassList("inventory-slot__category");
                 inner.Add(categoryLabel);
@@ -94,30 +81,12 @@ namespace GameName.UI.Inventory
                 inner.Add(dropButton);
 
                 RegisterDrag(slot, clue.Id);
-                return slot;
-            }
-
-            if (item is Ampoule ampoule)
-            {
-                var swatch = new VisualElement();
-                swatch.AddToClassList("inventory-slot__swatch");
-                swatch.AddToClassList(EmotionDisplay.ColorClass(ampoule.Scent.BaseEmotion));
-                inner.Add(swatch);
-
-                var categoryLabel = new Label("앰플");
-                categoryLabel.AddToClassList("inventory-slot__category");
-                inner.Add(categoryLabel);
-
-                var summaryLabel = new Label(
-                    $"{ampoule.TargetRoomId.Value} · {ScentSummaryFormatter.Summarize(ampoule.Scent)}");
-                summaryLabel.AddToClassList("inventory-caption");
-                inner.Add(summaryLabel);
             }
 
             return slot;
         }
 
-        // 앰플에는 드래그를 붙이지 않는다 — 방에 놓는다는 개념이 단서에만 있다.
+        // 방에 내려놓는다는 개념이 있는 물건에만 드래그를 붙인다.
         private void RegisterDrag(VisualElement slot, ClueId clueId)
         {
             slot.RegisterCallback<PointerDownEvent>(evt =>

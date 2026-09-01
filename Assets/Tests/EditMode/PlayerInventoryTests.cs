@@ -1,5 +1,4 @@
 using GameName.Core.Clues;
-using GameName.Core.Emotions;
 using GameName.Core.Inventory;
 using GameName.Core.MemoryRooms;
 using NUnit.Framework;
@@ -8,14 +7,13 @@ namespace GameName.Core.Tests.EditMode
 {
     public class PlayerInventoryTests
     {
-        // 인벤토리는 IInventoryItem만 알면 되고 단서 고유의 진실 데이터는 몰라야
-        // 하므로, 테스트에서도 항상 ClueInfo(안전한 뷰)만 담는다.
+        // 인벤토리는 IInventoryItem만 알면 되고 단서 고유의 저작 데이터는 몰라야
+        // 하므로, 테스트에서도 항상 ClueInfo(공개용 뷰)만 담는다.
         private static ClueInfo MakeClueInfo(string id) =>
             new ClueInfo(
                 new ClueId(id),
                 ClueKind.FloorObject,
-                new CluePositionRatio(0.5f),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Joy, 1) }));
+                new CluePositionRatio(0.5f));
 
         [Test]
         public void 빈_인벤토리에_담으면_성공한다()
@@ -94,15 +92,14 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void Reset은_내용물만_비우고_용량은_그대로_둔다()
+        public void 용량을_늘려도_이미_담긴_물건은_그대로_남는다()
         {
             var inventory = new PlayerInventory(new InventorySettings(2), new SharedSlotInventoryPolicy());
             inventory.TryStore(MakeClueInfo("clue-1"));
+
             inventory.IncreaseCapacity(3);
 
-            inventory.Reset();
-
-            Assert.AreEqual(0, inventory.Items.Count);
+            Assert.AreEqual(1, inventory.Items.Count);
             Assert.AreEqual(5, inventory.Capacity);
         }
     }

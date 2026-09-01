@@ -1,5 +1,4 @@
 using GameName.Core.Clues;
-using GameName.Core.Emotions;
 using GameName.Core.Inventory;
 using GameName.Core.MemoryRooms;
 using GameName.UI.ClueZoom;
@@ -26,9 +25,7 @@ namespace GameName.UI.Tests.EditMode
             stage.Add(new Button { name = "clue-zoom-exit-button" });
 
             var clue = new VisualElement { name = "clue-zoom-clue" };
-            clue.Add(new VisualElement { name = "clue-zoom-clue-swatches" });
             clue.Add(new Label { name = "clue-zoom-clue-kind" });
-            clue.Add(new Label { name = "clue-zoom-clue-summary" });
             stage.Add(clue);
 
             stage.Add(new Label { name = "clue-zoom-message" });
@@ -44,9 +41,7 @@ namespace GameName.UI.Tests.EditMode
 
         private static ClueDefinition MakeDefinition(string id, ClueKind kind = ClueKind.Poster) =>
             new ClueDefinition(
-                new ClueId(id), kind, new CluePositionRatio(0.5f),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }),
-                new EmotionBlend(new[] { new EmotionBlendEntry(EmotionType.Love, 5) }));
+                new ClueId(id), kind, new CluePositionRatio(0.5f));
 
         private static (ClueZoomScreenController Controller, VisualElement Root, PlayerInventory Inventory)
             MakeFixture(int capacity, params string[] extraClueIdsInRoom)
@@ -84,8 +79,7 @@ namespace GameName.UI.Tests.EditMode
         [Test]
         public void 용량이_바뀌면_그린_칸_개수도_함께_바뀐다()
         {
-            // 4를 전제로 그리는 것이 아니라 설정값을 읽어 그린다는 증거다 —
-            // 업그레이드로 칸이 늘어나는 상황이 이미 규칙에 있다.
+            // 4를 전제로 그리는 것이 아니라 설정값을 읽어 그린다는 증거다.
             var grid = MakeFixture(capacity: 6).Root.Q<VisualElement>("clue-zoom-inventory-grid");
 
             Assert.AreEqual(6, grid.childCount);

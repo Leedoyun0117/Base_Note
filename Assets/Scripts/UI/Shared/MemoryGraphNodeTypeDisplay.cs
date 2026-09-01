@@ -11,9 +11,6 @@ namespace GameName.UI.Shared
             {
                 case MemoryGraphNodeType.MemoryRoom: return "기억 방";
                 case MemoryGraphNodeType.Staircase: return "계단";
-                case MemoryGraphNodeType.AnalysisRoom: return "분석실";
-                case MemoryGraphNodeType.PerfumeryRoom: return "조향실";
-                case MemoryGraphNodeType.Exit: return "나가기";
                 default: return type.ToString();
             }
         }

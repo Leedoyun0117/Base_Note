@@ -1,5 +1,3 @@
-using GameName.Core.Events;
-using GameName.Core.Judging;
 using GameName.Core.MemoryRooms;
 using NUnit.Framework;
 
@@ -11,8 +9,7 @@ namespace GameName.Core.Tests.EditMode
         private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
         private static readonly MemoryRoomId Room2 = new MemoryRoomId("room-2");
 
-        // 이동 패널이 실제로 쓸 최소 픽스처: 계단-방1(가로 연결) + 방1-방2(사다리,
-        // 방1 복원 필요).
+        // 최소 픽스처: 계단-방1(가로 연결) + 방1-방2(사다리).
         private static MemoryRoomGraph MakeGraph()
         {
             var nodes = new[]
@@ -49,32 +46,30 @@ namespace GameName.Core.Tests.EditMode
             CollectionAssert.DoesNotContain(neighbors, MemoryGraphNodeId.OfRoom(Room2));
         }
 
-        // 이동 패널이 "사다리 잠김" 배지를 그리는 데 실제로 쓰는 것과 정확히
-        // 같은 조합(TryGetLadderLowerRoom + IsRestored)으로 잠김 -> 복원 후
-        // 열림을 증명한다.
         [Test]
-        public void 잠긴_사다리는_아래_방이_복원되면_잠김_판정이_열림으로_바뀐다()
+        public void 사다리는_어느_방향으로_물어도_아래쪽_방을_돌려준다()
         {
             var graph = MakeGraph();
-            var eventBus = new EventBus(new NoOpEventExceptionHandler());
-            var tracker = new MemoryRoomRestorationTracker(eventBus);
 
-            var from = MemoryGraphNodeId.OfRoom(Room1);
-            var to = MemoryGraphNodeId.OfRoom(Room2);
+            var upward = graph.TryGetLadderLowerRoom(
+                MemoryGraphNodeId.OfRoom(Room1), MemoryGraphNodeId.OfRoom(Room2), out var lowerFromBelow);
+            var downward = graph.TryGetLadderLowerRoom(
+                MemoryGraphNodeId.OfRoom(Room2), MemoryGraphNodeId.OfRoom(Room1), out var lowerFromAbove);
 
-            var hasLadder = graph.TryGetLadderLowerRoom(from, to, out var lowerRoomId);
-            var isLockedBefore = hasLadder && !tracker.IsRestored(lowerRoomId);
+            Assert.IsTrue(upward);
+            Assert.IsTrue(downward);
+            Assert.AreEqual(Room1, lowerFromBelow);
+            Assert.AreEqual(Room1, lowerFromAbove);
+        }
 
-            tracker.ReportJudgement(
-                Room1,
-                new ScentJudgementResult(
-                    isBaseEmotionCorrect: true, stage: FeedbackStage.PianoAndViolinAndDrum, accuracy: 1.0));
+        [Test]
+        public void 사다리가_아닌_연결은_사다리로_조회되지_않는다()
+        {
+            var graph = MakeGraph();
 
-            var isLockedAfter = hasLadder && !tracker.IsRestored(lowerRoomId);
+            var isLadder = graph.TryGetLadderLowerRoom(Staircase, MemoryGraphNodeId.OfRoom(Room1), out _);
 
-            Assert.IsTrue(hasLadder);
-            Assert.IsTrue(isLockedBefore);
-            Assert.IsFalse(isLockedAfter);
+            Assert.IsFalse(isLadder);
         }
     }
 }

@@ -1,59 +1,46 @@
 using System;
 using System.Collections.Generic;
-using GameName.Core.Commissions;
+using GameName.Core.Clues;
 using GameName.Core.MemoryRooms;
 
 namespace GameName.UI.Session
 {
-    // GameSession을 조립하는 데 필요한 "세계" 데이터 묶음.
+    // GameSession을 조립하는 데 필요한 세계 데이터 묶음 — 방 그래프의 구조와
+    // 단서의 최초 배치가 전부다.
     //
-    // 이전에는 방 그래프/정답/단서/대사까지 전부 여기 한 번만 담았지만, 그러면
-    // 의뢰가 바뀔 때 갈아 끼울 데이터가 없다. 그래서 이 타입에는 모든 의뢰가
-    // 공유하는 고정 지형(허브 노드/연결, 허브 안의 고정 지점들)만 남기고,
-    // 의뢰마다 달라지는 데이터는 CommissionData 목록으로 분리했다.
+    // 이 타입은 규칙을 하나도 담지 않는다. 실제 콘텐츠 소스(레벨 에디터
+    // 산출물, 세이브 데이터 등)가 생기면 이 묶음을 채우는 코드만 바뀐다.
     public sealed class GameSessionData
     {
-        // 허브(계단·분석실·조향실)와 그 사이의 고정 연결 — 모든 의뢰가 공유하는
-        // 지형이라 의뢰 교체 때 다시 만들지 않는다.
-        public IReadOnlyList<MemoryGraphNode> HubNodes { get; }
-        public IReadOnlyList<OpenConnection> HubOpenConnections { get; }
+        public IReadOnlyList<MemoryGraphNode> Nodes { get; }
+        public IReadOnlyList<OpenConnection> OpenConnections { get; }
+        public IReadOnlyList<LadderConnection> LadderConnections { get; }
 
-        // 기억으로 들어갈 때 시작하는 지점이자, 현실로 복귀할 때 반드시 서
-        // 있어야 하는 지점(계단). 허브 소속 고정 지점이므로 의뢰가 바뀌어도
-        // 값 자체는 바뀌지 않는다.
-        public MemoryGraphNodeId MemoryEntryNodeId { get; }
+        // 단서가 처음에 어느 방에 놓여 있는가. 그 뒤의 소속 변경은 전부
+        // IMemoryRoomClueTracker 안에서 일어난다.
+        public IReadOnlyList<CluePlacement> CluePlacements { get; }
 
-        // 계단과는 별개의 공간이다 — 지도에서 이 노드를 누르면 곧장 계단으로
-        // 돌아가 이탈 확인 절차가 시작된다(CommissionSession.TryReturnToEntryPoint).
-        // 계단 자체는 여전히 평범한 허브 지점으로 남아 있고, 이 노드만 "나가는
-        // 곳"이다.
-        public MemoryGraphNodeId MemoryExitNodeId { get; }
+        // 기억 방 노드에 대응하는 방 식별자 목록. 화면이 "지금 서 있는 곳이
+        // 기억 방인가"를 판별할 때 쓴다(CurrentRoomResolver).
+        public IReadOnlyList<MemoryRoomId> RoomIds { get; }
 
-        public MemoryGraphNodeId PerfumeryRoomNodeId { get; }
-        public MemoryGraphNodeId AnalysisRoomNodeId { get; }
-
-        public IReadOnlyList<CommissionData> Commissions { get; }
+        // 플레이어가 처음 서 있는 노드.
+        public MemoryGraphNodeId StartNodeId { get; }
 
         public GameSessionData(
-            IReadOnlyList<MemoryGraphNode> hubNodes,
-            IReadOnlyList<OpenConnection> hubOpenConnections,
-            MemoryGraphNodeId memoryEntryNodeId,
-            MemoryGraphNodeId memoryExitNodeId,
-            MemoryGraphNodeId perfumeryRoomNodeId,
-            MemoryGraphNodeId analysisRoomNodeId,
-            IReadOnlyList<CommissionData> commissions)
+            IReadOnlyList<MemoryGraphNode> nodes,
+            IReadOnlyList<OpenConnection> openConnections,
+            IReadOnlyList<LadderConnection> ladderConnections,
+            IReadOnlyList<CluePlacement> cluePlacements,
+            IReadOnlyList<MemoryRoomId> roomIds,
+            MemoryGraphNodeId startNodeId)
         {
-            HubNodes = hubNodes ?? throw new ArgumentNullException(nameof(hubNodes));
-            HubOpenConnections = hubOpenConnections ?? throw new ArgumentNullException(nameof(hubOpenConnections));
-            MemoryEntryNodeId = memoryEntryNodeId;
-            MemoryExitNodeId = memoryExitNodeId;
-            PerfumeryRoomNodeId = perfumeryRoomNodeId;
-            AnalysisRoomNodeId = analysisRoomNodeId;
-
-            if (commissions == null) throw new ArgumentNullException(nameof(commissions));
-            if (commissions.Count == 0)
-                throw new ArgumentException("최소 한 개의 의뢰가 필요하다.", nameof(commissions));
-            Commissions = commissions;
+            Nodes = nodes ?? throw new ArgumentNullException(nameof(nodes));
+            OpenConnections = openConnections ?? throw new ArgumentNullException(nameof(openConnections));
+            LadderConnections = ladderConnections ?? throw new ArgumentNullException(nameof(ladderConnections));
+            CluePlacements = cluePlacements ?? throw new ArgumentNullException(nameof(cluePlacements));
+            RoomIds = roomIds ?? throw new ArgumentNullException(nameof(roomIds));
+            StartNodeId = startNodeId;
         }
     }
 }

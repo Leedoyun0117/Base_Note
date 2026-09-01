@@ -1,8 +1,6 @@
-using GameName.UI.AnalysisRoom;
 using GameName.UI.MemoryRoom;
 using GameName.UI.MemoryRoom.Space;
 using GameName.UI.Overlays;
-using GameName.UI.Perfumery;
 using GameName.UI.Session;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -37,9 +35,9 @@ namespace GameName.UI.Editor.SceneSetup
             var undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName(UndoGroupName);
 
-            // 삭제된 JournalVisibilityController처럼 스크립트가 사라진 컴포넌트를
-            // 먼저 걷어낸다. 남겨 두면 인스펙터에 "Missing script" 경고가 계속
-            // 뜨고, 그 오브젝트를 건드리는 다른 도구들도 함께 시끄러워진다.
+            // 스크립트가 사라진 컴포넌트를 먼저 걷어낸다. 남겨 두면 인스펙터에
+            // "Missing script" 경고가 계속 뜨고, 그 오브젝트를 건드리는 다른
+            // 도구들도 함께 시끄러워진다.
             RemoveMissingScripts(report);
 
             var layoutAsset = MemoryRoomLayoutAssetLocator.FindOrCreate(report);
@@ -50,7 +48,6 @@ namespace GameName.UI.Editor.SceneSetup
                 report.Problem("GameSessionBootstrap을 찾지 못했습니다. 화면들이 같은 세션을 공유하지 못합니다.");
 
             SetUpMemoryRoomScreen(gameSession, overlayHost, layoutAsset, report);
-            LinkOtherScreens(overlayHost, report);
 
             EditorSceneManager.MarkSceneDirty(scene);
             Undo.CollapseUndoOperations(undoGroup);
@@ -78,19 +75,6 @@ namespace GameName.UI.Editor.SceneSetup
             Link(memoryRoomScreen, "_spaceView", spaceView, report);
             Link(memoryRoomScreen, "_layoutAsset", layoutAsset, report);
             Link(memoryRoomScreen, "_overlayPanels", overlayHost, report);
-        }
-
-        // 조향실·분석실도 같은 OverlayPanelHost를 본다 — 화면마다 자기 기록지를
-        // 따로 여닫으면 오버레이 가시성이 다시 흩어진다.
-        private static void LinkOtherScreens(OverlayPanelHost overlayHost, SceneSetupReport report)
-        {
-            var perfumery = Object.FindFirstObjectByType<PerfumeryBootstrap>(FindObjectsInactive.Include);
-            if (perfumery != null)
-                Link(perfumery, "_overlayPanels", overlayHost, report);
-
-            var analysisRoom = Object.FindFirstObjectByType<AnalysisRoomBootstrap>(FindObjectsInactive.Include);
-            if (analysisRoom != null)
-                Link(analysisRoom, "_overlayPanels", overlayHost, report);
         }
 
         private static void Link(Object target, string fieldName, Object value, SceneSetupReport report)

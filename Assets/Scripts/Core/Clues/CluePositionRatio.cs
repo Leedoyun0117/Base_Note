@@ -33,6 +33,17 @@ namespace GameName.Core.Clues
             Value = value;
         }
 
+        // 계산 결과처럼 범위를 살짝 벗어날 수 있는 값을 받아들일 때 쓴다.
+        // 생성자가 예외를 던지는 쪽을 기본으로 둔 것은 저작 데이터의 오타를
+        // 조용히 0이나 1로 뭉개지 않기 위해서다 — 잘라 내는 것이 옳은 자리는
+        // 사람이 적어 넣은 값이 아니라 기계가 계산한 값뿐이다.
+        public static CluePositionRatio Clamped(float value)
+        {
+            if (value < Minimum) return new CluePositionRatio(Minimum);
+            if (value > Maximum) return new CluePositionRatio(Maximum);
+            return new CluePositionRatio(value);
+        }
+
         // 두 자리가 얼마나 떨어져 있는지. 겹침 검사가 쓴다.
         public float DistanceTo(CluePositionRatio other) => Math.Abs(Value - other.Value);
 

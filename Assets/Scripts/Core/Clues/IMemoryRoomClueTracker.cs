@@ -31,7 +31,7 @@ namespace GameName.Core.Clues
 
         // 단서를 이 방 소속으로 놓는다. 습득한 단서를 버릴 때 쓰이며, 원래
         // 있던 방과 달라도 된다 — 그게 이 메서드의 존재 이유다. 정의 자체는
-        // 건드리지 않으므로 분석 진행도나 기록지에는 영향이 없다.
+        // 건드리지 않는다.
         void PlaceInRoom(ClueId clueId, MemoryRoomId roomId);
 
         // 특정 방에 지금 놓여 있는 단서의 공개 정보 목록.

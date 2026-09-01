@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using GameName.Core;
 using GameName.Core.Clues;
 
 namespace GameName.UI.MemoryRoom.Space
@@ -20,11 +19,9 @@ namespace GameName.UI.MemoryRoom.Space
     // 어디쯤인지는 어떤 판정에도 쓰이지 않는 값이라, Core가 알면 규칙과
     // 무관한 좌표가 규칙 계층에 섞인다.
     //
-    // 그래서 표시 계층에 두되 수명은 의뢰 하나만큼으로 맞춘다. Core에는
-    // IResettable이라는 좁은 경계로만 노출되므로, CommissionSession은 "새
-    // 의뢰가 시작되면 비워야 할 것이 하나 더 있다"는 사실만 알 뿐 그 안에
-    // 무엇이 들었는지 알지 못한다.
-    public sealed class DroppedCluePositions : IResettable
+    // 그래서 표시 계층에 두되, 화면이 아니라 GameSession이 소유해 수명을
+    // 세션 하나만큼으로 맞춘다.
+    public sealed class DroppedCluePositions
     {
         private readonly Dictionary<ClueId, CluePositionRatio> _positionsByClueId =
             new Dictionary<ClueId, CluePositionRatio>();
@@ -33,7 +30,5 @@ namespace GameName.UI.MemoryRoom.Space
 
         public bool TryGet(ClueId clueId, out CluePositionRatio position) =>
             _positionsByClueId.TryGetValue(clueId, out position);
-
-        public void Reset() => _positionsByClueId.Clear();
     }
 }
