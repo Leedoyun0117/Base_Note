@@ -156,7 +156,6 @@ MonoBehaviour:
   _playerColor: {r: 0.85, g: 0.85, b: 0.9, a: 1}
   _posterColor: {r: 0.8, g: 0.62, b: 0.35, a: 1}
   _floorObjectColor: {r: 0.45, g: 0.68, b: 0.72, a: 1}
-  _exitColor: {r: 0.55, g: 0.5, b: 0.3, a: 1}
   _outlineColor: {r: 1, g: 1, b: 1, a: 1}
   _outlinePadding: 0.14
 --- !u!114 &43959689
@@ -203,6 +202,7 @@ GameObject:
   - component: {fileID: 510835811}
   - component: {fileID: 510835810}
   - component: {fileID: 510835813}
+  - component: {fileID: 510835814}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -328,6 +328,23 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!114 &510835814
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 510835809}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 28d15238c5654daca6f26d03602c242f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: GameName.UI::GameName.UI.MemoryRoom.Space.CameraShake
+  _magnitude: 0.12
+  _duration: 0.35
+  _failMagnitudeMultiplier: 1.8
+  _continuousMagnitude: 0.04
+  _continuousFrequency: 14
 --- !u!1 &959478866
 GameObject:
   m_ObjectHideFlags: 0
@@ -508,7 +525,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: GameName.UI::GameName.UI.MemoryRoom.MemoryRoomBootstrap
   _gameSession: {fileID: 1618574295}
   _spaceView: {fileID: 43959688}
+  _cameraShake: {fileID: 510835814}
+  _continuousShakeAtOrBelowTrust: 1
   _layoutAsset: {fileID: 11400000, guid: c5673b1f2ce4bc048bead38d5be3e976, type: 2}
+  _memoryColorLabels: {fileID: 11400000, guid: 8e5517ab1440f4246999e9f8b8c99cc6, type: 2}
   _overlayPanels: {fileID: 1360267896}
 --- !u!114 &1743505216
 MonoBehaviour:
@@ -549,6 +569,56 @@ Transform:
   - {fileID: 43959690}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1900000001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1900000002}
+  - component: {fileID: 1900000003}
+  m_Layer: 0
+  m_Name: ClueDebug
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1900000002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900000001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1900000003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1900000001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1a9c0de00000000000000000000000b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _logEnabled: 1
+  _logSceneObjects: 1
+  _logPointerPicks: 1
+  _logClueActivations: 1
+  _logScreenWiring: 1
+  _logOverlayTransitions: 1
 --- !u!1 &2142557887
 GameObject:
   m_ObjectHideFlags: 0
@@ -604,55 +674,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1360267897}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1900000001
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1900000002}
-  - component: {fileID: 1900000003}
-  m_Layer: 0
-  m_Name: ClueDebug
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1900000002
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1900000001}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1900000003
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1900000001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d1a9c0de00000000000000000000000b, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _logEnabled: 1
-  _logSceneObjects: 1
-  _logPointerPicks: 1
-  _logDrops: 1
-  _logRoomChanges: 1
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -5,7 +5,10 @@ using GameName.Core.Clues;
 using GameName.UI.ClueZoom;
 using GameName.UI.Inventory;
 using GameName.UI.MemoryRoom;
+using GameName.UI.MemoryRoom.Dialogue;
 using GameName.UI.MemoryRoom.Space;
+using GameName.UI.Overlays;
+using GameName.UI.Restoration;
 using NUnit.Framework;
 
 namespace GameName.UI.Tests.EditMode
@@ -23,23 +26,33 @@ namespace GameName.UI.Tests.EditMode
         private static readonly Type[] ScreenTypes =
         {
             typeof(MemoryRoomHudView),
+            typeof(MemoryRoomHudController),
             typeof(MemoryRoomScreenController),
 
             typeof(MemoryRoomSpaceView),
             typeof(MemoryRoomSpaceController),
+            typeof(MemoryRoomMaskView),
+            typeof(MemoryRoomMaskController),
+            typeof(CameraShake),
+            typeof(MemoryRoomCameraShakeController),
             typeof(ClueSceneObject),
-            typeof(RoomExitSceneObject),
             typeof(ClueSceneItem),
-            typeof(RoomExitSceneItem),
             typeof(CluePlacementLayout),
-            typeof(DroppedCluePlacement),
             typeof(RoomGeometry),
-            typeof(RoomExitLayout),
+
+            typeof(DialoguePanelView),
+            typeof(DialoguePanelController),
 
             typeof(ClueZoomScreenView),
             typeof(ClueZoomScreenController),
             typeof(InventoryScreenView),
             typeof(InventoryScreenController),
+            typeof(ClueUsePanelView),
+            typeof(ClueUsePanelController),
+
+            typeof(RestorationCanvasView),
+            typeof(RestorationScreenController),
+            typeof(OverlayTabController),
         };
 
         private static readonly Type[] ForbiddenTypes = { typeof(ClueDefinition) };

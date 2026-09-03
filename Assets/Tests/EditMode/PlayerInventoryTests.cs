@@ -13,6 +13,7 @@ namespace GameName.Core.Tests.EditMode
             new ClueInfo(
                 new ClueId(id),
                 ClueKind.FloorObject,
+                id,
                 new CluePositionRatio(0.5f));
 
         [Test]

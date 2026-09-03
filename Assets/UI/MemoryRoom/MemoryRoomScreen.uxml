@@ -1,16 +1,34 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
     <Style src="MemoryRoomScreen.uss" />
 
-    <!-- 기억 방은 2D 씬으로 그려진다. 이 UIDocument에 남은 것은 화면 맨 위에
-         얇게 걸치는 상태 표시줄뿐이다.
+    <!-- 기억 방은 2D 씬으로 그려진다. 이 UIDocument가 그 위에 겹치는 것은:
+           · 화면 맨 위에 얇게 걸치는 상태 표시줄(HUD)
+           · 화면 아래쪽에 상시 뜨는 대화 패널
 
          picking-mode를 배경 컨테이너마다 Ignore로 꺼 둔다 — 그래야 클릭이
-         씬까지 내려가 단서를 집을 수 있다. -->
+         씬까지 내려가 단서를 집을 수 있다. 대화 패널만 클릭을 받아야 하므로
+         그 요소에서만 picking을 다시 켠다. -->
     <ui:VisualElement name="screen" class="hud" picking-mode="Ignore">
+
+        <!-- 신뢰가 깎이면 방이 좌우에서 안쪽으로 닫히는 마스크. UI 레이어라
+             카메라 흔들림에 흔들리지 않고 프레임처럼 고정된다. 폭은 코드가
+             가시 비율로 정하고, 좁아지는 애니메이션은 USS transition이 한다.
+             HUD·대화 패널보다 먼저(뒤에) 그려지도록 맨 앞에 둔다. -->
+        <ui:VisualElement name="mask-left" class="mask-panel mask-panel--left" picking-mode="Ignore" />
+        <ui:VisualElement name="mask-right" class="mask-panel mask-panel--right" picking-mode="Ignore" />
 
         <!-- 상단 바. 방 천장 위쪽 여백에만 걸치도록 얇게 유지한다(카메라가
              방 높이에 여백을 더해 잡으므로 그 띠가 항상 비어 있다). -->
         <ui:VisualElement name="hud-bar" class="hud-bar" picking-mode="Ignore">
+            <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">
+                <ui:Label name="hud-trust" text="" class="hud-bar__stat" />
+                <ui:Label name="hud-extraction" text="" class="hud-bar__stat" />
+                <ui:VisualElement class="hud-bar__wallet" picking-mode="Ignore">
+                    <ui:Label name="hud-wallet-r" text="" class="hud-bar__wallet-item hud-bar__wallet-item--r" />
+                    <ui:Label name="hud-wallet-g" text="" class="hud-bar__wallet-item hud-bar__wallet-item--g" />
+                    <ui:Label name="hud-wallet-b" text="" class="hud-bar__wallet-item hud-bar__wallet-item--b" />
+                </ui:VisualElement>
+            </ui:VisualElement>
             <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">
                 <ui:Label name="hud-key-hints" text="" class="hud-bar__hint" />
             </ui:VisualElement>
@@ -19,6 +37,29 @@
         <!-- 상황 안내. 배경을 칠하지 않아 뒤의 방이 그대로 보인다. -->
         <ui:VisualElement name="hud-messages" class="hud-messages" picking-mode="Ignore">
             <ui:Label name="hud-message" text="" class="failure-message" />
+        </ui:VisualElement>
+
+        <!-- 대화 패널. screen을 밀어내지 않고 아래쪽에 겹친다.
+
+             배경·화자·본문 컨테이너는 picking-mode를 Ignore로 꺼 둔다 — 그래야
+             패널의 빈 공간을 눌러도 클릭이 뒤의 방까지 내려가 바닥 단서를 집을
+             수 있다. 실제로 클릭을 받는 것은 선택지 버튼과, 아직 풀리지 않은
+             마스크 구간(코드에서 개별 Label만 picking을 켠다)뿐이다. -->
+        <ui:VisualElement name="dialogue-panel" class="dialogue-panel" picking-mode="Ignore">
+            <ui:Label name="dialogue-speaker" text="" class="dialogue-panel__speaker" picking-mode="Ignore" />
+            <ui:VisualElement name="dialogue-body" class="dialogue-panel__body" picking-mode="Ignore" />
+            <ui:VisualElement name="dialogue-choices" class="dialogue-panel__choices" picking-mode="Ignore" />
+            <ui:Label name="dialogue-notice" text="" class="dialogue-panel__notice" picking-mode="Ignore" />
+
+            <!-- 마스크 구간을 눌렀을 때 뜨는 확인 팝업. 평소에는 숨겨져 있다.
+                 버튼은 클릭을 받아야 하므로 컨테이너만 Ignore로 둔다. -->
+            <ui:VisualElement name="dialogue-unlock-prompt" class="dialogue-unlock-prompt" picking-mode="Ignore">
+                <ui:Label name="dialogue-unlock-text" text="" class="dialogue-unlock-prompt__text" picking-mode="Ignore" />
+                <ui:VisualElement class="dialogue-unlock-prompt__actions" picking-mode="Ignore">
+                    <ui:Button name="dialogue-unlock-confirm" text="해금" class="dialogue-unlock-prompt__confirm" />
+                    <ui:Button name="dialogue-unlock-cancel" text="취소" class="dialogue-unlock-prompt__cancel" />
+                </ui:VisualElement>
+            </ui:VisualElement>
         </ui:VisualElement>
 
     </ui:VisualElement>

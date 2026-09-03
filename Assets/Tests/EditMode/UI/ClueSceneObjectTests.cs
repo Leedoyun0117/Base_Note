@@ -15,10 +15,14 @@ namespace GameName.UI.Tests.EditMode
             var root = new GameObject("Clue");
             var outlineObject = new GameObject("Outline");
             outlineObject.transform.SetParent(root.transform);
+            var bodyObject = new GameObject("Body");
+            bodyObject.transform.SetParent(root.transform);
 
             var outline = outlineObject.AddComponent<SpriteRenderer>();
+            var body = bodyObject.AddComponent<SpriteRenderer>();
+            var collider = root.AddComponent<BoxCollider2D>();
             var clue = root.AddComponent<ClueSceneObject>();
-            clue.Initialize(new ClueId("clue-1"), outline, drawOrder: 5);
+            clue.Initialize(new ClueId("clue-1"), outline, body, collider, drawOrder: 5);
 
             return (clue, outline, root);
         }
@@ -71,6 +75,36 @@ namespace GameName.UI.Tests.EditMode
 
                 Assert.IsTrue(activated.HasValue);
                 Assert.AreEqual(new ClueId("clue-1"), activated.Value);
+            }
+            finally
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+
+        [Test]
+        public void 가시_영역_밖이면_콜라이더가_꺼지고_눌러도_알리지_않는다()
+        {
+            var root = new GameObject("Clue");
+            try
+            {
+                var outline = new GameObject("Outline").AddComponent<SpriteRenderer>();
+                outline.transform.SetParent(root.transform);
+                var body = new GameObject("Body").AddComponent<SpriteRenderer>();
+                body.transform.SetParent(root.transform);
+                var collider = root.AddComponent<BoxCollider2D>();
+                var clue = root.AddComponent<ClueSceneObject>();
+                clue.Initialize(new ClueId("clue-1"), outline, body, collider, drawOrder: 5);
+
+                clue.SetAccessible(false);
+
+                Assert.IsFalse(collider.enabled, "가시 밖 단서의 콜라이더가 살아 있다.");
+                Assert.IsFalse(clue.IsAccessible);
+
+                var activated = false;
+                clue.Activated += _ => activated = true;
+                clue.Activate();
+                Assert.IsFalse(activated, "가시 밖 단서를 눌렀는데 활성화 사건이 나갔다.");
             }
             finally
             {

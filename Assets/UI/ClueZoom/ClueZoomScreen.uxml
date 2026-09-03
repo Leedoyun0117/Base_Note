@@ -1,22 +1,20 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="ClueZoomScreen.uss" />
 
+    <!-- 방에서 단서를 누르면 뜨는 설명 창. 습득은 이 창의 [수집] 버튼으로만
+         한다 — 인벤토리(가방)는 열리지 않는다. 습득한 단서는 대화 도중 가방을
+         열어 확인하고, 거기서 대화 사용/기억 추출을 고른다. -->
     <ui:VisualElement name="clue-zoom-screen" class="clue-zoom-screen">
-
         <ui:VisualElement name="clue-zoom-stage" class="clue-zoom-stage">
-            <ui:Button name="clue-zoom-exit-button" text="나가기" class="clue-zoom-exit-button" />
-
-            <ui:VisualElement name="clue-zoom-clue" class="clue-zoom-clue">
-                <ui:Label name="clue-zoom-clue-kind" text="" class="clue-zoom-clue__kind" />
+            <ui:VisualElement name="clue-zoom-card" class="clue-zoom-card">
+                <ui:Label name="clue-zoom-clue-name" text="" class="clue-zoom-card__name" />
+                <ui:Label name="clue-zoom-clue-kind" text="" class="clue-zoom-card__kind" />
+                <ui:Label name="clue-zoom-message" text="" class="clue-zoom-message" />
+                <ui:VisualElement class="clue-zoom-card__actions">
+                    <ui:Button name="clue-zoom-collect-button" text="수집" class="clue-zoom-collect-button" />
+                    <ui:Button name="clue-zoom-exit-button" text="그만두기" class="clue-zoom-exit-button" />
+                </ui:VisualElement>
             </ui:VisualElement>
-
-            <ui:Label name="clue-zoom-message" text="" class="clue-zoom-message" />
         </ui:VisualElement>
-
-        <ui:VisualElement name="clue-zoom-sidebar" class="clue-zoom-sidebar">
-            <ui:VisualElement name="clue-zoom-sidebar-header" class="clue-zoom-sidebar__header" />
-            <ui:VisualElement name="clue-zoom-inventory-grid" class="clue-zoom-inventory-grid" />
-        </ui:VisualElement>
-
     </ui:VisualElement>
 </ui:UXML>

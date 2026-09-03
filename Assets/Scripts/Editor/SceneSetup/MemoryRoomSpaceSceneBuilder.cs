@@ -34,7 +34,7 @@ namespace GameName.UI.Editor.SceneSetup
             if (SerializedFieldBinder.BindObject(spaceView, "_pointerInput", pointerInput, report))
                 report.Linked($"{SpaceObjectName}.Pointer Input → ScenePointerInput");
 
-            SetUpCamera(pointerInput, layoutAsset, report);
+            SetUpCamera(pointerInput, memoryRoomScreen, layoutAsset, report);
 
             return spaceView;
         }
@@ -71,6 +71,19 @@ namespace GameName.UI.Editor.SceneSetup
             return pointerInput;
         }
 
+        // 신뢰가 깎일 때 방 안 콘텐츠를 짧게 흔든다. 카메라에 붙여야 UI 레이어
+        // (마스크·HUD·대화 패널)는 화면 좌표라 흔들리지 않고 씬만 떨린다.
+        private static CameraShake FindOrAddCameraShake(Camera camera, SceneSetupReport report)
+        {
+            var existing = camera.GetComponent<CameraShake>();
+            if (existing != null)
+                return existing;
+
+            var shake = Undo.AddComponent<CameraShake>(camera.gameObject);
+            report.Created("Main Camera에 CameraShake 추가");
+            return shake;
+        }
+
         // 포인터가 UI 위에 있는지 판정하려면 어떤 문서가 화면을 덮을 수 있는지
         // 알아야 한다. 연결을 빠뜨리면 UI를 눌렀는데 뒤의 단서까지 함께 눌린다.
         private static void LinkUIDocuments(
@@ -103,7 +116,10 @@ namespace GameName.UI.Editor.SceneSetup
         // 방 높이를 바꿨을 때 화면만 따로 어긋나므로, 여백까지 전부 에셋의
         // 값(CameraVerticalMargin)을 따른다.
         private static void SetUpCamera(
-            ScenePointerInput pointerInput, MemoryRoomLayoutAsset layoutAsset, SceneSetupReport report)
+            ScenePointerInput pointerInput,
+            MemoryRoomBootstrap memoryRoomScreen,
+            MemoryRoomLayoutAsset layoutAsset,
+            SceneSetupReport report)
         {
             var camera = Camera.main;
             if (camera == null)
@@ -141,6 +157,10 @@ namespace GameName.UI.Editor.SceneSetup
 
             if (SerializedFieldBinder.BindObject(pointerInput, "_camera", camera, report))
                 report.Linked("ScenePointerInput.Camera → Main Camera");
+
+            var cameraShake = FindOrAddCameraShake(camera, report);
+            if (SerializedFieldBinder.BindObject(memoryRoomScreen, "_cameraShake", cameraShake, report))
+                report.Linked($"{memoryRoomScreen.name}.Camera Shake → Main Camera의 CameraShake");
         }
     }
 }

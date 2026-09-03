@@ -32,12 +32,6 @@ namespace GameName.UI.Diagnostics
         [Tooltip("2. 마우스 버튼을 눌렀을 때의 판정 경로")]
         [SerializeField] private bool _logPointerPicks = true;
 
-        [Tooltip("3. 단서를 버렸을 때의 Core 결과·배치·씬 오브젝트")]
-        [SerializeField] private bool _logDrops = true;
-
-        [Tooltip("4. 방을 옮겼을 때 씬에 남은 단서 오브젝트")]
-        [SerializeField] private bool _logRoomChanges = true;
-
         [Tooltip("5. 단서를 누른 뒤 확대 화면이 뜨기까지의 구간")]
         [SerializeField] private bool _logClueActivations = true;
 
@@ -51,8 +45,6 @@ namespace GameName.UI.Diagnostics
 
         private ClueSceneChangeReporter _sceneChanges;
         private PointerPickReporter _pointerPicks;
-        private ClueDropReporter _drops;
-        private RoomChangeReporter _roomChanges;
         private ClueActivationReporter _clueActivations;
         private ScreenWiringReporter _screenWiring;
         private OverlayTransitionReporter _overlayTransitions;
@@ -61,8 +53,6 @@ namespace GameName.UI.Diagnostics
         {
             _sceneChanges = new ClueSceneChangeReporter(_context);
             _pointerPicks = new PointerPickReporter(_context);
-            _drops = new ClueDropReporter(_context);
-            _roomChanges = new RoomChangeReporter(_context);
             _clueActivations = new ClueActivationReporter(_context);
             _screenWiring = new ScreenWiringReporter(_context);
             _overlayTransitions = new OverlayTransitionReporter(_context);
@@ -93,12 +83,6 @@ namespace GameName.UI.Diagnostics
 
             // 세션은 씬이 뜬 뒤에 만들어지므로 구독은 매 프레임 확인해서 건다.
             // 이미 걸려 있으면 아무 일도 하지 않는다.
-            if (_logDrops)
-                _drops.EnsureSubscribed();
-
-            if (_logRoomChanges)
-                _roomChanges.EnsureSubscribed();
-
             if (_logClueActivations)
                 _clueActivations.EnsureSubscribed();
 
@@ -125,12 +109,6 @@ namespace GameName.UI.Diagnostics
             if (_logSceneObjects)
                 _sceneChanges.Tick();
 
-            if (_logDrops)
-                _drops.Tick();
-
-            if (_logRoomChanges)
-                _roomChanges.Tick();
-
             if (_logClueActivations)
                 _clueActivations.Tick();
 
@@ -140,8 +118,6 @@ namespace GameName.UI.Diagnostics
 
         private void OnDestroy()
         {
-            _drops?.Dispose();
-            _roomChanges?.Dispose();
             _clueActivations?.Dispose();
             _overlayTransitions?.Dispose();
             ClueDebugLog.Enabled = false;

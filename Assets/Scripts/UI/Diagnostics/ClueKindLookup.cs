@@ -28,7 +28,7 @@ namespace GameName.UI.Diagnostics
             if (tracker == null)
                 return new ClueKindLookup(byId);
 
-            foreach (var info in tracker.GetAvailableClueInfos(roomId))
+            foreach (var info in tracker.GetCluesInRoom(roomId))
                 byId[info.Id] = info;
 
             return new ClueKindLookup(byId);

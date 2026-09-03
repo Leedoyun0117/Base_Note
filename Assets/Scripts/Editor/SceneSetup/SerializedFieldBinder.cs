@@ -72,6 +72,28 @@ namespace GameName.UI.Editor.SceneSetup
             return true;
         }
 
+        // 문자열 필드. 이미 채워져 있으면(길이 > 0) 건드리지 않는다 — 기획자가
+        // 적어 둔 문구를 도구 재실행이 되돌리면 안 되므로, 비어 있을 때만 시드한다.
+        public static bool BindStringIfEmpty(
+            Object target, string fieldName, string value, SceneSetupReport report)
+        {
+            var serialized = new SerializedObject(target);
+            var property = serialized.FindProperty(fieldName);
+
+            if (property == null || property.propertyType != SerializedPropertyType.String)
+            {
+                report.Problem($"{target.name}의 {fieldName} 문자열 필드를 찾지 못했습니다.");
+                return false;
+            }
+
+            if (!string.IsNullOrEmpty(property.stringValue))
+                return false;
+
+            property.stringValue = value;
+            serialized.ApplyModifiedProperties();
+            return true;
+        }
+
         // 열거형은 값 자체가 아니라 선언 순서(enumValueIndex)로 직렬화되므로,
         // 정수 값을 그대로 넣으면 어긋날 수 있다. intValue를 쓰면 실제 열거형
         // 값으로 들어간다.

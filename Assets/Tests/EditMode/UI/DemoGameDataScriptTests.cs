@@ -1,0 +1,70 @@
+using System.Linq;
+using GameName.Core.Authoring;
+using GameName.UI.Session;
+using NUnit.Framework;
+
+namespace GameName.UI.Tests.EditMode
+{
+    // 데모 저작 데이터(대사·단서)가 검증기를 그대로 통과하는지 붙든다.
+    //
+    // 검증기가 잡는 문제들은 전부 "플레이하다 어느 순간 막힌다" 부류라, 대사가
+    // 채워진 뒤에도 규칙을 계속 지키는지 자동으로 확인해 둔다 — 에디터 메뉴는
+    // RunDefinitionAsset만 검사하므로 DemoGameData는 그 그물에 걸리지 않는다.
+    public class DemoGameDataScriptTests
+    {
+        // 검증기 조립은 팩토리 한 곳을 그대로 쓴다(에디터/테스트가 갈리지 않게).
+        // 세 방, 겹침 경고 기준은 실제 포스터 최소 간격에 가까운 값.
+        private static DialogueScriptValidator Validator() =>
+            DialogueScriptValidatorFactory.Create(expectedRoomCount: 3, minimumClueSeparation: 0.14f);
+
+        [Test]
+        public void 데모_저작_데이터는_검증_오류가_없다()
+        {
+            var run = DemoGameData.CreateWorldData().Run;
+
+            var errors = Validator().Validate(run)
+                .Where(i => i.Severity == ScriptIssueSeverity.Error)
+                .Select(i => i.Description)
+                .ToArray();
+
+            Assert.IsEmpty(errors, "검증 오류:\n- " + string.Join("\n- ", errors));
+        }
+
+        [Test]
+        public void 데모_저작_데이터는_겹침_경고도_없다()
+        {
+            var run = DemoGameData.CreateWorldData().Run;
+
+            var warnings = Validator().Validate(run)
+                .Where(i => i.Severity == ScriptIssueSeverity.Warning)
+                .Select(i => i.Description)
+                .ToArray();
+
+            Assert.IsEmpty(warnings, "검증 경고:\n- " + string.Join("\n- ", warnings));
+        }
+
+        // 방3이 방1·2의 검열 키를 재사용하지 않는지(사건을 반복하지 않는다는 원칙).
+        [Test]
+        public void 방3은_앞_방의_검열_키를_다시_쓰지_않는다()
+        {
+            var run = DemoGameData.CreateWorldData().Run;
+            var tokens = new CensorTokenIndexSource(new GameName.Core.Dialogue.CensoredTextParser());
+
+            var room3 = new GameName.Core.MemoryRooms.MemoryRoomId("room-3");
+            var earlierKeys = tokens.For(run).Uses
+                .Where(u => !u.RoomId.Equals(room3))
+                .Select(u => u.Key)
+                .ToHashSet();
+
+            var room3Keys = tokens.For(run).Uses
+                .Where(u => u.RoomId.Equals(room3))
+                .Select(u => u.Key)
+                .ToArray();
+
+            Assert.IsNotEmpty(room3Keys, "방3에 검열 토큰이 하나도 없다.");
+            CollectionAssert.IsEmpty(
+                room3Keys.Where(earlierKeys.Contains).ToArray(),
+                "방3이 방1·2에서 이미 쓴 검열 키를 재사용한다.");
+        }
+    }
+}

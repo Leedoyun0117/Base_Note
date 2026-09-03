@@ -14,11 +14,22 @@ namespace GameName.UI.MemoryRoom.Space
     //
     // 테두리는 자식 오브젝트로 미리 만들어 두고 껐다 켜기만 한다 — 마우스가
     // 올라올 때마다 오브젝트를 만들고 지우면 프레임마다 할당이 생긴다.
+    //
+    // 가시 비율 밖으로 밀려난 단서는 SetAccessible(false)로 회색 처리 +
+    // 콜라이더 비활성이 함께 일어난다. 둘을 한 메서드에서 처리하는 이유는
+    // "보이는 상태와 집히는 상태가 갈라지지 않게" 하기 위함이다 — 그 어긋남은
+    // 화면만 봐서는 드러나지 않는다.
     public sealed class ClueSceneObject : MonoBehaviour, IPointerInteractable
     {
+        private static readonly Color InaccessibleTint = new Color(0.32f, 0.32f, 0.34f, 0.85f);
+
         private ClueId _clueId;
         private SpriteRenderer _outline;
+        private SpriteRenderer _body;
+        private BoxCollider2D _collider;
+        private Color _baseColor;
         private int _drawOrder;
+        private bool _accessible = true;
 
         public event Action<ClueId> Activated;
 
@@ -26,22 +37,48 @@ namespace GameName.UI.MemoryRoom.Space
         // 노출한다.
         public bool IsOutlineVisible => _outline != null && _outline.enabled;
 
+        // 지금 이 단서를 집을 수 있는지(가시 비율 안). 씬 없이 검증하기 위해 노출한다.
+        public bool IsAccessible => _accessible;
+
         public int DrawOrder => _drawOrder;
 
-        public void Initialize(ClueId clueId, SpriteRenderer outline, int drawOrder)
+        public void Initialize(
+            ClueId clueId, SpriteRenderer outline, SpriteRenderer body, BoxCollider2D collider, int drawOrder)
         {
             _clueId = clueId;
             _outline = outline ?? throw new ArgumentNullException(nameof(outline));
+            _body = body ?? throw new ArgumentNullException(nameof(body));
+            _collider = collider ?? throw new ArgumentNullException(nameof(collider));
+            _baseColor = body.color;
             _outline.enabled = false;
             _drawOrder = drawOrder;
         }
 
         public void SetHovered(bool hovered)
         {
+            // 집을 수 없는 단서에는 강조 테두리를 띄우지 않는다.
             if (_outline != null)
-                _outline.enabled = hovered;
+                _outline.enabled = hovered && _accessible;
         }
 
-        public void Activate() => Activated?.Invoke(_clueId);
+        public void SetAccessible(bool accessible)
+        {
+            _accessible = accessible;
+
+            if (_collider != null)
+                _collider.enabled = accessible;
+
+            if (_body != null)
+                _body.color = accessible ? _baseColor : InaccessibleTint;
+
+            if (!accessible && _outline != null)
+                _outline.enabled = false;
+        }
+
+        public void Activate()
+        {
+            if (_accessible)
+                Activated?.Invoke(_clueId);
+        }
     }
 }

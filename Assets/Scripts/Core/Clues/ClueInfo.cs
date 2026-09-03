@@ -19,6 +19,11 @@ namespace GameName.Core.Clues
         public ClueId Id { get; }
         public ClueKind Kind { get; }
 
+        // 플레이어에게 보이는 이름. Kind와 같은 이유로 담는다 — 방에 들어서면
+        // 그냥 보이는 사실이고 플레이 중에 바뀌지 않는다. 화면에 나가는 글이라
+        // 언젠가 번역이 필요해지면 이 값을 문자열 키로 바꾸면 된다.
+        public string DisplayName { get; }
+
         // 기획이 정한 자리이지 "지금 놓여 있는 자리"가 아니다 — 플레이어가
         // 다른 곳에 버렸다면 실제로 보이는 자리는 다를 수 있다. 그 차이를
         // 아는 것은 화면 쪽이고, 이 값은 바뀌지 않는 저작 사실이라 인벤토리에
@@ -28,10 +33,11 @@ namespace GameName.Core.Clues
 
         public InventoryItemCategory Category => InventoryItemCategory.Clue;
 
-        public ClueInfo(ClueId id, ClueKind kind, CluePositionRatio authoredPosition)
+        public ClueInfo(ClueId id, ClueKind kind, string displayName, CluePositionRatio authoredPosition)
         {
             Id = id;
             Kind = kind;
+            DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
             AuthoredPosition = authoredPosition;
         }
 

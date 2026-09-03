@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Reflection;
 using GameName.Core.Clues;
+using GameName.Core.Memories;
 using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
@@ -24,6 +25,7 @@ namespace GameName.Core.Tests.EditMode
                 {
                     nameof(ClueInfo.Id),
                     nameof(ClueInfo.Kind),
+                    nameof(ClueInfo.DisplayName),
                     nameof(ClueInfo.AuthoredPosition),
                     nameof(ClueInfo.Category),
                 },
@@ -34,21 +36,22 @@ namespace GameName.Core.Tests.EditMode
         public void ClueDefinition에서_변환한_ClueInfo는_같은_값을_그대로_담는다()
         {
             var definition = new ClueDefinition(
-                new ClueId("clue-1"), ClueKind.Poster, new CluePositionRatio(0.25f));
+                new ClueId("clue-1"), ClueKind.Poster, "낡은 모포", new CluePositionRatio(0.25f), MemoryColor.Blue);
 
             var info = definition.ToInfo();
 
             Assert.AreEqual(definition.Id, info.Id);
             Assert.AreEqual(definition.Kind, info.Kind);
+            Assert.AreEqual(definition.DisplayName, info.DisplayName);
             Assert.AreEqual(definition.AuthoredPosition, info.AuthoredPosition);
         }
 
         [Test]
         public void ClueInfo는_값이_아니라_식별자로_비교된다()
         {
-            var a = new ClueInfo(new ClueId("clue-1"), ClueKind.Poster, new CluePositionRatio(0.1f));
-            var b = new ClueInfo(new ClueId("clue-1"), ClueKind.FloorObject, new CluePositionRatio(0.9f));
-            var other = new ClueInfo(new ClueId("clue-2"), ClueKind.Poster, new CluePositionRatio(0.1f));
+            var a = new ClueInfo(new ClueId("clue-1"), ClueKind.Poster, "가", new CluePositionRatio(0.1f));
+            var b = new ClueInfo(new ClueId("clue-1"), ClueKind.FloorObject, "나", new CluePositionRatio(0.9f));
+            var other = new ClueInfo(new ClueId("clue-2"), ClueKind.Poster, "가", new CluePositionRatio(0.1f));
 
             Assert.AreEqual(a, b);
             Assert.AreNotEqual(a, other);

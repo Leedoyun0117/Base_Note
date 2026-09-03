@@ -2,6 +2,25 @@
    칸 개수는 Core의 IPlayerInventory.Capacity가 정하므로 여기에 고정 개수를
    전제한 규칙을 두지 않는다 — 칸은 줄바꿈으로 알아서 채워진다. */
 
+/* 이 문서의 디자인 토큰. 값은 MemoryRoomScreen.uss의 팔레트와 맞춘다 —
+   USS는 문서마다 독립이라 토큰을 여기 한 번 더 선언한다. */
+:root {
+    --surface: rgb(30, 28, 36);
+    --surface-raised: rgb(54, 50, 66);
+    --surface-sunken: rgb(24, 22, 30);
+    --border: rgb(78, 74, 92);
+    --border-strong: rgb(140, 132, 164);
+    --text: rgb(236, 232, 244);
+    --text-dim: rgb(166, 160, 182);
+    --text-faint: rgb(120, 116, 130);
+    --accent: rgb(120, 112, 150);
+    --danger: rgb(240, 150, 150);
+
+    --memory-red: rgb(199, 91, 74);
+    --memory-green: rgb(111, 168, 107);
+    --memory-blue: rgb(91, 139, 199);
+}
+
 .inventory-screen {
     position: absolute;
     left: 0;
@@ -89,7 +108,399 @@
     white-space: normal;
 }
 
-/* 끌고 있는 칸은 반투명해진다 — 확대 화면에서 단서를 끌 때와 같은 신호다. */
-.inventory-slot--dragging {
-    opacity: 0.5;
+/* ── 사물 용도 선택 패널 ─────────────────────────────────────────
+   채워진 칸을 눌렀을 때만 뜬다(display: none 기본). */
+.clue-use-panel {
+    display: none;
+    margin-top: 14px;
+    padding: 14px;
+    background-color: rgb(24, 22, 30);
+    border-width: 1px;
+    border-color: rgb(78, 74, 92);
+    border-radius: 8px;
+}
+
+.clue-use-panel__title {
+    color: rgb(226, 220, 238);
+    font-size: 15px;
+    margin-bottom: 10px;
+}
+
+.clue-use-panel__option {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.clue-use-panel__button {
+    height: 34px;
+    padding-left: 14px;
+    padding-right: 14px;
+    margin-right: 10px;
+    border-width: 0;
+    border-radius: 6px;
+    background-color: rgb(96, 90, 120);
+    color: rgb(238, 234, 246);
+    font-size: 13px;
+}
+
+.clue-use-panel__button:hover {
+    background-color: rgb(120, 112, 150);
+}
+
+.clue-use-panel__button:disabled {
+    background-color: rgb(52, 50, 60);
+    color: rgb(120, 116, 130);
+}
+
+.clue-use-panel__reason {
+    color: rgb(150, 146, 162);
+    font-size: 12px;
+    white-space: normal;
+}
+
+.clue-use-panel__result {
+    color: rgb(150, 200, 160);
+    font-size: 13px;
+    margin-top: 6px;
+    margin-bottom: 6px;
+    white-space: normal;
+}
+
+.clue-use-panel__close {
+    height: 30px;
+    padding-left: 12px;
+    padding-right: 12px;
+    margin-top: 4px;
+    border-width: 0;
+    border-radius: 6px;
+    background-color: rgb(64, 60, 76);
+    color: rgb(220, 214, 232);
+    font-size: 13px;
+}
+
+/* ══ 오버레이 셸 · 탭 바 ═══════════════════════════════════════════
+   가방과 복원도를 같은 프레임 안에서 전환한다. 셸 크기를 고정해 탭을
+   바꿔도 창이 튀지 않는다. */
+.overlay-shell {
+    width: 900px;
+    max-width: 96%;
+    max-height: 90%;
+}
+
+.overlay-tabs {
+    flex-direction: row;
+    margin-bottom: 10px;
+}
+
+.overlay-tab {
+    height: 32px;
+    padding-left: 18px;
+    padding-right: 18px;
+    margin-right: 6px;
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: 6px 6px 0 0;
+    background-color: var(--surface-sunken);
+    color: var(--text-dim);
+    font-size: 14px;
+}
+
+.overlay-tab--active {
+    background-color: var(--surface-raised);
+    border-color: var(--border-strong);
+    color: var(--text);
+}
+
+/* 셸 안에서는 탭 바와 같은 폭으로 늘어난다 — 그래야 탭이 패널 왼쪽 모서리와
+   딱 맞물린다(기본 560px 고정을 여기서 푼다). */
+.inventory-panel {
+    width: auto;
+    align-self: stretch;
+}
+
+/* ══ 복원도 ═══════════════════════════════════════════════════════ */
+.restoration-panel {
+    width: auto;
+    align-self: stretch;
+    height: 560px;
+    padding: 16px;
+    background-color: var(--surface);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: 10px;
+}
+
+.restoration-toolbar {
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.restoration-toolbar__toggle {
+    height: 30px;
+    padding-left: 14px;
+    padding-right: 14px;
+    margin-right: 12px;
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: 6px;
+    background-color: var(--surface-raised);
+    color: var(--text);
+    font-size: 13px;
+}
+
+.restoration-toolbar__toggle--active {
+    background-color: var(--accent);
+    border-color: var(--border-strong);
+    color: var(--text);
+}
+
+.restoration-toolbar__zoom {
+    width: 34px;
+    height: 30px;
+    margin-right: 4px;
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: 6px;
+    background-color: var(--surface-raised);
+    color: var(--text);
+    font-size: 14px;
+    -unity-text-align: middle-center;
+}
+
+.restoration-notice {
+    color: var(--danger);
+    font-size: 12px;
+    white-space: normal;
+    flex-shrink: 1;
+}
+
+.restoration-addbar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: 8px;
+}
+
+.restoration-addbar__row {
+    flex-direction: row;
+    align-items: center;
+    margin-right: 16px;
+    margin-bottom: 4px;
+}
+
+.restoration-addbar__swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 6px;
+    margin-right: 6px;
+}
+
+.restoration-addbar__swatch--r { background-color: var(--memory-red); }
+.restoration-addbar__swatch--g { background-color: var(--memory-green); }
+.restoration-addbar__swatch--b { background-color: var(--memory-blue); }
+
+.restoration-addbar__name {
+    color: var(--text-dim);
+    font-size: 12px;
+    margin-right: 6px;
+}
+
+.restoration-addbar__field {
+    width: 140px;
+    margin-right: 6px;
+}
+
+.restoration-addbar__button {
+    height: 26px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-width: 0;
+    border-radius: 5px;
+    background-color: var(--accent);
+    color: var(--text);
+    font-size: 12px;
+}
+
+/* 고정 크기 창. 안쪽 캔버스는 이 밖으로 나가도 잘려 보이지 않는다. */
+.restoration-viewport {
+    flex-grow: 1;
+    overflow: hidden;
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: 8px;
+    background-color: var(--surface-sunken);
+}
+
+/* 이동(팬) 레이어. 크기 0짜리 앵커 — 코드가 left/top으로 옮긴다. */
+.restoration-pan {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 0;
+    height: 0;
+}
+
+/* 논리 좌표계(고정 크기)의 넓은 판. 확대/축소는 코드가 scale로. */
+.restoration-canvas {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform-origin: left top;
+}
+
+.restoration-edges {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    --edge-locked-color: rgba(150, 150, 170, 0.35);
+    --edge-player-color: rgb(184, 152, 220);
+}
+
+.restoration-nodes {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+}
+
+/* ── 노드 ─────────────────────────────────────────────────────── */
+.restoration-node {
+    position: absolute;
+    min-width: 96px;
+    max-width: 210px;
+    padding: 8px 10px;
+    border-width: 1px;
+    border-color: var(--border-strong);
+    border-radius: 4px;
+    background-color: var(--surface-raised);
+}
+
+.restoration-node__label {
+    color: var(--text);
+    font-size: 12px;
+    white-space: normal;
+    -unity-text-align: middle-center;
+}
+
+.restoration-node--root {
+    border-radius: 22px;
+    padding: 12px 18px;
+    border-width: 2px;
+}
+
+.restoration-node--root .restoration-node__label {
+    font-size: 15px;
+    -unity-font-style: bold;
+    color: rgb(20, 18, 24);
+}
+
+.restoration-node--r { background-color: var(--memory-red); }
+.restoration-node--g { background-color: var(--memory-green); }
+.restoration-node--b { background-color: var(--memory-blue); }
+
+.restoration-node--clue {
+    background-color: var(--surface-raised);
+    border-color: var(--border);
+}
+
+.restoration-node--player {
+    background-color: rgb(46, 42, 58);
+    border-color: var(--accent);
+}
+
+.restoration-node--connect-pick {
+    border-color: rgb(240, 220, 120);
+    border-width: 2px;
+}
+
+/* 항상 보이는 삭제 버튼. 노드 오른쪽 위 안쪽 모서리에 두고, 판이 축소돼도
+   코드가 반대 배율을 걸어 화면상 크기를 유지한다. transform-origin이 right top
+   이라 배율이 커지면 모서리를 물고 왼쪽·아래로 자란다 — 뷰포트 overflow에
+   잘리지 않도록 노드 밖으로 나가지 않는 방향이다. */
+.restoration-node__delete {
+    position: absolute;
+    right: 1px;
+    top: 1px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border-width: 1px;
+    border-color: var(--border-strong);
+    border-radius: 9px;
+    background-color: var(--danger);
+    color: rgb(30, 20, 20);
+    font-size: 13px;
+    -unity-text-align: middle-center;
+    transform-origin: right top;
+}
+
+.restoration-node__delete:hover {
+    background-color: rgb(255, 180, 180);
+}
+
+.restoration-node__edit {
+    width: 160px;
+}
+
+/* ── 간선 삭제 핸들 ───────────────────────────────────────────── */
+.restoration-edge-handle {
+    position: absolute;
+    border-radius: 8px;
+    background-color: var(--accent);
+    border-width: 1px;
+    border-color: var(--border-strong);
+}
+
+.restoration-edge-handle:hover {
+    background-color: rgb(150, 140, 180);
+}
+
+/* ── 삭제 확인 팝업 ───────────────────────────────────────────── */
+.restoration-confirm {
+    position: absolute;
+    left: 0;
+    top: 100%;
+    padding: 8px;
+    background-color: var(--surface-sunken);
+    border-width: 1px;
+    border-color: var(--border-strong);
+    border-radius: 6px;
+}
+
+.restoration-confirm__text {
+    color: var(--text);
+    font-size: 12px;
+    margin-bottom: 6px;
+    white-space: normal;
+}
+
+.restoration-confirm__actions {
+    flex-direction: row;
+}
+
+.restoration-confirm__yes {
+    height: 24px;
+    padding-left: 10px;
+    padding-right: 10px;
+    margin-right: 6px;
+    border-width: 0;
+    border-radius: 4px;
+    background-color: var(--danger);
+    color: rgb(30, 20, 20);
+    font-size: 12px;
+}
+
+.restoration-confirm__no {
+    height: 24px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-width: 0;
+    border-radius: 4px;
+    background-color: var(--surface-raised);
+    color: var(--text);
+    font-size: 12px;
 }

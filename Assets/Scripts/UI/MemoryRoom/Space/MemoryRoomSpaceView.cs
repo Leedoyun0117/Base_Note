@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using GameName.Core.Clues;
-using GameName.Core.MemoryRooms;
 using UnityEngine;
 
 namespace GameName.UI.MemoryRoom.Space
@@ -40,7 +39,6 @@ namespace GameName.UI.MemoryRoom.Space
         [SerializeField] private Color _playerColor = new Color(0.85f, 0.85f, 0.90f);
         [SerializeField] private Color _posterColor = new Color(0.80f, 0.62f, 0.35f);
         [SerializeField] private Color _floorObjectColor = new Color(0.45f, 0.68f, 0.72f);
-        [SerializeField] private Color _exitColor = new Color(0.55f, 0.50f, 0.30f);
         [SerializeField] private Color _outlineColor = Color.white;
         [SerializeField] private float _outlinePadding = 0.14f;
 
@@ -49,7 +47,6 @@ namespace GameName.UI.MemoryRoom.Space
         // 마우스를 올렸을 때 테두리가 본체를 덮어 색이 통째로 바뀌어 버린다.
         private const int BackWallOrder = 0;
         private const int StructureOrder = 1;
-        private const int ExitOrder = 3;
         private const int ClueOrder = 5;
         private const int PlayerOrder = 6;
 
@@ -61,8 +58,6 @@ namespace GameName.UI.MemoryRoom.Space
         private PlayerCharacter _player;
 
         public event Action<ClueId> ClueActivated;
-        public event Action<MemoryGraphNodeId> ExitActivated;
-        public event Action<MemoryGraphNodeId, bool> ExitHoverChanged;
 
         public float PlayerX => _player == null ? 0f : _player.CurrentX;
 
@@ -110,18 +105,14 @@ namespace GameName.UI.MemoryRoom.Space
 
         // 지금 방을 이 내용으로 그린다. 이 호출이 끝나는 시점에 이전 내용물은
         // 이미 씬에서 사라져 있다(SceneObjectLifetime 주석 참고).
-        public void SetContents(IReadOnlyList<ClueSceneItem> clues, IReadOnlyList<RoomExitSceneItem> exits)
+        public void SetContents(IReadOnlyList<ClueSceneItem> clues)
         {
             if (clues == null) throw new ArgumentNullException(nameof(clues));
-            if (exits == null) throw new ArgumentNullException(nameof(exits));
 
             ClearContents();
 
             if (_roomObject != null)
                 _roomObject.SetActive(true);
-
-            foreach (var exit in exits)
-                CreateExit(exit);
 
             foreach (var clue in clues)
                 CreateClue(clue);
@@ -151,22 +142,10 @@ namespace GameName.UI.MemoryRoom.Space
                 "Clue_" + item.ClueId, item.Position, new Vector2(size, size), color, ClueOrder);
 
             var sceneObject = created.Root.AddComponent<ClueSceneObject>();
-            sceneObject.Initialize(item.ClueId, created.Outline, ClueOrder);
+            sceneObject.Initialize(item.ClueId, created.Outline, created.Body, created.Collider, ClueOrder);
+            // 가시 비율 밖 단서는 회색 + 콜라이더 비활성. 판정은 컨트롤러가 이미 했다.
+            sceneObject.SetAccessible(item.Accessible);
             sceneObject.Activated += OnClueActivated;
-        }
-
-        private void CreateExit(RoomExitSceneItem item)
-        {
-            var size = RoomExitLayout.SizeOf(_layout, item.Kind);
-
-            // 이름에 목적지를 적어 둔다 — 씬에 글자를 그릴 폰트가 아직 없어서,
-            // 하이어라키에서라도 어느 문이 어디로 가는지 보이게 하기 위함이다.
-            var created = CreateInteractable("Exit_" + item.Label, item.Position, size, _exitColor, ExitOrder);
-
-            var sceneObject = created.Root.AddComponent<RoomExitSceneObject>();
-            sceneObject.Initialize(item.TargetNodeId, created.Outline, ExitOrder);
-            sceneObject.Activated += OnExitActivated;
-            sceneObject.HoverChanged += OnExitHoverChanged;
         }
 
         // 강조 테두리와 본체를 자식으로 두고, 마우스 판정과 컴포넌트는 부모에
@@ -176,7 +155,7 @@ namespace GameName.UI.MemoryRoom.Space
         // 그대로 가져오는 것이 이 함수의 핵심이다. 따로 받으면 보이는 사각형과
         // 마우스 판정 범위가 조용히 어긋날 수 있는데, 그 어긋남은 화면만 봐서는
         // 절대 드러나지 않는다("보이는데 눌리지 않는다"로만 나타난다).
-        private (GameObject Root, SpriteRenderer Outline) CreateInteractable(
+        private (GameObject Root, SpriteRenderer Outline, SpriteRenderer Body, BoxCollider2D Collider) CreateInteractable(
             string name, Vector2 position, Vector2 size, Color color, int bodyOrder)
         {
             var root = new GameObject(name);
@@ -192,14 +171,10 @@ namespace GameName.UI.MemoryRoom.Space
             collider.size = body.transform.localScale;
 
             _contentObjects.Add(root);
-            return (root, outline);
+            return (root, outline, body, collider);
         }
 
         private void OnClueActivated(ClueId clueId) => ClueActivated?.Invoke(clueId);
-        private void OnExitActivated(MemoryGraphNodeId nodeId) => ExitActivated?.Invoke(nodeId);
-
-        private void OnExitHoverChanged(MemoryGraphNodeId nodeId, bool hovered) =>
-            ExitHoverChanged?.Invoke(nodeId, hovered);
 
         private void ClearContents()
         {

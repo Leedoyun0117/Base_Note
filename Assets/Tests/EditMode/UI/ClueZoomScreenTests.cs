@@ -1,126 +1,116 @@
+using System;
+using System.Collections.Generic;
+using GameName.Core.Authoring;
 using GameName.Core.Clues;
+using GameName.Core.Dialogue;
+using GameName.Core.Events;
 using GameName.Core.Inventory;
+using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
+using GameName.Core.Trust;
 using GameName.UI.ClueZoom;
 using NUnit.Framework;
 using UnityEngine.UIElements;
 
 namespace GameName.UI.Tests.EditMode
 {
-    // 확대 화면의 규칙 두 가지를 화면 없이 검증한다.
-    //   · 인벤토리 칸 개수는 Core 설정값을 따른다(화면에 4가 박혀 있지 않다).
-    //   · 담기에 실패하면 단서가 제자리로 돌아가고 사유가 뜬다.
+    // 단서 설명 창의 규칙:
+    //   · [수집]을 누르면 Core 수집 처리기를 거쳐 습득하고 화면을 닫아 달라고 알린다.
+    //   · 신뢰도가 낮아 손이 닿지 않으면 습득하지 않고 사유가 뜬다.
+    //   · 인벤토리 칸은 이 화면에서 그리지 않는다(습득 시 가방이 열리지 않는다).
     public class ClueZoomScreenTests
     {
         private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
-        private static readonly ClueId ClueId1 = new ClueId("clue-1");
 
-        // UXML과 같은 이름의 요소들만 손으로 세운다 — 스타일은 검증 대상이
-        // 아니므로 필요 없다.
+        private static readonly Dictionary<int, float> VisibilityTable = new Dictionary<int, float>
+        {
+            { 3, 1.0f }, { 2, 0.75f }, { 1, 0.5f }, { 0, 0.5f },
+        };
+
         private static VisualElement MakeZoomRoot()
         {
             var root = new VisualElement();
 
             var stage = new VisualElement { name = "clue-zoom-stage" };
             stage.Add(new Button { name = "clue-zoom-exit-button" });
+            stage.Add(new Button { name = "clue-zoom-collect-button" });
 
-            var clue = new VisualElement { name = "clue-zoom-clue" };
-            clue.Add(new Label { name = "clue-zoom-clue-kind" });
-            stage.Add(clue);
+            var card = new VisualElement { name = "clue-zoom-card" };
+            card.Add(new Label { name = "clue-zoom-clue-name" });
+            card.Add(new Label { name = "clue-zoom-clue-kind" });
+            card.Add(new Label { name = "clue-zoom-message" });
+            stage.Add(card);
 
-            stage.Add(new Label { name = "clue-zoom-message" });
             root.Add(stage);
-
-            var sidebar = new VisualElement { name = "clue-zoom-sidebar" };
-            sidebar.Add(new VisualElement { name = "clue-zoom-sidebar-header" });
-            sidebar.Add(new VisualElement { name = "clue-zoom-inventory-grid" });
-            root.Add(sidebar);
-
             return root;
         }
 
-        private static ClueDefinition MakeDefinition(string id, ClueKind kind = ClueKind.Poster) =>
-            new ClueDefinition(
-                new ClueId(id), kind, new CluePositionRatio(0.5f));
+        private static ClueDefinition MakeDefinition(string id, float position = 0.5f) =>
+            new ClueDefinition(new ClueId(id), ClueKind.Poster, id, new CluePositionRatio(position), MemoryColor.Red);
 
-        private static (ClueZoomScreenController Controller, VisualElement Root, PlayerInventory Inventory)
-            MakeFixture(int capacity, params string[] extraClueIdsInRoom)
+        private sealed class Fixture
         {
-            var placements = new System.Collections.Generic.List<CluePlacement>
+            public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
+            public readonly ClueZoomScreenController Controller;
+            public readonly VisualElement Root;
+            public readonly PlayerInventory Inventory;
+            public readonly TrustGauge Trust;
+
+            public Fixture(string clueId, float cluePosition)
             {
-                new CluePlacement(Room1, MakeDefinition(ClueId1.Value)),
-            };
-            foreach (var id in extraClueIdsInRoom)
-                placements.Add(new CluePlacement(Room1, MakeDefinition(id, ClueKind.FloorObject)));
+                var def = MakeDefinition(clueId, cluePosition);
+                var placements = new List<CluePlacement> { new CluePlacement(Room1, def) };
+                var tracker = new MemoryRoomClueTracker(placements);
+                var room = new RoomDefinition(Room1, new[] { def }, null, Array.Empty<DialogueLineDefinition>());
+                var clueState = new ClueStateStore(new[] { room }, Bus);
 
-            var tracker = new MemoryRoomClueTracker(placements);
-            var inventory = new PlayerInventory(new InventorySettings(capacity), new SharedSlotInventoryPolicy());
-            var location = new PlayerLocation(MemoryGraphNodeId.OfRoom(Room1));
-            var collector = new ClueCollector(location, inventory, tracker);
+                Inventory = new PlayerInventory(new InventorySettings(4), new SharedSlotInventoryPolicy());
+                Trust = new TrustGauge(3, Bus);
 
-            var root = MakeZoomRoot();
-            var view = new ClueZoomScreenView(root);
-            var controller = new ClueZoomScreenController(view, inventory, collector);
+                var collector = new ClueCollectionProcessor(
+                    clueState, new CenteredClueAccessPolicy(), Trust,
+                    new StepVisibilityPolicy(VisibilityTable), tracker, Inventory, Bus);
+                _ = new InventoryProjection(Inventory, tracker, Bus);
 
-            tracker.TryGetPlacedClue(ClueId1, out var definition, out _);
-            controller.Open(definition.ToInfo());
+                Bus.Publish(new RoomStartedEvent(Room1, 0));
 
-            return (controller, root, inventory);
+                Root = MakeZoomRoot();
+                Controller = new ClueZoomScreenController(new ClueZoomScreenView(Root), collector);
+                Controller.Open(def.ToInfo());
+            }
+
+            public Label Message => Root.Q<Label>("clue-zoom-message");
         }
 
         [Test]
-        public void 인벤토리_칸_개수는_Core_설정값을_따른다()
+        public void 수집을_누르면_인벤토리에_들어가고_화면을_닫아_달라고_알린다()
         {
-            var grid = MakeFixture(capacity: 4).Root.Q<VisualElement>("clue-zoom-inventory-grid");
-
-            Assert.AreEqual(4, grid.childCount);
-        }
-
-        [Test]
-        public void 용량이_바뀌면_그린_칸_개수도_함께_바뀐다()
-        {
-            // 4를 전제로 그리는 것이 아니라 설정값을 읽어 그린다는 증거다.
-            var grid = MakeFixture(capacity: 6).Root.Q<VisualElement>("clue-zoom-inventory-grid");
-
-            Assert.AreEqual(6, grid.childCount);
-        }
-
-        [Test]
-        public void 인벤토리가_가득_차면_제자리로_돌아가고_사유가_뜬다()
-        {
-            // 칸이 하나뿐인 인벤토리를 다른 단서로 먼저 채워 둔다.
-            var (controller, root, inventory) = MakeFixture(capacity: 1, "clue-filler");
-            inventory.TryStore(MakeDefinition("clue-filler", ClueKind.FloorObject).ToInfo());
-
-            controller.TryStoreOpenClue();
-
-            var message = root.Q<Label>("clue-zoom-message");
-            Assert.AreEqual("인벤토리에 자리가 없습니다.", message.text);
-            Assert.AreEqual(DisplayStyle.Flex, message.style.display.value);
-
-            // 단서는 옮겨지지 않았고(칸은 그대로 하나), 화면에서도 제자리다.
-            Assert.AreEqual(1, inventory.Items.Count);
-
-            var clueElement = root.Q<VisualElement>("clue-zoom-clue");
-            Assert.IsFalse(clueElement.ClassListContains("clue-zoom-clue--dragging"));
-        }
-
-        [Test]
-        public void 담기에_성공하면_인벤토리에_들어가고_화면을_닫아_달라고_알린다()
-        {
-            var (controller, root, inventory) = MakeFixture(capacity: 4);
+            var fx = new Fixture("clue-1", 0.5f);
 
             var closeRequested = false;
             var stored = false;
-            controller.CloseRequested += () => closeRequested = true;
-            controller.ClueStored += () => stored = true;
+            fx.Controller.CloseRequested += () => closeRequested = true;
+            fx.Controller.ClueStored += () => stored = true;
 
-            controller.TryStoreOpenClue();
+            fx.Controller.TryCollectOpenClue();
 
-            Assert.AreEqual(1, inventory.Items.Count);
+            Assert.AreEqual(1, fx.Inventory.Items.Count);
             Assert.IsTrue(stored);
             Assert.IsTrue(closeRequested);
-            Assert.AreEqual(string.Empty, root.Q<Label>("clue-zoom-message").text);
+            Assert.AreEqual(string.Empty, fx.Message.text);
+        }
+
+        [Test]
+        public void 신뢰도가_낮아_손이_닿지_않으면_습득하지_않고_사유가_뜬다()
+        {
+            // 방 끝쪽(0.1)에 놓인 단서. 신뢰 1이면 창은 [0.25, 0.75]라 닿지 않는다.
+            var fx = new Fixture("clue-1", 0.1f);
+            fx.Trust.Decrease(2); // 3 → 1
+
+            fx.Controller.TryCollectOpenClue();
+
+            Assert.AreEqual(0, fx.Inventory.Items.Count);
+            StringAssert.Contains("손이 닿지", fx.Message.text);
         }
     }
 }

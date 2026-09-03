@@ -1,18 +1,70 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
     <Style src="InventoryScreen.uss" />
 
+    <!-- I 키 오버레이. 두 하위 화면(가방 · 복원도)을 얇은 탭 바로 전환한다.
+         OverlayPanelRouter의 "오버레이는 하나만" 원칙은 그대로 — 이 둘은 같은
+         오버레이 슬롯 안의 탭이지 별도 오버레이가 아니다. -->
     <ui:VisualElement name="inventory-screen" class="inventory-screen">
-        <ui:VisualElement name="inventory-panel" class="inventory-panel">
-            <ui:Label text="인벤토리" class="inventory-title" />
-            <ui:Label name="inventory-count" text="- / -" class="inventory-caption" />
-            <ui:Label
-                name="inventory-hint"
-                text="칸을 격자 바깥으로 끌어다 놓거나 '버리기'를 누르면, 서 있던 자리에 단서를 내려놓습니다. 버린 단서는 그 방의 것이 됩니다."
-                class="inventory-caption" />
+        <ui:VisualElement name="overlay-shell" class="overlay-shell">
 
-            <ui:VisualElement name="inventory-slot-grid" class="inventory-slot-grid" />
+            <ui:VisualElement name="overlay-tabs" class="overlay-tabs">
+                <ui:Button name="overlay-tab-inventory" text="가방" class="overlay-tab overlay-tab--active" />
+                <ui:Button name="overlay-tab-restoration" text="복원도" class="overlay-tab" />
+            </ui:VisualElement>
 
-            <ui:Label name="inventory-message" text="" class="inventory-message" />
+            <!-- ── 가방 탭 ───────────────────────────────────────────── -->
+            <ui:VisualElement name="inventory-panel" class="inventory-panel">
+                <ui:Label name="inventory-count" text="- / -" class="inventory-caption" />
+                <ui:Label
+                    name="inventory-hint"
+                    text="수집한 단서를 누르면 기억을 추출할 수 있습니다. 대화 중 질문에는 이 단서 목록에서 골라 답합니다."
+                    class="inventory-caption" />
+
+                <ui:VisualElement name="inventory-slot-grid" class="inventory-slot-grid" />
+
+                <ui:Label name="inventory-message" text="" class="inventory-message" />
+
+                <ui:VisualElement name="clue-use-panel" class="clue-use-panel">
+                    <ui:Label name="clue-use-title" text="" class="clue-use-panel__title" />
+
+                    <ui:VisualElement class="clue-use-panel__option">
+                        <ui:Button name="clue-use-extract-button" text="기억 추출" class="clue-use-panel__button" />
+                        <ui:Label name="clue-use-extract-reason" text="" class="clue-use-panel__reason" />
+                    </ui:VisualElement>
+
+                    <ui:Label name="clue-use-result" text="" class="clue-use-panel__result" />
+                    <ui:Button name="clue-use-close-button" text="닫기" class="clue-use-panel__close" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+
+            <!-- ── 복원도 탭 ─────────────────────────────────────────── -->
+            <ui:VisualElement name="restoration-panel" class="restoration-panel">
+                <ui:VisualElement name="restoration-toolbar" class="restoration-toolbar">
+                    <ui:Button name="restoration-connect-toggle" text="연결 모드" class="restoration-toolbar__toggle" />
+                    <ui:Button name="restoration-zoom-out" text="−" class="restoration-toolbar__zoom" />
+                    <ui:Button name="restoration-zoom-in" text="+" class="restoration-toolbar__zoom" />
+                    <ui:Button name="restoration-zoom-reset" text="전체" class="restoration-toolbar__zoom" />
+                    <ui:Label name="restoration-notice" text="" class="restoration-notice" />
+                </ui:VisualElement>
+
+                <!-- 색마다 "+메모" 컨트롤. 컨트롤러가 뿌리 생긴 색만 채운다. -->
+                <ui:VisualElement name="restoration-addbar" class="restoration-addbar" />
+
+                <!-- 고정 크기 창. 스크롤바 없이, 휠로 확대/축소하고 빈 곳을
+                     끌어 이동한다. restoration-pan이 이동을, restoration-canvas의
+                     scale이 확대/축소를 맡는다. -->
+                <ui:VisualElement name="restoration-viewport" class="restoration-viewport">
+                    <ui:VisualElement name="restoration-pan" class="restoration-pan">
+                        <ui:VisualElement name="restoration-canvas" class="restoration-canvas">
+                            <!-- 간선은 이 층에 Painter2D로 그린다(노드보다 뒤). -->
+                            <ui:VisualElement name="restoration-edges" class="restoration-edges" picking-mode="Ignore" />
+                            <!-- 노드와 간선 삭제 핸들은 이 층(노드보다 앞). -->
+                            <ui:VisualElement name="restoration-nodes" class="restoration-nodes" picking-mode="Ignore" />
+                        </ui:VisualElement>
+                    </ui:VisualElement>
+                </ui:VisualElement>
+            </ui:VisualElement>
+
         </ui:VisualElement>
     </ui:VisualElement>
 </ui:UXML>

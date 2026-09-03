@@ -139,12 +139,12 @@ namespace GameName.Tests.PlayMode
         {
             var view = Object.FindFirstObjectByType<MemoryRoomSpaceView>(FindObjectsInactive.Include);
             var clues = view.GetComponentsInChildren<ClueSceneObject>(includeInactive: true);
-            Assert.AreEqual(2, clues.Length, "방에 단서 두 종이 있어야 한다.");
+            Assert.GreaterOrEqual(clues.Length, 2, "방에 단서가 둘 이상 있어야 한다.");
 
-            // 높이로 종류를 가른다 — 포스터는 벽, 물건은 바닥이다.
+            // 높이로 종류를 가른다 — 포스터는 벽(가장 높음), 물건은 바닥(가장 낮음)이다.
             System.Array.Sort(clues, (a, b) => a.transform.localPosition.y.CompareTo(b.transform.localPosition.y));
             var floorObject = clues[0];
-            var poster = clues[1];
+            var poster = clues[clues.Length - 1];
 
             foreach (var clue in new[] { floorObject, poster })
             {

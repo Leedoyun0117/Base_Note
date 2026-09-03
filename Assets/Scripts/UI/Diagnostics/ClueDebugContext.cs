@@ -3,7 +3,6 @@ using GameName.UI.MemoryRoom;
 using GameName.UI.MemoryRoom.Space;
 using GameName.UI.Overlays;
 using GameName.UI.Session;
-using GameName.UI.Shared;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -157,7 +156,10 @@ namespace GameName.UI.Diagnostics
             if (session == null)
                 return false;
 
-            return CurrentRoomResolver.TryResolve(session.PlayerLocation.Current, session.RoomIds, out roomId);
+            // 방 진행이 RunProgressor로 넘어가면서 활성 방은 그래프 위 위치가
+            // 아니라 GameSession이 RoomStartedEvent로 추적하는 값이다.
+            roomId = session.CurrentRoomId;
+            return true;
         }
 
         public string CurrentPlaceText()
@@ -166,9 +168,7 @@ namespace GameName.UI.Diagnostics
             if (session == null)
                 return "(세션 없음)";
 
-            return TryGetCurrentRoom(out var roomId)
-                ? roomId.Value
-                : $"방 아님({session.PlayerLocation.Current.Value})";
+            return TryGetCurrentRoom(out var roomId) ? roomId.Value : "(방 없음)";
         }
 
         public ClueKindLookup CurrentRoomClues() =>

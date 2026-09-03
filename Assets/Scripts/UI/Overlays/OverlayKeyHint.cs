@@ -7,11 +7,11 @@ namespace GameName.UI.Overlays
     // 있으면 실제 키와 조용히 어긋난다. 여기서는 실제 설정값을 받아 문구를
     // 만들므로 둘이 갈라질 수 없다.
     //
-    // 인벤토리만 안내한다 — 화면에 버튼이 없어서 알려주지 않으면 존재 자체를
-    // 알 수 없기 때문이다. 확대 화면은 단서를 누르면 저절로 열린다.
+    // 가방만 안내한다 — 화면에 버튼이 없어서 알려주지 않으면 존재 자체를
+    // 알 수 없기 때문이다. 설명 창은 단서를 누르면 저절로 열린다.
     public static class OverlayKeyHint
     {
         public static string Describe(string inventoryKeyName) =>
-            $"{inventoryKeyName} 인벤토리(버리기)";
+            $"{inventoryKeyName} 가방";
     }
 }

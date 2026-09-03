@@ -86,17 +86,7 @@ namespace GameName.UI.Diagnostics
 
             line.Append($" | 인벤토리: {_context.InventoryText()}");
 
-            var exits = ExitSceneSnapshot.Capture(_context.View);
-            line.Append($" | 출입구 {exits.Count}개: {ExitSceneSnapshot.Describe(exits)}");
-
             ClueDebugLog.Write(line.ToString());
-
-            var exitOverlap = ExitSceneSnapshot.FindOverlaps(exits);
-            if (exitOverlap != null)
-            {
-                ClueDebugLog.Suspect(
-                    $"출입구의 판정 영역이 겹친다 — 겹친 쪽 중 하나는 눌러도 반응하지 않는다: {exitOverlap}");
-            }
 
             if (vanishedButAlive.Count > 0)
             {

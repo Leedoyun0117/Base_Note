@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1a5617ec52404d0d5f15e72368215018, type: 3}
+  m_Name: MemoryColorLabels
+  m_EditorClassIdentifier: GameName.UI::GameName.UI.Authoring.MemoryColorLabelAsset
+  _redName: "\uBE68\uAC15"
+  _greenName: "\uCD08\uB85D"
+  _blueName: "\uD30C\uB791"
+  _maskFormat: '[{0}]'

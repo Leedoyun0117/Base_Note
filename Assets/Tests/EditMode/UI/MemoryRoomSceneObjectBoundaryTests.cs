@@ -26,9 +26,9 @@ namespace GameName.UI.Tests.EditMode
         private static readonly Type[] SceneObjectTypes =
         {
             typeof(ClueSceneObject),
-            typeof(RoomExitSceneObject),
             typeof(PlayerCharacter),
             typeof(ScenePointerInput),
+            typeof(CameraShake),
         };
 
         private static readonly HashSet<Type> AllowedCoreTypes = new HashSet<Type>

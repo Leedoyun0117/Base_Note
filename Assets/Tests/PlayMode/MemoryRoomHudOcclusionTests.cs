@@ -37,9 +37,7 @@ namespace GameName.Tests.PlayMode
 
             _session = Object.FindFirstObjectByType<GameSessionBootstrap>(FindObjectsInactive.Include).Session;
 
-            Assert.AreEqual(
-                MemoryGraphNodeId.OfRoom(Room1), _session.PlayerLocation.Current,
-                "시작 지점이 첫 기억 방이 아니다.");
+            Assert.AreEqual(Room1, _session.CurrentRoomId, "첫 방이 room-1이 아니다.");
 
             // UI가 실제 크기를 잡아야 Pick이 의미 있는 답을 준다.
             yield return null;
@@ -83,6 +81,42 @@ namespace GameName.Tests.PlayMode
         private static bool IsCoveredByUI(Vector2 screenPosition) =>
             UIPointerOcclusion.IsPointerOverPickableElement(WiredDocuments(), screenPosition);
 
+        // 대화 패널은 하단 플레이 영역에 겹치도록 설계됐다(배경은 투명, 선택지
+        // 버튼·마스크 구간만 클릭을 받는다). 그래서 "방을 가린다"의 판정에서는
+        // 대화 패널이 소유한 요소를 제외하고, HUD 바/안내 같은 껍데기만 본다.
+        private static bool CoveredByChrome(Vector2 screenPosition)
+        {
+            foreach (var document in WiredDocuments())
+            {
+                if (document == null || !document.isActiveAndEnabled)
+                    continue;
+
+                var panel = document.rootVisualElement.panel;
+                if (panel == null || document.rootVisualElement.resolvedStyle.display == DisplayStyle.None)
+                    continue;
+
+                var picked = panel.Pick(RuntimePanelUtils.ScreenToPanel(panel, screenPosition));
+                if (picked == null || picked == document.rootVisualElement || picked is TemplateContainer)
+                    continue;
+
+                if (!IsWithin(picked, "dialogue-panel"))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private static bool IsWithin(VisualElement element, string ancestorName)
+        {
+            for (var current = element; current != null; current = current.parent)
+            {
+                if (current.name == ancestorName)
+                    return true;
+            }
+
+            return false;
+        }
+
         [UnityTest]
         public IEnumerator 오버레이가_닫혀_있으면_방_어디를_눌러도_UI가_가로채지_않는다()
         {
@@ -98,8 +132,8 @@ namespace GameName.Tests.PlayMode
                 {
                     var screenPosition = ScreenPositionOf(layout, ratio, kind);
                     Assert.IsFalse(
-                        IsCoveredByUI(screenPosition),
-                        $"비율 {ratio:0.00}의 {kind} 자리가 UI에 가려져 있다.");
+                        CoveredByChrome(screenPosition),
+                        $"비율 {ratio:0.00}의 {kind} 자리가 HUD 껍데기에 가려져 있다.");
                 }
             }
 
@@ -115,10 +149,10 @@ namespace GameName.Tests.PlayMode
             foreach (var ratio in new[] { 0f, 0.02f, 0.98f, 1f })
             {
                 Assert.IsFalse(
-                    IsCoveredByUI(ScreenPositionOf(layout, ratio, ClueKind.Poster)),
+                    CoveredByChrome(ScreenPositionOf(layout, ratio, ClueKind.Poster)),
                     $"왼쪽/오른쪽 끝(비율 {ratio})의 포스터가 가려져 있다.");
                 Assert.IsFalse(
-                    IsCoveredByUI(ScreenPositionOf(layout, ratio, ClueKind.FloorObject)),
+                    CoveredByChrome(ScreenPositionOf(layout, ratio, ClueKind.FloorObject)),
                     $"왼쪽/오른쪽 끝(비율 {ratio})의 바닥 물건이 가려져 있다.");
             }
 
@@ -156,7 +190,15 @@ namespace GameName.Tests.PlayMode
             var hudRoot = Object.FindFirstObjectByType<MemoryRoomBootstrap>(FindObjectsInactive.Include)
                 .GetComponent<UIDocument>().rootVisualElement;
 
-            foreach (var containerName in new[] { "screen", "hud-bar", "hud-messages" })
+            // 대화 패널의 배경·본문 컨테이너도 포인터를 통과시켜야 한다 —
+            // 클릭을 받는 것은 그 안의 선택지 버튼과 마스크 구간뿐이다.
+            var passthrough = new[]
+            {
+                "screen", "hud-bar", "hud-messages",
+                "dialogue-panel", "dialogue-body", "dialogue-choices",
+            };
+
+            foreach (var containerName in passthrough)
             {
                 var container = hudRoot.Q<VisualElement>(containerName);
                 Assert.IsNotNull(container, $"{containerName}을 찾지 못했다.");

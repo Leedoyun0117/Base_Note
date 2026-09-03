@@ -15,11 +15,16 @@ namespace GameName.UI.MemoryRoom.Space
         public ClueKind Kind { get; }
         public Vector2 Position { get; }
 
-        public ClueSceneItem(ClueId clueId, ClueKind kind, Vector2 position)
+        // 지금 가시 비율 안에 있어 집을 수 있는가. false면 회색 처리 + 콜라이더
+        // 비활성으로 그린다 — 판정 자체는 컨트롤러가 Core 정책으로 이미 했다.
+        public bool Accessible { get; }
+
+        public ClueSceneItem(ClueId clueId, ClueKind kind, Vector2 position, bool accessible)
         {
             ClueId = clueId;
             Kind = kind;
             Position = position;
+            Accessible = accessible;
         }
     }
 }

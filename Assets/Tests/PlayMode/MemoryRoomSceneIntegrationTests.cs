@@ -29,7 +29,6 @@ namespace GameName.Tests.PlayMode
         // 이 씬이 Build Settings에 등록되어 있어야 한다(등록되어 있다).
         private const string SceneName = "LDY_GameScene";
         private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
-        private static readonly MemoryRoomId Room2 = new MemoryRoomId("room-2");
 
         private GameSession _session;
 
@@ -49,13 +48,10 @@ namespace GameName.Tests.PlayMode
             Assert.IsNotNull(_session, "GameSession이 조립되지 않았다.");
         }
 
-        // 데모 데이터의 시작 지점이 곧 첫 기억 방이다 — 허브에서는 방이 그려지지
-        // 않아 출입구 오브젝트도 없으므로, 시작 지점은 반드시 기억 방이어야 한다.
+        // RunProgressor가 조립 끝에 첫 방으로 진입시킨다 — 데모의 첫 방은 room-1이다.
         private IEnumerator EnterFirstMemoryRoom()
         {
-            Assert.AreEqual(
-                MemoryGraphNodeId.OfRoom(Room1), _session.PlayerLocation.Current,
-                "시작 지점이 첫 기억 방이 아니다.");
+            Assert.AreEqual(Room1, _session.CurrentRoomId, "첫 방이 room-1이 아니다.");
             yield return null;
         }
 
@@ -98,16 +94,20 @@ namespace GameName.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator 방에_단서_두_종이_실제_오브젝트로_놓인다()
+        public IEnumerator 방에_놓인_단서가_실제_오브젝트로_두_종_모두_생긴다()
         {
             yield return EnterFirstMemoryRoom();
 
             var clues = FindClueObjects(FindSpaceView());
-            Assert.AreEqual(2, clues.Length, "방에 놓인 단서 오브젝트 개수가 다르다.");
+            Assert.AreEqual(5, clues.Length, "room-1에 놓인 단서 오브젝트 개수가 저작 데이터와 다르다.");
 
             // 마우스로 집을 수 있으려면 판정용 콜라이더가 있어야 한다.
             foreach (var clue in clues)
                 Assert.IsNotNull(clue.GetComponent<BoxCollider2D>(), "단서에 마우스 판정 콜라이더가 없다.");
+
+            // 포스터는 벽 높이, 바닥 물건은 바닥 — 둘 다 놓여 있어야 한다.
+            var heights = clues.Select(c => c.transform.localPosition.y).Distinct().ToArray();
+            Assert.GreaterOrEqual(heights.Length, 2, "포스터와 바닥 물건이 서로 다른 높이로 놓이지 않았다.");
         }
 
         [UnityTest]
@@ -122,48 +122,30 @@ namespace GameName.Tests.PlayMode
             var floorHeight = RoomGeometry.FloorTopY(layout) + layout.FloorObjectSize / 2f;
             var posterHeight = RoomGeometry.FloorTopY(layout) + layout.PosterMountHeight;
 
+            // 가장 낮은 것은 바닥 물건, 가장 높은 것은 포스터여야 한다.
             Assert.AreEqual(floorHeight, heights[0], 0.001f, "바닥 물건이 바닥에 놓이지 않았다.");
-            Assert.AreEqual(posterHeight, heights[1], 0.001f, "포스터가 벽 높이에 걸리지 않았다.");
+            Assert.AreEqual(posterHeight, heights[heights.Length - 1], 0.001f, "포스터가 벽 높이에 걸리지 않았다.");
         }
 
         [UnityTest]
-        public IEnumerator 방에서_나가는_지점이_실제_오브젝트로_생긴다()
-        {
-            yield return EnterFirstMemoryRoom();
-
-            var exits = FindSpaceView().GetComponentsInChildren<RoomExitSceneObject>(includeInactive: true);
-
-            // 데모 데이터는 방1-방2-방3 선형 사다리라 방1의 드나드는 지점은
-            // 방2로 가는 사다리 하나뿐이다.
-            Assert.AreEqual(1, exits.Length, "드나드는 지점 개수가 그래프와 다르다.");
-        }
-
-        [UnityTest]
-        public IEnumerator 집은_단서는_방에서_사라지고_버리면_다시_나타난다()
+        public IEnumerator 집은_단서는_방에서_바로_사라지고_인벤토리에_들어간다()
         {
             yield return EnterFirstMemoryRoom();
 
             var view = FindSpaceView();
             var beforeCount = FindClueObjects(view).Length;
 
-            // 실제 습득 경로(ClueCollector)를 그대로 쓴다.
+            // 실제 습득 경로(ClueCollectionProcessor)를 그대로 쓴다. 성공하면
+            // ClueCollectedEvent가 발행되어 방이 즉시 다시 그려지고, 인벤토리
+            // 투영이 단서를 슬롯에 넣는다.
             var clueId = ReadClueId(FindClueObjects(view)[0]);
-            Assert.IsTrue(_session.ClueCollector.Collect(clueId).Succeeded, "단서를 집지 못했다.");
-
-            // 옆 방에 갔다 돌아오면 방이 다시 그려진다.
-            _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room2));
-            yield return null;
-            _session.MovementProcessor.Move(MemoryGraphNodeId.OfRoom(Room1));
+            Assert.IsTrue(_session.ClueCollectionProcessor.Collect(clueId).Succeeded, "단서를 집지 못했다.");
             yield return null;
 
             Assert.AreEqual(beforeCount - 1, FindClueObjects(view).Length, "집은 단서가 방에서 사라지지 않았다.");
-
-            // 버리면 이벤트로 방이 즉시 다시 그려진다.
-            var carried = _session.Inventory.Items.OfType<ClueInfo>().First();
-            Assert.IsTrue(_session.ClueDropProcessor.Drop(carried).Succeeded, "단서를 버리지 못했다.");
-            yield return null;
-
-            Assert.AreEqual(beforeCount, FindClueObjects(view).Length, "버린 단서가 방에 다시 나타나지 않았다.");
+            Assert.IsTrue(
+                _session.Inventory.Items.OfType<ClueInfo>().Any(c => c.Id.Equals(clueId)),
+                "집은 단서가 인벤토리에 들어가지 않았다.");
         }
 
         [UnityTest]
