@@ -19,11 +19,18 @@ namespace GameName.Core.Authoring
         // IExtractionBudgetSpender이고, 여기 있는 것은 그 시작값이다.
         public int ExtractionBudget { get; }
 
-        public RunDefinition(IReadOnlyList<RoomDefinition> rooms, int startingTrust, int extractionBudget)
+        // 랜덤 분기 풀을 확정할 때 쓰는 시드. 런 시작 시 BranchResolver가 이
+        // 값으로 각 풀의 후보를 결정적으로 고른다. 테스트에서 고정하려고 밖에서
+        // 주입할 수 있게 데이터로 들고 있으며, 분기 풀이 없으면 아무 데도 안 쓰인다.
+        public int Seed { get; }
+
+        public RunDefinition(
+            IReadOnlyList<RoomDefinition> rooms, int startingTrust, int extractionBudget, int seed = 0)
         {
             Rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
             StartingTrust = startingTrust;
             ExtractionBudget = extractionBudget;
+            Seed = seed;
         }
     }
 }

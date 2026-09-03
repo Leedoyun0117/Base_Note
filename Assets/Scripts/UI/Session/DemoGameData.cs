@@ -33,6 +33,10 @@ namespace GameName.UI.Session
         private const int StartingTrust = 3;
         private const int ExtractionBudget = 5;
 
+        // 랜덤 분기 풀 확정 시드. 데모 데이터엔 아직 풀이 없어 쓰이지 않지만,
+        // 실제 데이터 소스가 생기기 전까지 고정값을 박아 둔다.
+        private const int RunSeed = 20260903;
+
         // 신뢰도 → 방 가시 비율. 3에서 방 전체가 보이고, 깎일수록 가운데만 남는다.
         private static readonly Dictionary<int, float> VisibilityByTrust = new Dictionary<int, float>
         {
@@ -67,7 +71,8 @@ namespace GameName.UI.Session
             AddPlacements(cluePlacements, room2);
             AddPlacements(cluePlacements, room3);
 
-            var run = new RunDefinition(new[] { room1, room2, room3 }, StartingTrust, ExtractionBudget);
+            var run = new RunDefinition(
+                new[] { room1, room2, room3 }, StartingTrust, ExtractionBudget, RunSeed);
             var roomIds = new List<MemoryRoomId> { Room1, Room2, Room3 };
 
             return new GameSessionData(

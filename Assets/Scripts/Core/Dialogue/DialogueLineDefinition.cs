@@ -61,8 +61,8 @@ namespace GameName.Core.Dialogue
             string speaker,
             string authoredText,
             IReadOnlyList<ClueId> requiredClueIds,
-            DialogueLineId correctNext,
-            DialogueLineId incorrectNext)
+            DialogueLineId? correctNext,
+            DialogueLineId? incorrectNext)
         {
             Id = id;
             Speaker = speaker ?? throw new ArgumentNullException(nameof(speaker));
@@ -74,13 +74,17 @@ namespace GameName.Core.Dialogue
             IncorrectNext = incorrectNext;
         }
 
+        // 분기를 nullable로 받는 이유: 저작 도구(SO)에서 종류만 ClueSelection으로
+        // 골라 두고 분기 id를 아직 안 채운 껍데기 라인이 생길 수 있고, 그것이
+        // ToDefinition()에서 예외로 터지는 대신 ClueSelectionLineRule의 검사에
+        // 걸려야 하기 때문이다. 다 채워 넘기면 non-null이 그대로 실린다.
         public static DialogueLineDefinition ClueSelection(
             DialogueLineId id,
             string speaker,
             string authoredText,
             IReadOnlyList<ClueId> requiredClueIds,
-            DialogueLineId correctNext,
-            DialogueLineId incorrectNext) =>
+            DialogueLineId? correctNext,
+            DialogueLineId? incorrectNext) =>
             new DialogueLineDefinition(id, speaker, authoredText, requiredClueIds, correctNext, incorrectNext);
     }
 }

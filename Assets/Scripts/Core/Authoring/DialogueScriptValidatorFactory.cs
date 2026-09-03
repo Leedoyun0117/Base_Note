@@ -22,6 +22,7 @@ namespace GameName.Core.Authoring
                 new RoomCountRule(expectedRoomCount),
                 new NextLineExistsRule(),
                 new CorrectChoiceExistsRule(),
+                new BranchPoolIntegrityRule(),
                 new CensoredColorRevealableRule(tokens),
                 new CensorKeyColorConsistencyRule(tokens),
                 new ChoiceConditionCensorKeyExistsRule(tokens),

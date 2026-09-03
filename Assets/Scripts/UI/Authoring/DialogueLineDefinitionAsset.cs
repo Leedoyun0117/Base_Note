@@ -11,9 +11,25 @@ namespace GameName.UI.Authoring
     // 선택지는 별도 에셋이 아니라 이 안의 배열이다. 선택지는 자기가 달린 대사를
     // 떠나 존재할 수 없고 다른 대사가 공유하지도 않으므로, 에셋으로 쪼개면 파일만
     // 몇 배로 늘고 얻는 것이 없다.
+    //
+    // 줄의 종류는 _lineKind가 정한다 — TextChoice면 걸러진 텍스트 선택지에서
+    // 하나를 고르고, ClueSelection이면 가진 단서로 답한다. Unity 직렬화가 이런
+    // 합타입을 표현하지 못해, 고르지 않은 쪽 칸은 그냥 무시된다(아래 ChoiceEntry의
+    // _conditionKind와 같은 방식).
     [CreateAssetMenu(menuName = "GameName/Dialogue Line", fileName = "DialogueLine")]
     public sealed class DialogueLineDefinitionAsset : ScriptableObject
     {
+        public enum LineKind
+        {
+            // 지금까지의 방식: 걸러진 텍스트 선택지 목록에서 하나를 고른다.
+            TextChoice,
+
+            // "이 질문엔 가진 단서로 답하라": 들고 있는 단서로 답해 정답이면
+            // CorrectNext, 아니면 IncorrectNext(오답 서브체인)로 간다. 이 종류의
+            // 줄에는 텍스트 선택지를 두지 않는다.
+            ClueSelection
+        }
+
         // 인스펙터에서 한 줄로 접히지 않도록 조건 값들을 나란히 둔다. 어떤 값이
         // 쓰이는지는 _conditionKind가 정한다 — Unity 직렬화가 이런 합타입을
         // 표현하지 못해, 쓰이지 않는 칸은 그냥 무시된다.
@@ -69,15 +85,45 @@ namespace GameName.UI.Authoring
         [TextArea(3, 10)]
         [SerializeField] private string _authoredText;
 
+        [SerializeField] private LineKind _lineKind = LineKind.TextChoice;
+
+        [Header("텍스트 선택지 (LineKind = TextChoice)")]
         [SerializeField] private List<ChoiceEntry> _choices = new List<ChoiceEntry>();
+
+        [Header("단서로 답하기 (LineKind = ClueSelection)")]
+        // 이 중 하나면 정답. 여러 개 가능(학생증·교복 둘 다 정답 등).
+        [SerializeField] private List<string> _requiredClueIds = new List<string>();
+        // 정답 단서를 냈을 때 가는 줄, 오답이거나 넘겼을 때 가는 줄(오답 서브체인의
+        // 첫 줄). 아직 안 채웠으면 비워 둔다 — 검증기가 껍데기 줄을 잡는다.
+        [SerializeField] private string _correctNextLineId;
+        [SerializeField] private string _incorrectNextLineId;
 
         public DialogueLineDefinition ToDefinition()
         {
+            var id = new DialogueLineId(_lineId);
+
+            if (_lineKind == LineKind.ClueSelection)
+            {
+                var required = new List<ClueId>(_requiredClueIds.Count);
+                foreach (var clueId in _requiredClueIds)
+                {
+                    // 인스펙터에서 비어 있는 칸 하나 때문에 줄 전체를 못 읽게 만들지
+                    // 않는다. 정답 단서가 하나도 없다는 것 자체는 검증기가 잡는다.
+                    if (!string.IsNullOrWhiteSpace(clueId))
+                        required.Add(new ClueId(clueId));
+                }
+
+                return DialogueLineDefinition.ClueSelection(
+                    id, _speaker, _authoredText, required,
+                    AuthoredIds.OptionalLine(_correctNextLineId),
+                    AuthoredIds.OptionalLine(_incorrectNextLineId));
+            }
+
             var choices = new List<ChoiceDefinition>(_choices.Count);
             foreach (var choice in _choices)
                 choices.Add(choice.ToDefinition());
 
-            return new DialogueLineDefinition(new DialogueLineId(_lineId), _speaker, _authoredText, choices);
+            return new DialogueLineDefinition(id, _speaker, _authoredText, choices);
         }
     }
 }

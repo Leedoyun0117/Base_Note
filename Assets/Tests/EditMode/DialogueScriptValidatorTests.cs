@@ -453,5 +453,210 @@ namespace GameName.Core.Tests.EditMode
 
             CollectionAssert.IsEmpty(Errors(Validator().Validate(RunWith(room))));
         }
+
+        // ── 분기 풀 검증 ─────────────────────────────────────────────────
+
+        // 후보들은 슬롯 id를 공유한다. tag(AuthoredText)로만 서로 구분된다.
+        private static DialogueLineDefinition Candidate(
+            string slotId, string tag, params ChoiceDefinition[] choices) =>
+            new DialogueLineDefinition(new DialogueLineId(slotId), "화자", tag, choices);
+
+        private static BranchPool Pool(string slotId, int count) =>
+            new BranchPool(Enumerable.Range(1, count)
+                .Select(i => Candidate(
+                    slotId, $"{slotId}-{i}", Choice($"{slotId}-{i}-c", isCorrect: true)))
+                .ToArray());
+
+        private static RoomDefinition RoomWithPools(
+            IReadOnlyList<DialogueLineDefinition> lines,
+            IReadOnlyList<BranchPool> pools,
+            string startLineId = "line-1") =>
+            new RoomDefinition(
+                new MemoryRoomId("room-1"),
+                new[] { Clue("room-1-clue", MemoryColor.Red, 0.2f) },
+                startLineId == null ? (DialogueLineId?)null : new DialogueLineId(startLineId),
+                lines,
+                pools);
+
+        [Test]
+        public void 분기_풀_후보가_하나뿐이면_오류다()
+        {
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { Pool("slot", 1) });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 분기_풀_후보들이_서로_다른_라인_id를_쓰면_오류다()
+        {
+            var pool = new BranchPool(new[]
+            {
+                Candidate("slot", "a", Choice("a-c", isCorrect: true)),
+                Candidate("slot-다른", "b", Choice("b-c", isCorrect: true)),
+            });
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { pool });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 분기_풀_슬롯_id가_같은_방의_고정_라인_id와_겹치면_오류다()
+        {
+            var room = RoomWithPools(
+                new[]
+                {
+                    Line("line-1", "", Choice("c", isCorrect: true, next: "slot")),
+                    Line("slot", "고정인데 슬롯 id와 같다"),
+                },
+                new[] { Pool("slot", 2) });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 두_분기_풀이_같은_슬롯_id를_쓰면_오류다()
+        {
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { Pool("slot", 2), Pool("slot", 2) });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 분기_풀_후보의_끊긴_Next는_오류다()
+        {
+            var pool = new BranchPool(new[]
+            {
+                Candidate("slot", "a", Choice("a-c", isCorrect: true, next: "line-없음")),
+                Candidate("slot", "b", Choice("b-c", isCorrect: true)),
+            });
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { pool });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 모든_후보가_막다른_길인_분기_풀은_오류다()
+        {
+            var pool = new BranchPool(new[]
+            {
+                Candidate("slot", "a", Choice("a-c", isCorrect: false)),
+                Candidate("slot", "b", Choice("b-c", isCorrect: false)),
+            });
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { pool });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 백본이_분기_풀_슬롯_id로_Next를_걸어도_참조_검사에_안_걸린다()
+        {
+            // 슬롯 id는 "없는 대사"가 아니다 — 뽑힌 후보가 그 자리에 들어온다.
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { Pool("slot", 2) });
+
+            CollectionAssert.IsEmpty(Errors(Validator().Validate(RunWith(room))));
+        }
+
+        [Test]
+        public void 제대로_저작된_분기_풀은_문제가_없다()
+        {
+            var pool = new BranchPool(new[]
+            {
+                Candidate("slot", "짧은 답", Choice("slot-short", isCorrect: true, next: "line-2")),
+                Candidate("slot", "긴 답", Choice("slot-long", isCorrect: true, next: "line-2")),
+            });
+            var room = RoomWithPools(
+                new[]
+                {
+                    Line("line-1", "", Choice("to-slot", isCorrect: true, next: "slot")),
+                    Line("line-2", "", Choice("end", isCorrect: true)),
+                },
+                new[] { pool });
+
+            CollectionAssert.IsEmpty(Errors(Validator().Validate(RunWith(room))));
+        }
+
+        [Test]
+        public void 풀_후보_원문에_걸린_검열도_해금_가능성_검사를_받는다()
+        {
+            // 방 단서는 Red만 내주는데(RoomWithPools 기본) 후보가 Blue 검열을 쓴다
+            // → 그 후보가 뽑히면 그 말은 영영 안 풀린다.
+            var pool = new BranchPool(new[]
+            {
+                Candidate("slot", "안전한 후보", Choice("safe", isCorrect: true)),
+                Candidate("slot", "우리가 [[B:beach:그 해변 집]]에 있었지", Choice("bad", isCorrect: true)),
+            });
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { pool });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 풀_후보_선택지_문구에_걸린_검열도_검사를_받는다()
+        {
+            var pool = new BranchPool(new[]
+            {
+                Candidate("slot", "본문", Choice("a", isCorrect: true)),
+                Candidate("slot", "본문",
+                    Choice("b", isCorrect: true, authoredText: "[[G:that-name:그 이름]]을 말한다")),
+            });
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { pool });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 풀_후보의_검열이_그_방에서_풀릴_수_있으면_통과한다()
+        {
+            var pool = new BranchPool(new[]
+            {
+                Candidate("slot", "우리가 [[R:place:거기]]서 만났지", Choice("a", isCorrect: true)),
+                Candidate("slot", "그때 [[R:place:그곳]] 기억나", Choice("b", isCorrect: true)),
+            });
+            // RoomWithPools 기본 단서가 Red 하나 → R 검열은 풀린다.
+            var room = RoomWithPools(
+                new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
+                new[] { pool });
+
+            CollectionAssert.IsEmpty(Errors(Validator().Validate(RunWith(room))));
+        }
+
+        [Test]
+        public void 풀_후보로_넣은_ClueSelection_라인도_성립_검사를_받는다()
+        {
+            // 정답 단서 집합이 비어 있고 분기도 안 지정된 ClueSelection 후보.
+            var broken = DialogueLineDefinition.ClueSelection(
+                new DialogueLineId("slot"), "화자", "무엇을 쥐고 있었어?",
+                System.Array.Empty<ClueId>(), null, null);
+            var ok = DialogueLineDefinition.ClueSelection(
+                new DialogueLineId("slot"), "화자", "그때 손엔 뭐가?",
+                new[] { new ClueId("room-1-clue") },
+                new DialogueLineId("line-2"), new DialogueLineId("line-2"));
+
+            var room = RoomWithPools(
+                new[]
+                {
+                    Line("line-1", "", Choice("c", isCorrect: true, next: "slot")),
+                    Line("line-2", "", Choice("end", isCorrect: true)),
+                },
+                new[] { new BranchPool(new[] { broken, ok }) });
+
+            Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
     }
 }

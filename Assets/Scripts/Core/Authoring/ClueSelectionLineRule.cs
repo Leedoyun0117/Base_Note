@@ -26,7 +26,7 @@ namespace GameName.Core.Authoring
                 foreach (var clue in room.Clues)
                     roomClues.Add(clue.Id);
 
-                foreach (var line in room.DialogueLines)
+                foreach (var line in room.EnumerateAuthoredLines())
                 {
                     if (line.PromptKind != DialoguePromptKind.ClueSelection)
                         continue;

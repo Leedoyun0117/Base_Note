@@ -35,7 +35,7 @@ namespace GameName.Core.Authoring
             var tokens = _tokens.For(run);
 
             foreach (var room in run.Rooms)
-            foreach (var line in room.DialogueLines)
+            foreach (var line in room.EnumerateAuthoredLines())
             foreach (var choice in line.Choices)
             {
                 if (choice.Condition.Kind != ChoiceConditionKind.CensorKeyRevealed)

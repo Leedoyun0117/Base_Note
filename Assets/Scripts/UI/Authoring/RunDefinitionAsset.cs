@@ -19,6 +19,10 @@ namespace GameName.UI.Authoring
         [SerializeField] private int _startingTrust = 50;
         [SerializeField] private int _extractionBudget = 5;
 
+        // 랜덤 분기 풀을 확정하는 시드. 한 판 동안 고정된다 — 같은 시드면 같은
+        // 분기가 뽑힌다. 분기 풀이 없으면 아무 데도 안 쓰인다.
+        [SerializeField] private int _seed;
+
         public IReadOnlyList<RoomDefinitionAsset> Rooms => _rooms;
 
         public RunDefinition ToDefinition()
@@ -30,7 +34,7 @@ namespace GameName.UI.Authoring
                     rooms.Add(room.ToDefinition());
             }
 
-            return new RunDefinition(rooms, _startingTrust, _extractionBudget);
+            return new RunDefinition(rooms, _startingTrust, _extractionBudget, _seed);
         }
     }
 }

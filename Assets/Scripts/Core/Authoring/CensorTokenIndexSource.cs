@@ -43,19 +43,34 @@ namespace GameName.Core.Authoring
             var uses = new List<CensorTokenUse>();
 
             foreach (var room in run.Rooms)
-            foreach (var line in room.DialogueLines)
             {
-                Collect(uses, room.Id, line.AuthoredText, $"방 {room.Id}의 대사 {line.Id}");
+                foreach (var line in room.DialogueLines)
+                    CollectLine(uses, room.Id, line, $"방 {room.Id}의 대사 {line.Id}");
 
-                foreach (var choice in line.Choices)
+                // 분기 풀 후보의 원문도 화면에 나갈 수 있다 — 뽑히면 그 방 대사가
+                // 된다. 후보끼리 슬롯 id를 공유하므로 자리를 알아볼 수 있게 라벨을
+                // 따로 찍는다.
+                foreach (var pool in room.BranchPools)
+                foreach (var candidate in pool.Candidates)
                 {
-                    Collect(
-                        uses, room.Id, choice.AuthoredText,
-                        $"방 {room.Id}의 대사 {line.Id}에 달린 선택지 {choice.Id}");
+                    CollectLine(
+                        uses, room.Id, candidate, $"방 {room.Id}의 분기 풀 후보 {candidate.Id}");
                 }
             }
 
             return new CensorTokenIndex(uses);
+        }
+
+        private void CollectLine(
+            ICollection<CensorTokenUse> uses,
+            MemoryRoomId roomId,
+            DialogueLineDefinition line,
+            string lineLocation)
+        {
+            Collect(uses, roomId, line.AuthoredText, lineLocation);
+
+            foreach (var choice in line.Choices)
+                Collect(uses, roomId, choice.AuthoredText, $"{lineLocation}에 달린 선택지 {choice.Id}");
         }
 
         private void Collect(

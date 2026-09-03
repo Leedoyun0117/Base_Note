@@ -28,6 +28,11 @@ namespace GameName.UI.Authoring
         [SerializeField] private List<DialogueLineDefinitionAsset> _lines =
             new List<DialogueLineDefinitionAsset>();
 
+        // 고정 백본 사이에 끼는 랜덤 분기 풀. 각 풀은 런 시작 시 후보 하나로
+        // 확정되어 위 _lines에 병합된다(BranchResolver). 백본 라인은 풀의 슬롯
+        // id로 Next를 건다.
+        [SerializeField] private List<BranchPoolAsset> _branchPools = new List<BranchPoolAsset>();
+
         public MemoryRoomLayoutAsset Layout => _layout;
 
         public MemoryRoomId RoomId => new MemoryRoomId(_roomId);
@@ -50,7 +55,15 @@ namespace GameName.UI.Authoring
                     lines.Add(line.ToDefinition());
             }
 
-            return new RoomDefinition(RoomId, clues, AuthoredIds.OptionalLine(_startLineId), lines);
+            var branchPools = new List<BranchPool>(_branchPools.Count);
+            foreach (var pool in _branchPools)
+            {
+                if (pool != null)
+                    branchPools.Add(pool.ToDefinition());
+            }
+
+            return new RoomDefinition(
+                RoomId, clues, AuthoredIds.OptionalLine(_startLineId), lines, branchPools);
         }
     }
 }

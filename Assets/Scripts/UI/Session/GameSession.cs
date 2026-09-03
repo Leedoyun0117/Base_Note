@@ -82,6 +82,11 @@ namespace GameName.UI.Session
             if (data == null) throw new ArgumentNullException(nameof(data));
             if (settings == null) throw new ArgumentNullException(nameof(settings));
 
+            // 랜덤 분기 풀을 런 시작 시 한 번 확정한다. 이 아래로는 고정 라인과
+            // 뽑힌 라인이 섞인 하나의 대화 그래프만 흐른다 — 처리기들은 풀의
+            // 존재를 모른다. 시드는 데이터에 실려 오므로 테스트에서 고정할 수 있다.
+            var run = BranchResolver.Resolve(data.Run, data.Run.Seed);
+
             EventBus = new EventBus(new NoOpEventExceptionHandler());
 
             Inventory = new PlayerInventory(settings.InventorySettings, new SharedSlotInventoryPolicy());
@@ -92,7 +97,7 @@ namespace GameName.UI.Session
             RoomIds = data.RoomIds;
 
             // ── 2단계 규칙 스택 ─────────────────────────────────────────────
-            var trust = new TrustGauge(data.Run.StartingTrust, EventBus);
+            var trust = new TrustGauge(run.StartingTrust, EventBus);
             Trust = trust;
 
             var wallet = new MemoryColorWallet();
@@ -100,10 +105,10 @@ namespace GameName.UI.Session
                 wallet.Add(starting.Key, starting.Value);
             Wallet = wallet;
 
-            var budget = new ExtractionBudget(data.Run.ExtractionBudget);
+            var budget = new ExtractionBudget(run.ExtractionBudget);
             ExtractionBudget = budget;
 
-            var clueState = new ClueStateStore(data.Run.Rooms, EventBus);
+            var clueState = new ClueStateStore(run.Rooms, EventBus);
             ClueState = clueState;
 
             var visibilityPolicy = new StepVisibilityPolicy(data.VisibilityByTrust);
@@ -136,15 +141,15 @@ namespace GameName.UI.Session
             var parser = new CensoredTextParser();
             CensoredTextParser = parser;
 
-            var censorKeyColors = new CensorTokenIndexColorMap(new CensorTokenIndexSource(parser), data.Run);
+            var censorKeyColors = new CensorTokenIndexColorMap(new CensorTokenIndexSource(parser), run);
             CensorKeyColors = censorKeyColors;
 
             CensorUnlock = new CensorUnlockProcessor(wallet, censorLog, censorKeyColors, EventBus);
-            Dialogue = new DialogueProgressor(data.Run.Rooms, censorLog, clueState, trust, EventBus);
+            Dialogue = new DialogueProgressor(run.Rooms, censorLog, clueState, trust, EventBus);
 
             // ── 방 진행 ────────────────────────────────────────────────────
             _ = new RoomCompletionArbiter(trust, EventBus);
-            var runProgressor = new RunProgressor(data.Run.Rooms, EventBus);
+            var runProgressor = new RunProgressor(run.Rooms, EventBus);
 
             // 현재 방 추적. RunProgressor.Start()가 첫 RoomStartedEvent를 내기 전에 걸어 둔다.
             EventBus.Subscribe<RoomStartedEvent>(e => CurrentRoomId = e.RoomId);
