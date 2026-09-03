@@ -655,13 +655,16 @@ namespace GameName.UI.Restoration
                 }
             }
 
-            // 판이 축소돼도 × 버튼은 화면상 크기를 유지한다(모서리 고정).
+            // 확대하면(zoom↑) 노드와 함께 커지는 × 를 되돌려 작게, 축소하면
+            // 살짝만 키운다. 역배율을 좁게 묶어(0.65~1.15) 옛날처럼 노드보다
+            // 커지는 일이 없게 한다 — 낮은 확대율에선 노드 자체가 작으니 이
+            // 정도면 충분히 눌린다.
             public void ApplyInverseZoom(float zoom)
             {
                 if (_deleteButton == null)
                     return;
 
-                var inverse = 1f / Mathf.Max(zoom, 0.01f);
+                var inverse = Mathf.Clamp(1f / Mathf.Max(zoom, 0.01f), 0.65f, 1.15f);
                 _deleteButton.style.scale = new Scale(new Vector2(inverse, inverse));
             }
 

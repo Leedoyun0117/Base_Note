@@ -149,6 +149,9 @@ namespace GameName.UI.Session
             // 현재 방 추적. RunProgressor.Start()가 첫 RoomStartedEvent를 내기 전에 걸어 둔다.
             EventBus.Subscribe<RoomStartedEvent>(e => CurrentRoomId = e.RoomId);
 
+            // 최적 선택 완주 시 콘솔에 "클리어"를 찍는 테스트용 관찰자.
+            _ = new PerfectRunReporter(EventBus);
+
             // 모든 구독자 조립이 끝난 뒤에 첫 방으로 진입한다 — 신뢰 게이지·단서
             // 단계·인벤토리·방 화면이 전부 이 사건을 받아 초기화해야 하기 때문이다.
             runProgressor.Start();

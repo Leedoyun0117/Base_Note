@@ -423,17 +423,17 @@
    잘리지 않도록 노드 밖으로 나가지 않는 방향이다. */
 .restoration-node__delete {
     position: absolute;
-    right: 1px;
-    top: 1px;
-    width: 18px;
-    height: 18px;
+    right: 2px;
+    top: 2px;
+    width: 15px;
+    height: 15px;
     padding: 0;
     border-width: 1px;
     border-color: var(--border-strong);
-    border-radius: 9px;
+    border-radius: 8px;
     background-color: var(--danger);
     color: rgb(30, 20, 20);
-    font-size: 13px;
+    font-size: 11px;
     -unity-text-align: middle-center;
     transform-origin: right top;
 }

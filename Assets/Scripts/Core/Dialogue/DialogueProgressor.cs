@@ -181,6 +181,7 @@ namespace GameName.Core.Dialogue
             _clueState.SetState(clueId, ClueState.UsedInDialogue);
 
             var correct = Contains(line.RequiredClueIds, clueId);
+            _eventBus.Publish(new ClueAnsweredEvent(correct));
             EnterLine(correct ? line.CorrectNext.Value : line.IncorrectNext.Value);
             return ChoiceSelectionResult.Advanced();
         }
@@ -200,6 +201,7 @@ namespace GameName.Core.Dialogue
                 return ChoiceSelectionResult.Rejected();
             }
 
+            _eventBus.Publish(new ClueAnsweredEvent(false));
             EnterLine(line.IncorrectNext.Value);
             return ChoiceSelectionResult.Advanced();
         }

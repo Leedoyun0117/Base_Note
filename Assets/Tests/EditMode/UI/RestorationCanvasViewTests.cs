@@ -82,11 +82,17 @@ namespace GameName.UI.Tests.EditMode
             view.AddNode(PlayerNode("p1"));
             var element = view.NodeElementFor(new RestorationNodeId("p1"));
 
-            view.SetZoomForTest(0.1f); // 크게 축소
+            // 확대(zoom↑): × 는 노드와 함께 커지므로 되돌려 작게(<1).
+            view.SetZoomForTest(1.6f);
+            Assert.AreSame(element.Root, element.DeleteButton.parent);
+            Assert.Less(element.DeleteButton.style.scale.value.value.x, 1f,
+                "확대 시 × 가 알아서 작아지지 않는다.");
 
+            // 축소(zoom↓): 살짝만 키우고 상한(1.15)에서 멈춘다 — 노드보다 커지지 않게.
+            view.SetZoomForTest(0.1f);
             Assert.AreSame(element.Root, element.DeleteButton.parent, "× 버튼이 노드에서 떨어져 나갔다.");
-            Assert.AreEqual(10f, element.DeleteButton.style.scale.value.value.x, 0.001f,
-                "축소된 만큼 반대 배율(1/zoom)이 걸리지 않았다 — 화면상 크기가 유지되지 않는다.");
+            Assert.AreEqual(1.15f, element.DeleteButton.style.scale.value.value.x, 0.001f,
+                "축소 시 역배율이 상한에서 멈추지 않는다 — × 가 노드보다 커진다.");
         }
 
         [Test]

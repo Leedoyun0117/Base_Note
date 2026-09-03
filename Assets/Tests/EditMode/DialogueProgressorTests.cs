@@ -37,6 +37,7 @@ namespace GameName.Core.Tests.EditMode
             public readonly List<DialogueLineEnteredEvent> Entered = new List<DialogueLineEnteredEvent>();
             public readonly List<ChoiceSelectedEvent> Selected = new List<ChoiceSelectedEvent>();
             public readonly List<DialogueEndedEvent> Ended = new List<DialogueEndedEvent>();
+            public readonly List<ClueAnsweredEvent> ClueAnswered = new List<ClueAnsweredEvent>();
 
             public Fixture(string startLine, IReadOnlyList<DialogueLineDefinition> lines, IReadOnlyList<ClueDefinition> clues = null)
             {
@@ -51,6 +52,7 @@ namespace GameName.Core.Tests.EditMode
                 Bus.Subscribe<DialogueLineEnteredEvent>(Entered.Add);
                 Bus.Subscribe<ChoiceSelectedEvent>(Selected.Add);
                 Bus.Subscribe<DialogueEndedEvent>(Ended.Add);
+                Bus.Subscribe<ClueAnsweredEvent>(ClueAnswered.Add);
 
                 Bus.Publish(new RoomStartedEvent(TheRoom, 0));
             }
@@ -250,6 +252,7 @@ namespace GameName.Core.Tests.EditMode
                 Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
                 Assert.AreEqual(new DialogueLineId("right"), fx.Progressor.CurrentLineId);
                 Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId(answer)));
+                CollectionAssert.AreEqual(new[] { true }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect));
             }
         }
 
@@ -264,6 +267,8 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(new DialogueLineId("wrong-1"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(3, fx.Trust.Current, "단서 오답은 신뢰를 깎지 않는다.");
             Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId("clue-c")));
+            CollectionAssert.AreEqual(new[] { false }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect),
+                "오답은 신뢰를 안 깎는 대신 ClueAnsweredEvent(false)로만 흔적을 남긴다.");
         }
 
         [Test]
@@ -299,6 +304,8 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
             Assert.AreEqual(new DialogueLineId("wrong-1"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(ClueState.Collected, fx.ClueState.GetState(new ClueId("clue-a")), "넘어가면 단서를 소모하지 않는다.");
+            CollectionAssert.AreEqual(new[] { false }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect),
+                "넘어가기도 정답이 아니므로 ClueAnsweredEvent(false)다.");
         }
 
         [Test]
