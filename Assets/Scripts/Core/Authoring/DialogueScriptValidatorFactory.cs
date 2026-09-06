@@ -23,7 +23,7 @@ namespace GameName.Core.Authoring
                 new NextLineExistsRule(),
                 new CorrectChoiceExistsRule(),
                 new BranchPoolIntegrityRule(),
-                new CensoredColorRevealableRule(tokens),
+                new CensorKeyTagRequirementRule(tokens),
                 new CensorKeyColorConsistencyRule(tokens),
                 new ChoiceConditionCensorKeyExistsRule(tokens),
                 new CluePositionOverlapRule(minimumClueSeparation),

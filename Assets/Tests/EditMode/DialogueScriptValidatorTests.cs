@@ -70,8 +70,18 @@ namespace GameName.Core.Tests.EditMode
         private static RunDefinition Run(params RoomDefinition[] rooms) =>
             new RunDefinition(rooms, startingTrust: 50, startingHiromi: 5);
 
-        private static RunDefinition RunWith(RoomDefinition room) =>
-            Run(room, Room("room-2"), Room("room-3"));
+        private static RunDefinition Run(CensorKeyTagRequirement[] requirements, params RoomDefinition[] rooms) =>
+            new RunDefinition(
+                rooms, startingTrust: 50, startingHiromi: 5, censorKeyTagRequirements: requirements);
+
+        private static RunDefinition RunWith(RoomDefinition room, params CensorKeyTagRequirement[] requirements) =>
+            Run(requirements, room, Room("room-2"), Room("room-3"));
+
+        // 검열 키 하나에 요구 태그를 매기는 저작 데이터. 검열이 걸린 대사가 있는
+        // 테스트는 이 항목이 있어야 CensorKeyTagRequirementRule을 통과한다.
+        private static CensorKeyTagRequirement Req(string key, params string[] tags) =>
+            new CensorKeyTagRequirement(
+                new CensorKey(key), System.Array.ConvertAll(tags, t => new ClueTag(t)));
 
         [Test]
         public void 대사가_전부_비어_있어도_방_세_개는_검증을_통과한다()
@@ -138,8 +148,10 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 그_방_단서가_내주지_않는_색의_검열은_오류다()
+        public void 요구_태그가_저작되지_않은_검열_키는_오류다()
         {
+            // 대사에 검열이 걸렸는데 그 키를 푸는 요구 태그(CensorKeyTagRequirement)를
+            // 안 적었다 → 런타임에서 UnknownKey로 영영 안 풀린다.
             var room = Room(
                 "room-1",
                 new[] { Clue("clue-1", MemoryColor.Red, 0.2f) },
@@ -150,7 +162,7 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 그_방_단서가_내주는_색의_검열은_통과한다()
+        public void 요구_태그를_그_방까지의_단서가_가지면_통과한다()
         {
             var room = Room(
                 "room-1",
@@ -158,11 +170,25 @@ namespace GameName.Core.Tests.EditMode
                 "line-1",
                 Line("line-1", "우리가 [[B:beach-house:해변의 작은 집]]에서 보냈던 시절이 그리워."));
 
-            CollectionAssert.IsEmpty(Validator().Validate(RunWith(room)));
+            CollectionAssert.IsEmpty(
+                Validator().Validate(RunWith(room, Req("beach-house", "clue-1"))));
         }
 
         [Test]
-        public void 선택지_문구에_걸린_검열도_같은_검사를_받는다()
+        public void 요구_태그를_어떤_단서도_갖지_않으면_오류다()
+        {
+            var room = Room(
+                "room-1",
+                new[] { Clue("clue-1", MemoryColor.Blue, 0.2f) },
+                "line-1",
+                Line("line-1", "우리가 [[B:beach-house:해변의 작은 집]]에서 보냈던 시절이 그리워."));
+
+            Assert.AreEqual(1,
+                Errors(Validator().Validate(RunWith(room, Req("beach-house", "없는태그")))).Count);
+        }
+
+        [Test]
+        public void 선택지_문구에_걸린_검열도_요구_태그_검사를_받는다()
         {
             var room = Room(
                 "room-1",
@@ -221,7 +247,8 @@ namespace GameName.Core.Tests.EditMode
                 Line("line-1", "그 시절 [[B:beach-house:해변의 작은 집]]이 그립다."),
                 Line("line-2", "[[R:beach-house:그 집]]은 이제 없다."));
 
-            Assert.AreEqual(1, Errors(Validator().Validate(RunWith(room))).Count);
+            Assert.AreEqual(1,
+                Errors(Validator().Validate(RunWith(room, Req("beach-house", "clue-1")))).Count);
         }
 
         [Test]
@@ -234,7 +261,8 @@ namespace GameName.Core.Tests.EditMode
                 Line("line-1", "그 시절 [[B:beach-house:해변의 작은 집]]이 그립다."),
                 Line("line-2", "[[B:beach-house:그 집]]은 이제 없다."));
 
-            CollectionAssert.IsEmpty(Validator().Validate(RunWith(room)));
+            CollectionAssert.IsEmpty(
+                Validator().Validate(RunWith(room, Req("beach-house", "clue-1"))));
         }
 
         [Test]
@@ -254,7 +282,8 @@ namespace GameName.Core.Tests.EditMode
                 "line-2",
                 Line("line-2", "[[R:beach-house:그 집]]"));
 
-            Assert.AreEqual(1, Errors(Validator().Validate(Run(first, second, Room("room-3")))).Count);
+            Assert.AreEqual(1, Errors(Validator().Validate(
+                Run(new[] { Req("beach-house", "clue-1") }, first, second, Room("room-3")))).Count);
         }
 
         [Test]
@@ -272,7 +301,8 @@ namespace GameName.Core.Tests.EditMode
                 Line("line-2", "[[R:beach-house:그 집]]"),
                 Line("line-3", "[[R:beach-house:거기]]"));
 
-            Assert.AreEqual(1, Errors(Validator().Validate(RunWith(room))).Count);
+            Assert.AreEqual(1,
+                Errors(Validator().Validate(RunWith(room, Req("beach-house", "clue-1")))).Count);
         }
 
         [Test]
@@ -289,7 +319,8 @@ namespace GameName.Core.Tests.EditMode
                 Line("line-1", "[[B:beach-house:해변의 작은 집]]",
                     Choice("choice-1", isCorrect: true, authoredText: "[[R:beach-house:그 집]] 이야기를 꺼낸다")));
 
-            Assert.AreEqual(1, Errors(Validator().Validate(RunWith(room))).Count);
+            Assert.AreEqual(1,
+                Errors(Validator().Validate(RunWith(room, Req("beach-house", "clue-1")))).Count);
         }
 
         [Test]
@@ -306,7 +337,8 @@ namespace GameName.Core.Tests.EditMode
                     Choice("choice-1", isCorrect: true,
                         condition: ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey("the-ring")))));
 
-            Assert.AreEqual(1, Errors(Validator().Validate(RunWith(room))).Count);
+            Assert.AreEqual(1,
+                Errors(Validator().Validate(RunWith(room, Req("beach-house", "clue-1")))).Count);
         }
 
         [Test]
@@ -320,7 +352,8 @@ namespace GameName.Core.Tests.EditMode
                     Choice("choice-1", isCorrect: true,
                         condition: ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey("beach-house")))));
 
-            CollectionAssert.IsEmpty(Validator().Validate(RunWith(room)));
+            CollectionAssert.IsEmpty(
+                Validator().Validate(RunWith(room, Req("beach-house", "clue-1"))));
         }
 
         [Test]
@@ -343,7 +376,8 @@ namespace GameName.Core.Tests.EditMode
                     Choice("choice-1", isCorrect: true,
                         condition: ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey("beach-house")))));
 
-            CollectionAssert.IsEmpty(Validator().Validate(Run(first, second, Room("room-3"))));
+            CollectionAssert.IsEmpty(Validator().Validate(
+                Run(new[] { Req("beach-house", "clue-1") }, first, second, Room("room-3"))));
         }
 
         [Test]
@@ -360,7 +394,8 @@ namespace GameName.Core.Tests.EditMode
                     Choice("choice-2", isCorrect: false,
                         condition: ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey("beach-house")))));
 
-            CollectionAssert.IsEmpty(Validator().Validate(RunWith(room)));
+            CollectionAssert.IsEmpty(
+                Validator().Validate(RunWith(room, Req("beach-house", "clue-1"))));
         }
 
         [Test]
@@ -429,13 +464,34 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 정답_단서가_그_방에_없으면_오류다()
+        public void 정답_태그를_그_시점까지_어디서도_얻을_수_없으면_오류다()
         {
             var room = ClueSelRoom(
                 ClueSelLine("q", new[] { "clue-없음" }, "right", "wrong"),
                 Line("right"), Line("wrong"));
 
             Assert.GreaterOrEqual(Errors(Validator().Validate(RunWith(room))).Count, 1);
+        }
+
+        [Test]
+        public void 앞_방_단서_태그로_답하는_ClueSelection은_통과한다()
+        {
+            // 방 2의 줄이 방 1에서 주운 단서 태그를 정답으로 요구한다. 손에 든
+            // 단서는 방을 넘어 남으므로 정상 저작이다 — 방 단위로만 봤다면 오류로
+            // 잡혔을 것이다.
+            var room1 = Room("room-1", new[] { Clue("room1-key", MemoryColor.Red, 0.2f) }, null);
+
+            var clueLine = DialogueLineDefinition.ClueSelection(
+                new DialogueLineId("q"), "화자", "그때 뭘 쥐고 있었어?",
+                new[] { new ClueTag("room1-key") },
+                new DialogueLineId("right"), new DialogueLineId("wrong"));
+            var room2 = Room(
+                "room-2",
+                new[] { Clue("room-2-clue", MemoryColor.Red, 0.2f) },
+                "q", clueLine, Line("right"), Line("wrong"));
+
+            CollectionAssert.IsEmpty(
+                Errors(Validator().Validate(Run(room1, room2, Room("room-3")))));
         }
 
         [Test]
@@ -596,8 +652,8 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 풀_후보_원문에_걸린_검열도_해금_가능성_검사를_받는다()
         {
-            // 방 단서는 Red만 내주는데(RoomWithPools 기본) 후보가 Blue 검열을 쓴다
-            // → 그 후보가 뽑히면 그 말은 영영 안 풀린다.
+            // 후보 원문의 검열 키(beach)에 요구 태그가 저작돼 있지 않다 → 그 후보가
+            // 뽑히면 그 말은 영영 안 풀린다. 후보 원문도 검사 대상이라는 것이 요점.
             var pool = new BranchPool(new[]
             {
                 Candidate("slot", "안전한 후보", Choice("safe", isCorrect: true)),
@@ -634,12 +690,13 @@ namespace GameName.Core.Tests.EditMode
                 Candidate("slot", "우리가 [[R:place:거기]]서 만났지", Choice("a", isCorrect: true)),
                 Candidate("slot", "그때 [[R:place:그곳]] 기억나", Choice("b", isCorrect: true)),
             });
-            // RoomWithPools 기본 단서가 Red 하나 → R 검열은 풀린다.
+            // RoomWithPools 기본 단서(room-1-clue) 태그가 place의 요구 태그다.
             var room = RoomWithPools(
                 new[] { Line("line-1", "", Choice("c", isCorrect: true, next: "slot")) },
                 new[] { pool });
 
-            CollectionAssert.IsEmpty(Errors(Validator().Validate(RunWith(room))));
+            CollectionAssert.IsEmpty(
+                Errors(Validator().Validate(RunWith(room, Req("place", "room-1-clue")))));
         }
 
         [Test]
