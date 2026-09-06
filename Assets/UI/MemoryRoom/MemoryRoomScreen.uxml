@@ -35,10 +35,13 @@
                 </ui:VisualElement>
 
                 <ui:Label name="hud-chance" text="" class="hud-bar__stat" />
+                <!-- 손에 든 추출 기억의 색 요약. 개수가 아니라 "이 색을 갖고
+                     있나"만 점으로 — 검열의 색 힌트와 대조하는 데 그거면 되고,
+                     어느 단서에서 나왔는지는 가방·복원도가 보여 준다. -->
                 <ui:VisualElement class="hud-bar__wallet" picking-mode="Ignore">
-                    <ui:Label name="hud-wallet-r" text="" class="hud-bar__wallet-item hud-bar__wallet-item--r" />
-                    <ui:Label name="hud-wallet-g" text="" class="hud-bar__wallet-item hud-bar__wallet-item--g" />
-                    <ui:Label name="hud-wallet-b" text="" class="hud-bar__wallet-item hud-bar__wallet-item--b" />
+                    <ui:VisualElement name="hud-held-r" class="hud-held-dot hud-held-dot--r" picking-mode="Ignore" />
+                    <ui:VisualElement name="hud-held-g" class="hud-held-dot hud-held-dot--g" picking-mode="Ignore" />
+                    <ui:VisualElement name="hud-held-b" class="hud-held-dot hud-held-dot--b" picking-mode="Ignore" />
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">

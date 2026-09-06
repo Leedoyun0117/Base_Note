@@ -103,15 +103,21 @@
     margin-right: var(--space-4);
 }
 
+/* 폭을 넉넉히(예전 64px의 2.5배) 잡는다 — 문턱 마커가 눈금 하나처럼
+   보이지 않고, 채움 끝이 마커의 왼쪽인지 오른쪽인지가 한눈에 읽혀야 한다.
+   코드가 문턱을 항상 50%에 그리므로(displayCeiling = 문턱×2) 폭이 넓을수록
+   "위/아래" 판단 거리가 길어진다. 모서리는 각지게 — 계기처럼 읽히고, 마커가
+   위아래로 삐져나올 수 있도록 overflow도 열어 둔다. */
 .hud-hiromi-track {
     position: relative;
-    width: 64px;
-    height: 8px;
+    width: 160px;
+    height: 14px;
     background-color: var(--surface-raised);
     border-width: 1px;
     border-color: var(--border);
-    border-radius: var(--radius);
-    overflow: hidden;
+    border-radius: 0;
+    overflow: visible;
+    flex-shrink: 0;
     margin-left: var(--space-1);
 }
 
@@ -124,35 +130,54 @@
     background-color: var(--success);
 }
 
-/* 히로민이 이동 문턱보다 적을 때 — "강제 이동" 상태를 색으로 드러낸다. */
+/* 히로민이 이동 문턱보다 적을 때 — "강제 이동" 상태를 색으로 드러낸다.
+   success(초록)와 danger(적)는 색상이 반대라 채움 색만 봐도 상태가 바뀐 걸
+   안다. 넓어진 막대가 색 면적을 키워 이 전환이 더 또렷해진다. */
 .hud-hiromi-fill--below-threshold {
     background-color: var(--danger);
 }
 
+/* 이동 문턱(15) 자리. 채움과 확실히 구분되도록: 흰 심 + 양옆 어두운 테두리로
+   초록/적/빈 트랙 어떤 배경에서도 대비가 서고, 트랙보다 위아래로 5px씩
+   삐져나와 "눈금"이 아니라 "문"으로 읽힌다. margin-left로 심을 문턱 지점에
+   가운데 맞춘다(전체 폭 6px). */
 .hud-hiromi-marker {
     position: absolute;
-    top: -1px;
-    bottom: -1px;
-    width: 2px;
+    top: -5px;
+    bottom: -5px;
+    width: 4px;
     left: 0%;
-    background-color: var(--text);
+    margin-left: -3px;
+    background-color: #FFFFFF;
+    border-left-width: 1px;
+    border-right-width: 1px;
+    border-left-color: rgba(0, 0, 0, 0.65);
+    border-right-color: rgba(0, 0, 0, 0.65);
 }
 
-/* 색별 기억제 보유 수 — 세 칸을 나란히. */
+/* 손에 든 추출 기억의 색 요약 — 세 점을 나란히. 개수가 아니라 보유 여부만:
+   검열 해금은 태그로 판정하고 색은 힌트일 뿐이라, "이 색이 있나"만 알면
+   가방을 열지 판단할 수 있다. 상세는 가방·복원도가 맡는다. */
 .hud-bar__wallet {
     flex-direction: row;
     align-items: center;
 }
 
-.hud-bar__wallet-item {
-    font-size: 11px;
-    color: var(--text-faint);
-    margin-right: var(--space-2);
+/* 미보유 상태 = 빈 테두리 점. 자리를 지켜 "이 색은 지금 없다"를 드러낸다. */
+.hud-held-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 4px;
+    margin-right: var(--space-1);
+    background-color: transparent;
+    border-width: 1px;
+    border-color: var(--text-faint);
 }
 
-.hud-bar__wallet-item--r { color: var(--memory-red); }
-.hud-bar__wallet-item--g { color: var(--memory-green); }
-.hud-bar__wallet-item--b { color: var(--memory-blue); }
+/* 보유 시에만 그 색으로 꽉 찬다. */
+.hud-held-dot--r.hud-held-dot--held { background-color: var(--memory-red); border-color: var(--memory-red); }
+.hud-held-dot--g.hud-held-dot--held { background-color: var(--memory-green); border-color: var(--memory-green); }
+.hud-held-dot--b.hud-held-dot--held { background-color: var(--memory-blue); border-color: var(--memory-blue); }
 
 /* 조작 가능한 키를 상시 노출한다 — 인벤토리(가방)는 화면에 버튼이
    없어서, 알려주지 않으면 존재 자체를 알 수 없다. */

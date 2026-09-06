@@ -35,8 +35,9 @@ namespace GameName.UI.Tests.EditMode
             root.Add(new VisualElement { name = "hud-hiromi-fill" });
             root.Add(new VisualElement { name = "hud-hiromi-marker" });
 
-            foreach (var name in new[] { "hud-wallet-r", "hud-wallet-g", "hud-wallet-b" })
-                root.Add(new Label { name = name });
+            root.Add(new VisualElement { name = "hud-held-r" });
+            root.Add(new VisualElement { name = "hud-held-g" });
+            root.Add(new VisualElement { name = "hud-held-b" });
 
             return root;
         }
@@ -67,6 +68,8 @@ namespace GameName.UI.Tests.EditMode
 
             public string Text(string name) => Root.Q<Label>(name).text;
             public VisualElement Element(string name) => Root.Q<VisualElement>(name);
+            public bool Held(string color) =>
+                Root.Q<VisualElement>($"hud-held-{color}").ClassListContains("hud-held-dot--held");
         }
 
         [Test]
@@ -77,7 +80,7 @@ namespace GameName.UI.Tests.EditMode
             StringAssert.Contains("3", fx.Text("hud-trust"));
             StringAssert.Contains("15", fx.Text("hud-hiromi-value"));
             StringAssert.Contains("2", fx.Text("hud-chance"));
-            StringAssert.Contains("0", fx.Text("hud-wallet-b"));
+            Assert.IsFalse(fx.Held("b"), "손에 든 기억이 없으면 색 점이 켜지지 않는다.");
         }
 
         [Test]
@@ -115,7 +118,7 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 색이_드러나면_색별_추출한_기억_수가_갱신된다()
+        public void 그_색_기억을_얻으면_해당_색_점이_켜진다()
         {
             var fx = new Fixture();
 
@@ -123,22 +126,22 @@ namespace GameName.UI.Tests.EditMode
             fx.Memories.Add(new ExtractedMemory(new ClueId("clue-2"), MemoryColor.Blue, System.Array.Empty<ClueTag>()));
             fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Blue, new ClueId("clue-2")));
 
-            StringAssert.Contains("2", fx.Text("hud-wallet-b"));
-            StringAssert.Contains("0", fx.Text("hud-wallet-r"));
+            Assert.IsTrue(fx.Held("b"), "파랑 기억을 들었으면 파랑 점이 켜진다.");
+            Assert.IsFalse(fx.Held("r"), "빨강 기억은 없으므로 빨강 점은 꺼져 있다.");
         }
 
         [Test]
-        public void 검열_해금으로_기억이_줄어도_보유_수가_갱신된다()
+        public void 그_색_기억이_전부_나가면_해당_색_점이_꺼진다()
         {
             var fx = new Fixture();
             fx.Memories.Add(new ExtractedMemory(new ClueId("c"), MemoryColor.Green, System.Array.Empty<ClueTag>()));
             fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Green, new ClueId("c")));
-            StringAssert.Contains("1", fx.Text("hud-wallet-g"));
+            Assert.IsTrue(fx.Held("g"));
 
             fx.Memories.Remove(new ClueId("c"));
             fx.Bus.Publish(new CensorKeyUnlockedEvent(new CensorKey("k"), MemoryColor.Green));
 
-            StringAssert.Contains("0", fx.Text("hud-wallet-g"));
+            Assert.IsFalse(fx.Held("g"), "그 색 기억이 다 나가면 점이 꺼진다.");
         }
 
         [Test]

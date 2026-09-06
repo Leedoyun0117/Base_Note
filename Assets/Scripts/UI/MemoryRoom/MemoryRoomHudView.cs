@@ -11,6 +11,7 @@ namespace GameName.UI.MemoryRoom
     public sealed class MemoryRoomHudView
     {
         private const string BelowThresholdClass = "hud-hiromi-fill--below-threshold";
+        private const string HeldClass = "hud-held-dot--held";
 
         private readonly Label _keyHintLabel;
         private readonly Label _messageLabel;
@@ -19,9 +20,9 @@ namespace GameName.UI.MemoryRoom
         private readonly VisualElement _hiromiFill;
         private readonly VisualElement _hiromiMarker;
         private readonly Label _chanceLabel;
-        private readonly Label _walletRedLabel;
-        private readonly Label _walletGreenLabel;
-        private readonly Label _walletBlueLabel;
+        private readonly VisualElement _heldRedDot;
+        private readonly VisualElement _heldGreenDot;
+        private readonly VisualElement _heldBlueDot;
 
         public MemoryRoomHudView(VisualElement root)
         {
@@ -32,9 +33,9 @@ namespace GameName.UI.MemoryRoom
             _hiromiFill = root.Q<VisualElement>("hud-hiromi-fill");
             _hiromiMarker = root.Q<VisualElement>("hud-hiromi-marker");
             _chanceLabel = root.Q<Label>("hud-chance");
-            _walletRedLabel = root.Q<Label>("hud-wallet-r");
-            _walletGreenLabel = root.Q<Label>("hud-wallet-g");
-            _walletBlueLabel = root.Q<Label>("hud-wallet-b");
+            _heldRedDot = root.Q<VisualElement>("hud-held-r");
+            _heldGreenDot = root.Q<VisualElement>("hud-held-g");
+            _heldBlueDot = root.Q<VisualElement>("hud-held-b");
         }
 
         public void SetKeyHints(string hints) => _keyHintLabel.text = hints ?? string.Empty;
@@ -77,13 +78,23 @@ namespace GameName.UI.MemoryRoom
 
         public void SetChance(int remaining) => _chanceLabel.text = $"기회 {remaining}";
 
-        // 세 색을 한 번에 받는다 — 손에 든 기억은 하나가 바뀌어도 셋을 함께
-        // 다시 그리는 편이 "어느 색이 바뀌었는가"를 화면이 추적하지 않게 한다.
-        public void SetWallet(int red, int green, int blue)
+        // 손에 든 추출 기억의 색 보유 여부. 개수가 아니라 bool 셋인 이유는
+        // 표시가 점 하나(있다/없다)이기 때문 — 몇 개인지는 가방·복원도가 센다.
+        // 셋을 한 번에 받는 것은 하나가 바뀌어도 셋을 함께 다시 칠해
+        // "어느 색이 바뀌었는가"를 화면이 추적하지 않게 하기 위함이다.
+        public void SetHeldColors(bool red, bool green, bool blue)
         {
-            _walletRedLabel.text = $"R {red}";
-            _walletGreenLabel.text = $"G {green}";
-            _walletBlueLabel.text = $"B {blue}";
+            SetHeld(_heldRedDot, red);
+            SetHeld(_heldGreenDot, green);
+            SetHeld(_heldBlueDot, blue);
+        }
+
+        private static void SetHeld(VisualElement dot, bool held)
+        {
+            if (held)
+                dot.AddToClassList(HeldClass);
+            else
+                dot.RemoveFromClassList(HeldClass);
         }
 
         private static float Clamp01(float value) => value < 0f ? 0f : (value > 1f ? 1f : value);

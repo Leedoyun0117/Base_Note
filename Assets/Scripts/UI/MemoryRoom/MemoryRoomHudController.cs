@@ -6,7 +6,7 @@ using GameName.Core.Trust;
 
 namespace GameName.UI.MemoryRoom
 {
-    // 상단 바에 신뢰 · 히로민 게이지 · 기회 · 색별 추출한 기억 수를 그려 넣는다.
+    // 상단 바에 신뢰 · 히로민 게이지 · 기회 · 손에 든 기억의 색 보유 여부를 그려 넣는다.
     //
     // 값 계산은 하나도 하지 않는다 — 전부 기존 리더 인터페이스(ITrustReader,
     // IHiromiReader, IChanceReader, IExtractedMemoryStore)를 조회해 그대로
@@ -70,23 +70,25 @@ namespace GameName.UI.MemoryRoom
 
         private void RenderHiromi() => _view.SetHiromi(_hiromi.Remaining, _hiromiMoveThreshold);
 
+        // 색별 개수가 아니라 보유 여부만 넘긴다 — HUD는 "이 색을 갖고 있나"만
+        // 점으로 요약하고, 몇 개이고 어느 단서에서 나왔는지는 가방·복원도의 몫이다.
         private void RenderMemories()
         {
-            var red = 0;
-            var green = 0;
-            var blue = 0;
+            var red = false;
+            var green = false;
+            var blue = false;
 
             foreach (var memory in _memories.All)
             {
                 switch (memory.Color)
                 {
-                    case MemoryColor.Red: red++; break;
-                    case MemoryColor.Green: green++; break;
-                    default: blue++; break;
+                    case MemoryColor.Red: red = true; break;
+                    case MemoryColor.Green: green = true; break;
+                    default: blue = true; break;
                 }
             }
 
-            _view.SetWallet(red, green, blue);
+            _view.SetHeldColors(red, green, blue);
         }
 
         public void Dispose()
