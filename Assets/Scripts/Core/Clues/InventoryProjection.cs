@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using GameName.Core.Events;
 using GameName.Core.Inventory;
 
@@ -12,7 +11,9 @@ namespace GameName.Core.Clues
     // 타입이 함께 갖지 않게 갈라 둔 자리다. 인벤토리는 진실이 아니라 ClueState의
     // 투영이다.
     //
-    // 방마다 비워진다(RoomStartedEvent). 인벤토리도 ClueStateStore처럼 방 스코프다.
+    // 방이 바뀌어도 비우지 않는다 — 단서 단계가 런 전체에 걸쳐 누적되므로
+    // (ClueStateStore), 손에 든 것도 방을 넘어 그대로 남아야 다른 방의 단서를
+    // 지금 방 대화에 쓸 수 있다. 손에서 나가는 계기는 추출과 버리기 둘뿐이다.
     //
     // "가방이 가득 찼는가"는 ClueCollectionProcessor가 전이 전에 이미 확인하므로,
     // 정상 플레이 경로에서 여기 TryStore가 실패할 일은 없다. 그래도 실패하면
@@ -32,7 +33,7 @@ namespace GameName.Core.Clues
 
             eventBus.Subscribe<ClueCollectedEvent>(e => Add(e.ClueId));
             eventBus.Subscribe<ClueExtractedEvent>(e => Remove(e.ClueId));
-            eventBus.Subscribe<RoomStartedEvent>(_ => Clear());
+            eventBus.Subscribe<ClueDiscardedEvent>(e => Remove(e.ClueId));
         }
 
         private void Add(ClueId clueId)
@@ -45,7 +46,7 @@ namespace GameName.Core.Clues
             {
                 throw new InvalidOperationException(
                     $"수집된 단서({clueId})를 인벤토리에 넣지 못했다: {result.FailureReason}. " +
-                    "방 스코프 인벤토리는 그 방 단서를 전부 담을 수 있어야 한다 — 조립 오류다.");
+                    "빈 칸이 있는지는 수집 처리기가 전이 전에 이미 확인했어야 한다 — 조립 오류다.");
             }
         }
 
@@ -59,13 +60,6 @@ namespace GameName.Core.Clues
                     return;
                 }
             }
-        }
-
-        private void Clear()
-        {
-            var carried = new List<IInventoryItem>(_inventory.Items);
-            foreach (var item in carried)
-                _inventory.TryRemove(item);
         }
     }
 }

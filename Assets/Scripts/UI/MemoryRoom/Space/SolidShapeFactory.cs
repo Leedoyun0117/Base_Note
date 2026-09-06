@@ -18,6 +18,7 @@ namespace GameName.UI.MemoryRoom.Space
     internal static class SolidShapeFactory
     {
         private static Sprite _unitSprite;
+        private static Material _unlitMaterial;
 
         // 1 월드 유닛짜리 흰 사각형. 색은 SpriteRenderer.color로, 크기는
         // localScale로 준다 — 그래서 스프라이트 하나를 모든 도형이 공유한다.
@@ -40,8 +41,34 @@ namespace GameName.UI.MemoryRoom.Space
             }
         }
 
+        // 조명을 받지 않는 도형이 쓰는 머티리얼. 게임플레이 어포던스(단서 강조
+        // 테두리·본체, 플레이어 위치 표식)는 램프에서 멀어 어두워지면 "집을 수
+        // 있음" 신호나 아바타 위치를 잃어버리므로, 이들만 Unlit로 그려 조명과
+        // 무관하게 항상 authored 색으로 보이게 한다. 방 껍데기(벽/바닥 등 임시
+        // 아트)는 기본값(Lit) 그대로 둔다.
+        private static Material UnlitMaterial
+        {
+            get
+            {
+                if (_unlitMaterial == null)
+                {
+                    var shader = Shader.Find("Universal Render Pipeline/2D/Sprite-Unlit-Default");
+                    if (shader == null)
+                        return null; // URP 2D 셰이더를 못 찾으면 기본(Lit)으로 둔다 — 크래시보다 낫다.
+
+                    _unlitMaterial = new Material(shader)
+                    {
+                        name = "SolidShapeUnlit",
+                        hideFlags = HideFlags.HideAndDontSave,
+                    };
+                }
+
+                return _unlitMaterial;
+            }
+        }
+
         public static SpriteRenderer Create(
-            string name, Transform parent, Vector2 center, Vector2 size, Color color, int sortingOrder)
+            string name, Transform parent, Vector2 center, Vector2 size, Color color, int sortingOrder, bool lit = true)
         {
             var gameObject = new GameObject(name);
             gameObject.transform.SetParent(parent, worldPositionStays: false);
@@ -53,11 +80,18 @@ namespace GameName.UI.MemoryRoom.Space
             renderer.color = color;
             renderer.sortingOrder = sortingOrder;
 
+            if (!lit)
+            {
+                var unlit = UnlitMaterial;
+                if (unlit != null)
+                    renderer.sharedMaterial = unlit;
+            }
+
             return renderer;
         }
 
         public static SpriteRenderer Create(
-            string name, Transform parent, RoomShape shape, Color color, int sortingOrder) =>
-            Create(name, parent, shape.Center, shape.Size, color, sortingOrder);
+            string name, Transform parent, RoomShape shape, Color color, int sortingOrder, bool lit = true) =>
+            Create(name, parent, shape.Center, shape.Size, color, sortingOrder, lit);
     }
 }

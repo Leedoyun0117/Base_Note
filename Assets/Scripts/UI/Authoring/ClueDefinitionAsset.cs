@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using GameName.Core.Clues;
 using GameName.Core.Memories;
 using UnityEngine;
@@ -27,14 +28,34 @@ namespace GameName.UI.Authoring
         [Header("감춰진 것")]
         [SerializeField] private MemoryColor _hiddenColor = MemoryColor.Red;
 
+        // 이 단서가 무엇에 대한 것인지 나타내는 저작 태그(예: "Yuki.toy").
+        // 검열 해금·ClueSelection 정답 판정이 실제로 보는 값이다 — 색은 힌트일
+        // 뿐이고 이 배열이 진짜 기준이다.
+        [SerializeField] private string[] _tags = System.Array.Empty<string>();
+
         public string DisplayName => _displayName;
 
-        public ClueDefinition ToDefinition() =>
-            new ClueDefinition(
+        public ClueDefinition ToDefinition()
+        {
+            var tags = new List<ClueTag>(_tags?.Length ?? 0);
+            if (_tags != null)
+            {
+                foreach (var tag in _tags)
+                {
+                    // 인스펙터에서 비어 있는 칸 하나 때문에 단서 전체를 못 읽게
+                    // 만들지 않는다.
+                    if (!string.IsNullOrWhiteSpace(tag))
+                        tags.Add(new ClueTag(tag));
+                }
+            }
+
+            return new ClueDefinition(
                 new ClueId(_clueId),
                 _kind,
                 _displayName ?? string.Empty,
                 new CluePositionRatio(_positionRatio),
-                _hiddenColor);
+                _hiddenColor,
+                tags);
+        }
     }
 }

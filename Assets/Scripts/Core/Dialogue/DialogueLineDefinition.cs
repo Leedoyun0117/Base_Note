@@ -33,8 +33,11 @@ namespace GameName.Core.Dialogue
         public IReadOnlyList<ChoiceDefinition> Choices { get; }
 
         // ── ClueSelection일 때 ──
-        // 이 중 하나면 정답. 여러 개 가능(학생증·교복 둘 다 정답 등).
-        public IReadOnlyList<ClueId> RequiredClueIds { get; }
+        // 손에 든 단서가 이 중 하나라도 걸치면 정답. 판정 단위가 ClueId가 아니라
+        // ClueTag인 이유: 여러 단서가 같은 사실을 가리킬 수 있고(리본도 편지도
+        // "그때 쥐고 있던 것"), 그것을 단서 id를 하나씩 나열하는 대신 태그
+        // 하나로 묶으면 새 단서가 늘 때마다 이 줄을 고치지 않아도 된다.
+        public IReadOnlyList<ClueTag> RequiredTags { get; }
         public DialogueLineId? CorrectNext { get; }
 
         // 오답 서브체인의 첫 줄. 그 서브체인은 기존 Choice.Next / (또는 서브체인
@@ -53,14 +56,14 @@ namespace GameName.Core.Dialogue
             AuthoredText = authoredText ?? throw new ArgumentNullException(nameof(authoredText));
             Choices = choices ?? throw new ArgumentNullException(nameof(choices));
             PromptKind = DialoguePromptKind.TextChoice;
-            RequiredClueIds = Array.Empty<ClueId>();
+            RequiredTags = Array.Empty<ClueTag>();
         }
 
         private DialogueLineDefinition(
             DialogueLineId id,
             string speaker,
             string authoredText,
-            IReadOnlyList<ClueId> requiredClueIds,
+            IReadOnlyList<ClueTag> requiredTags,
             DialogueLineId? correctNext,
             DialogueLineId? incorrectNext)
         {
@@ -69,7 +72,7 @@ namespace GameName.Core.Dialogue
             AuthoredText = authoredText ?? throw new ArgumentNullException(nameof(authoredText));
             Choices = Array.Empty<ChoiceDefinition>();
             PromptKind = DialoguePromptKind.ClueSelection;
-            RequiredClueIds = requiredClueIds ?? throw new ArgumentNullException(nameof(requiredClueIds));
+            RequiredTags = requiredTags ?? throw new ArgumentNullException(nameof(requiredTags));
             CorrectNext = correctNext;
             IncorrectNext = incorrectNext;
         }
@@ -82,9 +85,9 @@ namespace GameName.Core.Dialogue
             DialogueLineId id,
             string speaker,
             string authoredText,
-            IReadOnlyList<ClueId> requiredClueIds,
+            IReadOnlyList<ClueTag> requiredTags,
             DialogueLineId? correctNext,
             DialogueLineId? incorrectNext) =>
-            new DialogueLineDefinition(id, speaker, authoredText, requiredClueIds, correctNext, incorrectNext);
+            new DialogueLineDefinition(id, speaker, authoredText, requiredTags, correctNext, incorrectNext);
     }
 }

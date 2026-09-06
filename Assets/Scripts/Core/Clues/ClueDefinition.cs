@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using GameName.Core.Memories;
 
 namespace GameName.Core.Clues
@@ -47,18 +48,30 @@ namespace GameName.Core.Clues
         // 순간은 추출 처리기가 MemoryColorRevealedEvent를 낼 때뿐이다.
         public MemoryColor HiddenColor { get; }
 
+        // 이 단서(를 추출해 얻는 기억)가 무엇에 대한 것인지를 표시하는 저작
+        // 태그(예: "Yuki.toy"). 검열 해금과 ClueSelection 정답 판정의 실제
+        // 기준은 색이 아니라 이 태그다 — 색은 힌트일 뿐이라, 색이 같아도
+        // 태그가 다르면 정답이 아니다.
+        //
+        // ClueInfo로 새어 나가지 않는다. HiddenColor와 달리 화면에 노출되면
+        // 안 되는 이유가 하나 더 있다: 태그를 그대로 보여 주면 "어느 질문에
+        // 대한 답인가"라는 추리 자체가 사라진다.
+        public IReadOnlyList<ClueTag> Tags { get; }
+
         public ClueDefinition(
             ClueId id,
             ClueKind kind,
             string displayName,
             CluePositionRatio authoredPosition,
-            MemoryColor hiddenColor)
+            MemoryColor hiddenColor,
+            IReadOnlyList<ClueTag> tags = null)
         {
             Id = id;
             Kind = kind;
             DisplayName = displayName ?? throw new ArgumentNullException(nameof(displayName));
             AuthoredPosition = authoredPosition;
             HiddenColor = hiddenColor;
+            Tags = tags ?? Array.Empty<ClueTag>();
         }
 
         public ClueInfo ToInfo() => new ClueInfo(Id, Kind, DisplayName, AuthoredPosition);

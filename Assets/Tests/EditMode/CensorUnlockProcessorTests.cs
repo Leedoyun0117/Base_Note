@@ -10,8 +10,8 @@ using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // 기억색 1을 대가로 검열 키 하나를 푼다 — 멱등이고, 한 번에 같은 키의 모든
-    // 구간이 함께 열린다.
+    // 추출한 기억 하나를 제시해 검열 키 하나를 푼다 — 판정 기준은 색이 아니라
+    // 태그이고, 멱등이며, 한 번에 같은 키의 모든 구간이 함께 열린다.
     public class CensorUnlockProcessorTests
     {
         private sealed class FakeMaskFormatter : ICensorMaskFormatter
@@ -25,33 +25,42 @@ namespace GameName.Core.Tests.EditMode
         private sealed class Fixture
         {
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
-            public readonly MemoryColorWallet Wallet = new MemoryColorWallet();
+            public readonly ExtractedMemoryStore Memories = new ExtractedMemoryStore();
             public readonly CensorUnlockLog Log = new CensorUnlockLog();
             public readonly CensorUnlockProcessor Processor;
             public readonly List<CensorKeyUnlockedEvent> Unlocked = new List<CensorKeyUnlockedEvent>();
 
-            public Fixture(params DialogueLineDefinition[] lines)
+            public Fixture(IReadOnlyList<CensorKeyTagRequirement> requirements, params DialogueLineDefinition[] lines)
             {
                 var room = new RoomDefinition(
                     new MemoryRoomId("room-1"), Array.Empty<ClueDefinition>(),
                     new DialogueLineId(lines[0].Id.Value), lines);
-                var run = new RunDefinition(new[] { room }, 3, 5);
-                var map = new CensorTokenIndexColorMap(
-                    new CensorTokenIndexSource(new CensoredTextParser()), run);
-                Processor = new CensorUnlockProcessor(Wallet, Log, map, Bus);
+                var run = new RunDefinition(
+                    new[] { room }, 3, 5, censorKeyTagRequirements: requirements);
+                var requiredTags = new CensorKeyRequiredTagMap(run);
+                Processor = new CensorUnlockProcessor(Memories, Log, requiredTags, Bus);
                 Bus.Subscribe<CensorKeyUnlockedEvent>(Unlocked.Add);
             }
+
+            public void AddMemory(string clueId, MemoryColor color, params string[] tags) =>
+                Memories.Add(new ExtractedMemory(
+                    new ClueId(clueId), color, Array.ConvertAll(tags, t => new ClueTag(t))));
         }
 
-        [Test]
-        public void 지갑에_필요한_색이_없으면_실패하고_렌더링은_계속_마스크된다()
-        {
-            var fx = new Fixture(Line("line-1", "그 시절 [[B:beach-house:해변의 작은 집]]이 그립다."));
+        private static CensorKeyTagRequirement Requirement(string key, params string[] tags) =>
+            new CensorKeyTagRequirement(new CensorKey(key), Array.ConvertAll(tags, t => new ClueTag(t)));
 
-            var result = fx.Processor.Unlock(new CensorKey("beach-house"));
+        [Test]
+        public void 제시할_기억이_없으면_실패하고_렌더링은_계속_마스크된다()
+        {
+            var fx = new Fixture(
+                new[] { Requirement("beach-house", "room1.beachHouse") },
+                Line("line-1", "그 시절 [[B:beach-house:해변의 작은 집]]이 그립다."));
+
+            var result = fx.Processor.Unlock(new CensorKey("beach-house"), new ClueId("clue-x"));
 
             Assert.IsFalse(result.Succeeded);
-            Assert.AreEqual(CensorUnlockFailureReason.InsufficientMemory, result.FailureReason);
+            Assert.AreEqual(CensorUnlockFailureReason.MemoryNotFound, result.FailureReason);
 
             var renderer = new CensorRenderer(fx.Log, new FakeMaskFormatter());
             var parsed = new CensoredTextParser().Parse("그 시절 [[B:beach-house:해변의 작은 집]]이 그립다.");
@@ -59,55 +68,80 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 색을_들고_있으면_1_소모하고_키를_기록한다()
+        public void 태그가_맞는_기억을_제시하면_소모하고_키를_기록한다()
         {
-            var fx = new Fixture(Line("line-1", "[[B:beach-house:해변의 작은 집]]"));
-            fx.Wallet.Add(MemoryColor.Blue, 2);
+            var fx = new Fixture(
+                new[] { Requirement("beach-house", "room1.beachHouse") },
+                Line("line-1", "[[B:beach-house:해변의 작은 집]]"));
+            fx.AddMemory("clue-1", MemoryColor.Blue, "room1.beachHouse");
 
-            var result = fx.Processor.Unlock(new CensorKey("beach-house"));
+            var result = fx.Processor.Unlock(new CensorKey("beach-house"), new ClueId("clue-1"));
 
             Assert.IsTrue(result.Succeeded);
             Assert.AreEqual(MemoryColor.Blue, result.SpentColor);
-            Assert.AreEqual(1, fx.Wallet.GetCount(MemoryColor.Blue));
+            Assert.IsFalse(fx.Memories.TryGet(new ClueId("clue-1"), out _), "제시한 기억은 소모되어 사라진다.");
             Assert.IsTrue(fx.Log.IsRevealed(new CensorKey("beach-house")));
             Assert.AreEqual(1, fx.Unlocked.Count);
         }
 
         [Test]
-        public void 이미_풀린_키를_다시_풀려_하면_자원_소모_없이_성공_취급이다()
+        public void 색이_맞아도_태그가_다르면_해금에_실패한다()
         {
-            var fx = new Fixture(Line("line-1", "[[B:beach-house:해변의 작은 집]]"));
-            fx.Wallet.Add(MemoryColor.Blue, 1);
-            fx.Processor.Unlock(new CensorKey("beach-house"));
+            var fx = new Fixture(
+                new[] { Requirement("beach-house", "room1.beachHouse") },
+                Line("line-1", "[[B:beach-house:해변의 작은 집]]"));
+            // 색은 힌트와 같은 Blue지만 태그가 요구 태그와 다르다.
+            fx.AddMemory("clue-1", MemoryColor.Blue, "room1.somethingElse");
 
-            var again = fx.Processor.Unlock(new CensorKey("beach-house"));
+            var result = fx.Processor.Unlock(new CensorKey("beach-house"), new ClueId("clue-1"));
+
+            Assert.IsFalse(result.Succeeded);
+            Assert.AreEqual(CensorUnlockFailureReason.TagMismatch, result.FailureReason);
+            Assert.IsTrue(fx.Memories.TryGet(new ClueId("clue-1"), out _), "실패한 제시는 기억을 소모하지 않는다.");
+            Assert.IsFalse(fx.Log.IsRevealed(new CensorKey("beach-house")));
+        }
+
+        [Test]
+        public void 이미_풀린_키를_다시_풀려_하면_기억_소모_없이_성공_취급이다()
+        {
+            var fx = new Fixture(
+                new[] { Requirement("beach-house", "room1.beachHouse") },
+                Line("line-1", "[[B:beach-house:해변의 작은 집]]"));
+            fx.AddMemory("clue-1", MemoryColor.Blue, "room1.beachHouse");
+            fx.Processor.Unlock(new CensorKey("beach-house"), new ClueId("clue-1"));
+
+            fx.AddMemory("clue-2", MemoryColor.Blue, "room1.beachHouse");
+            var again = fx.Processor.Unlock(new CensorKey("beach-house"), new ClueId("clue-2"));
 
             Assert.IsTrue(again.Succeeded);
             Assert.IsNull(again.SpentColor);
-            Assert.AreEqual(0, fx.Wallet.GetCount(MemoryColor.Blue));
+            Assert.IsTrue(fx.Memories.TryGet(new ClueId("clue-2"), out _), "멱등 성공은 기억을 건드리지 않는다.");
             Assert.AreEqual(1, fx.Unlocked.Count); // 두 번째는 사건 없음
         }
 
         [Test]
-        public void 판에_없는_키는_어느_색으로_풀리는지_알_수_없어_실패다()
+        public void 요구_태그가_저작되지_않은_키는_실패다()
         {
-            var fx = new Fixture(Line("line-1", "[[B:beach-house:해변의 작은 집]]"));
-            fx.Wallet.Add(MemoryColor.Blue, 1);
+            var fx = new Fixture(
+                new[] { Requirement("beach-house", "room1.beachHouse") },
+                Line("line-1", "[[B:beach-house:해변의 작은 집]]"));
+            fx.AddMemory("clue-1", MemoryColor.Blue, "room1.beachHouse");
 
             Assert.AreEqual(
                 CensorUnlockFailureReason.UnknownKey,
-                fx.Processor.Unlock(new CensorKey("the-ring")).FailureReason);
+                fx.Processor.Unlock(new CensorKey("the-ring"), new ClueId("clue-1")).FailureReason);
         }
 
         [Test]
         public void 한_번의_해금으로_같은_키의_서로_다른_줄이_함께_원문으로_돌아온다()
         {
             var fx = new Fixture(
+                new[] { Requirement("beach-house", "room1.beachHouse") },
                 Line("line-1", "그 집이라 부르던 [[B:beach-house:해변의 작은 집]]"),
                 Line("line-2", "[[B:beach-house:거기]]는 이제 없다."));
-            fx.Wallet.Add(MemoryColor.Blue, 1);
+            fx.AddMemory("clue-1", MemoryColor.Blue, "room1.beachHouse");
 
-            fx.Processor.Unlock(new CensorKey("beach-house"));
+            fx.Processor.Unlock(new CensorKey("beach-house"), new ClueId("clue-1"));
 
             var renderer = new CensorRenderer(fx.Log, new FakeMaskFormatter());
             var parser = new CensoredTextParser();

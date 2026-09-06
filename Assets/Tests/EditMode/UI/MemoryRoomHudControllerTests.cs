@@ -1,5 +1,7 @@
+using GameName.Core.Clues;
+using GameName.Core.Dialogue;
 using GameName.Core.Events;
-using GameName.Core.Extraction;
+using GameName.Core.Hiromi;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
 using GameName.Core.Trust;
@@ -10,26 +12,31 @@ using UnityEngine.UIElements;
 namespace GameName.UI.Tests.EditMode
 {
     // 상단 바 컨트롤러는 값을 하나도 계산하지 않는다 — 리더(ITrustReader,
-    // IExtractionBudget, IMemoryColorWallet)를 조회해 문구로 넘기고, 다시 그릴
-    // 계기만 이벤트로 안다. 여기서는 각 계기마다 표시가 실제로 갱신되는지 본다.
+    // IHiromiReader, IChanceReader, IExtractedMemoryStore)를 조회해 문구·막대로
+    // 넘기고, 다시 그릴 계기만 이벤트로 안다. 여기서는 각 계기마다 표시가
+    // 실제로 갱신되는지 본다. "다음 기억으로" 조작 자체는 가방 화면의
+    // 레버(MemoryMoveLeverController) 몫이라 여기서는 다루지 않는다.
     //
     // 다른 스크린 컨트롤러 테스트(ClueZoomScreenTests 등)와 같은 방식이다 —
     // 가짜 View 없이 손으로 만든 VisualElement 트리에 진짜 View를 세운다.
     public class MemoryRoomHudControllerTests
     {
         private static readonly MemoryRoomId TheRoom = new MemoryRoomId("room-1");
+        private const int MoveThreshold = 15;
 
         private static VisualElement MakeHudRoot()
         {
             var root = new VisualElement();
-            foreach (var name in new[]
-                     {
-                         "hud-key-hints", "hud-message", "hud-trust", "hud-extraction",
-                         "hud-wallet-r", "hud-wallet-g", "hud-wallet-b",
-                     })
-            {
+            foreach (var name in new[] { "hud-key-hints", "hud-message", "hud-trust", "hud-chance" })
                 root.Add(new Label { name = name });
-            }
+
+            root.Add(new Label { name = "hud-hiromi-value" });
+            root.Add(new VisualElement { name = "hud-hiromi-track" });
+            root.Add(new VisualElement { name = "hud-hiromi-fill" });
+            root.Add(new VisualElement { name = "hud-hiromi-marker" });
+
+            foreach (var name in new[] { "hud-wallet-r", "hud-wallet-g", "hud-wallet-b" })
+                root.Add(new Label { name = name });
 
             return root;
         }
@@ -38,33 +45,38 @@ namespace GameName.UI.Tests.EditMode
         {
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly TrustGauge Trust;
-            public readonly ExtractionBudget Budget;
-            public readonly MemoryColorWallet Wallet = new MemoryColorWallet();
+            public readonly HiromiWallet Hiromi;
+            public readonly ChanceTracker Chance;
+            public readonly ExtractedMemoryStore Memories = new ExtractedMemoryStore();
             public readonly VisualElement Root;
 
             // ReSharper disable once NotAccessedField.Local — 구독을 살려 두기 위한 보관.
             private readonly MemoryRoomHudController _controller;
 
-            public Fixture(int startingTrust = 3, int budget = 5)
+            public Fixture(int startingTrust = 3, int startingHiromi = 15, int startingChance = 2)
             {
                 Trust = new TrustGauge(startingTrust, Bus);
-                Budget = new ExtractionBudget(budget);
+                Hiromi = new HiromiWallet(startingHiromi, Bus);
+                Chance = new ChanceTracker(startingChance, Bus);
 
                 Root = MakeHudRoot();
                 var view = new MemoryRoomHudView(Root);
-                _controller = new MemoryRoomHudController(view, Trust, Budget, Wallet, Bus);
+                _controller = new MemoryRoomHudController(
+                    view, Trust, Hiromi, MoveThreshold, Chance, Memories, Bus);
             }
 
             public string Text(string name) => Root.Q<Label>(name).text;
+            public VisualElement Element(string name) => Root.Q<VisualElement>(name);
         }
 
         [Test]
         public void 생성_직후_현재값을_한_번_그린다()
         {
-            var fx = new Fixture(startingTrust: 3, budget: 5);
+            var fx = new Fixture(startingTrust: 3, startingHiromi: 15, startingChance: 2);
 
             StringAssert.Contains("3", fx.Text("hud-trust"));
-            StringAssert.Contains("5", fx.Text("hud-extraction"));
+            StringAssert.Contains("15", fx.Text("hud-hiromi-value"));
+            StringAssert.Contains("2", fx.Text("hud-chance"));
             StringAssert.Contains("0", fx.Text("hud-wallet-b"));
         }
 
@@ -80,37 +92,51 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 추출_사건이_오면_남은_자원_표시가_사건이_실은_값으로_갱신된다()
+        public void 히로민이_바뀌면_수치와_게이지_문턱_아래_클래스가_갱신된다()
         {
-            var fx = new Fixture(budget: 5);
+            var fx = new Fixture(startingHiromi: 15);
 
-            fx.Bus.Publish(new ClueExtractedEvent(new GameName.Core.Clues.ClueId("clue-1"), remainingExtractions: 2));
+            fx.Hiromi.Spend(9); // 15 → 6, 문턱(15) 아래로 내려간다.
 
-            StringAssert.Contains("2", fx.Text("hud-extraction"));
+            StringAssert.Contains("6", fx.Text("hud-hiromi-value"));
+            Assert.IsTrue(
+                fx.Element("hud-hiromi-fill").ClassListContains("hud-hiromi-fill--below-threshold"),
+                "문턱 아래로 내려가면 채움 색이 바뀌는 클래스가 붙어야 한다.");
         }
 
         [Test]
-        public void 색이_드러나면_색별_기억제_보유_수가_지갑_값으로_갱신된다()
+        public void 기회가_바뀌면_표시값이_갱신된다()
+        {
+            var fx = new Fixture(startingChance: 2);
+
+            fx.Chance.Decrease();
+
+            StringAssert.Contains("1", fx.Text("hud-chance"));
+        }
+
+        [Test]
+        public void 색이_드러나면_색별_추출한_기억_수가_갱신된다()
         {
             var fx = new Fixture();
 
-            fx.Wallet.Add(MemoryColor.Blue, 2);
-            fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Blue, new GameName.Core.Clues.ClueId("clue-1")));
+            fx.Memories.Add(new ExtractedMemory(new ClueId("clue-1"), MemoryColor.Blue, System.Array.Empty<ClueTag>()));
+            fx.Memories.Add(new ExtractedMemory(new ClueId("clue-2"), MemoryColor.Blue, System.Array.Empty<ClueTag>()));
+            fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Blue, new ClueId("clue-2")));
 
             StringAssert.Contains("2", fx.Text("hud-wallet-b"));
             StringAssert.Contains("0", fx.Text("hud-wallet-r"));
         }
 
         [Test]
-        public void 검열_해금으로_지갑이_줄어도_보유_수가_갱신된다()
+        public void 검열_해금으로_기억이_줄어도_보유_수가_갱신된다()
         {
             var fx = new Fixture();
-            fx.Wallet.Add(MemoryColor.Green, 1);
-            fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Green, new GameName.Core.Clues.ClueId("c")));
+            fx.Memories.Add(new ExtractedMemory(new ClueId("c"), MemoryColor.Green, System.Array.Empty<ClueTag>()));
+            fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Green, new ClueId("c")));
             StringAssert.Contains("1", fx.Text("hud-wallet-g"));
 
-            fx.Wallet.Remove(MemoryColor.Green, 1);
-            fx.Bus.Publish(new CensorKeyUnlockedEvent(new GameName.Core.Dialogue.CensorKey("k"), MemoryColor.Green));
+            fx.Memories.Remove(new ClueId("c"));
+            fx.Bus.Publish(new CensorKeyUnlockedEvent(new CensorKey("k"), MemoryColor.Green));
 
             StringAssert.Contains("0", fx.Text("hud-wallet-g"));
         }

@@ -5,6 +5,7 @@ using GameName.Core.Clues;
 using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.Extraction;
+using GameName.Core.Hiromi;
 using GameName.Core.Inventory;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
@@ -37,12 +38,33 @@ namespace GameName.UI.Session
         public ClueCollectionProcessor ClueCollectionProcessor { get; }
         public ExtractionProcessor ExtractionProcessor { get; }
 
+        // 손에 든 단서를 이 런에서 완전히 버리는 유일한 경로. 단서가 방을 넘어
+        // 누적되며 인벤토리 용량이 곧 상한이 됐고, 자리를 비우는 방법은 이것뿐이다.
+        public ClueDiscardProcessor ClueDiscardProcessor { get; }
+
         // 방 화면이 "이 단서를 이미 집었는가"를 물어 방에서 지울 때 참조한다.
         public IClueStateReader ClueState { get; }
 
         public ITrustReader Trust { get; }
-        public IMemoryColorWallet Wallet { get; }
-        public IExtractionBudget ExtractionBudget { get; }
+
+        // 지금 손에 든 추출된 기억 — 검열 해금에 제시할 후보들. 옛
+        // IMemoryColorWallet(색→개수) 자리를 대신한다.
+        public IExtractedMemoryStore Memories { get; }
+
+        // 대화·추출·기억 이동이 함께 오가는 런 전체 단일 자원. 옛
+        // IExtractionBudget 자리를 대신한다 — 추출 전용 자원과 공존하지 않는다.
+        public IHiromiReader Hiromi { get; }
+
+        // 히로민이 모자란 채로 강제 이동할 때마다 줄고, 0이 되면 런이 끝난다.
+        public IChanceReader Chance { get; }
+
+        // 플레이어가 스스로 다음 기억으로 넘어가는 유일한 경로.
+        public MemoryMoveProcessor MemoryMove { get; }
+
+        // 다음 기억으로 이동하는 데 드는 히로민이자 "그냥 이동해도 되는가"의
+        // 문턱. 화면이 이동 확인 팝업을 띄울지, HUD 게이지에 문턱을 어디에
+        // 그릴지 판단하는 데 MemoryMove와 같은 값을 참조해야 하므로 그대로 노출한다.
+        public int MoveHiromiCost { get; }
 
         // 신뢰 → 방 가시 비율, 그 비율 안에 단서가 드는지. 화면(마스크·회색 처리)이
         // ClueCollectionProcessor와 똑같은 판정을 쓰도록 같은 인스턴스를 공유한다.
@@ -63,7 +85,7 @@ namespace GameName.UI.Session
 
         // 색별 추리 지원 마인드맵(복원도). 추출로 색이 드러날 때마다 뿌리와 단서
         // 노드가 자동으로 채워지고, 플레이어가 그 위에 자유 노드·연결을 얹는다.
-        // 지갑·추출 자원과 같은 스코프라 방이 바뀌어도 리셋되지 않는다.
+        // 추출된 기억 저장소·추출 자원과 같은 스코프라 방이 바뀌어도 리셋되지 않는다.
         //
         // 읽기와 편집을 갈라 노출한다. 편집은 판정이 거의 없는 CRUD라 처리기를
         // 두지 않았으므로(설계) 화면이 Mutator를 직접 부른다 — 그래도 진실은
@@ -100,13 +122,16 @@ namespace GameName.UI.Session
             var trust = new TrustGauge(run.StartingTrust, EventBus);
             Trust = trust;
 
-            var wallet = new MemoryColorWallet();
-            foreach (var starting in data.StartingMemoryColors)
-                wallet.Add(starting.Key, starting.Value);
-            Wallet = wallet;
+            var memories = new ExtractedMemoryStore();
+            Memories = memories;
 
-            var budget = new ExtractionBudget(run.ExtractionBudget);
-            ExtractionBudget = budget;
+            var hiromi = new HiromiWallet(run.StartingHiromi, EventBus);
+            Hiromi = hiromi;
+
+            var chance = new ChanceTracker(run.StartingChance, EventBus);
+            Chance = chance;
+            _ = new ChanceExhaustionListener(EventBus);
+            _ = new HiromiDialogueEarningListener(hiromi, EventBus);
 
             var clueState = new ClueStateStore(run.Rooms, EventBus);
             ClueState = clueState;
@@ -120,9 +145,11 @@ namespace GameName.UI.Session
             ClueCollectionProcessor = new ClueCollectionProcessor(
                 clueState, clueAccess, trust, visibilityPolicy, clueTracker, Inventory, EventBus);
 
-            ExtractionProcessor = new ExtractionProcessor(budget, clueState, wallet, clueTracker, EventBus);
+            ExtractionProcessor = new ExtractionProcessor(hiromi, clueState, memories, clueTracker, EventBus);
+            ClueDiscardProcessor = new ClueDiscardProcessor(clueState, EventBus);
 
-            // 인벤토리는 ClueState의 투영 — 수집/추출/방 시작 사건을 듣고 스스로 갱신한다.
+            // 인벤토리는 ClueState의 투영 — 수집/추출/버리기 사건을 듣고 스스로 갱신한다.
+            // 방이 바뀌어도 비우지 않는다 — 단서 상태가 런 전체에 걸쳐 누적된다.
             _ = new InventoryProjection(Inventory, clueTracker, EventBus);
 
             // 복원도는 런 전체에 걸쳐 산다 — RoomStartedEvent를 구독하지 않으므로
@@ -144,12 +171,16 @@ namespace GameName.UI.Session
             var censorKeyColors = new CensorTokenIndexColorMap(new CensorTokenIndexSource(parser), run);
             CensorKeyColors = censorKeyColors;
 
-            CensorUnlock = new CensorUnlockProcessor(wallet, censorLog, censorKeyColors, EventBus);
+            var censorKeyRequiredTags = new CensorKeyRequiredTagMap(run);
+
+            CensorUnlock = new CensorUnlockProcessor(memories, censorLog, censorKeyRequiredTags, EventBus);
             Dialogue = new DialogueProgressor(run.Rooms, censorLog, clueState, trust, EventBus);
 
             // ── 방 진행 ────────────────────────────────────────────────────
             _ = new RoomCompletionArbiter(trust, EventBus);
             var runProgressor = new RunProgressor(run.Rooms, EventBus);
+            MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, hiromi, chance, runProgressor);
+            MoveHiromiCost = run.MoveHiromiCost;
 
             // 현재 방 추적. RunProgressor.Start()가 첫 RoomStartedEvent를 내기 전에 걸어 둔다.
             EventBus.Subscribe<RoomStartedEvent>(e => CurrentRoomId = e.RoomId);

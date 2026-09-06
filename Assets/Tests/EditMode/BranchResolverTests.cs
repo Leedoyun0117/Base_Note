@@ -44,7 +44,7 @@ namespace GameName.Core.Tests.EditMode
                 pools);
 
         private static RunDefinition Run(int seed, params RoomDefinition[] rooms) =>
-            new RunDefinition(rooms, startingTrust: 3, extractionBudget: 5, seed: seed);
+            new RunDefinition(rooms, startingTrust: 3, startingHiromi: 5, seed: seed);
 
         private static string PickedText(RunDefinition resolved, string roomId, string slotId) =>
             resolved.Rooms
@@ -157,7 +157,7 @@ namespace GameName.Core.Tests.EditMode
             var resolved = BranchResolver.Resolve(raw, raw.Seed);
 
             Assert.AreEqual(3, resolved.StartingTrust);
-            Assert.AreEqual(5, resolved.ExtractionBudget);
+            Assert.AreEqual(5, resolved.StartingHiromi);
             Assert.AreEqual(999, resolved.Seed);
         }
 
@@ -221,10 +221,10 @@ namespace GameName.Core.Tests.EditMode
 
         // ── ClueSelection 라인을 분기 풀 후보로 ──────────────────────────────
 
-        private static DialogueLineDefinition ClueCandidate(string slotId, string clueId, string text) =>
+        private static DialogueLineDefinition ClueCandidate(string slotId, string requiredTag, string text) =>
             DialogueLineDefinition.ClueSelection(
                 new DialogueLineId(slotId), "화자", text,
-                new[] { new ClueId(clueId) },
+                new[] { new ClueTag(requiredTag) },
                 new DialogueLineId("b-right"), new DialogueLineId("b-wrong"));
 
         [Test]
@@ -253,7 +253,7 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(DialoguePromptKind.ClueSelection, merged.PromptKind);
             Assert.AreEqual(new DialogueLineId("b-right"), merged.CorrectNext);
             Assert.AreEqual(new DialogueLineId("b-wrong"), merged.IncorrectNext);
-            Assert.AreEqual(1, merged.RequiredClueIds.Count);
+            Assert.AreEqual(1, merged.RequiredTags.Count);
         }
 
         [Test]

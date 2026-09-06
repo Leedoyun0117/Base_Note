@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using GameName.Core.Authoring;
 using GameName.Core.Clues;
 using GameName.Core.Dialogue;
@@ -29,9 +30,12 @@ namespace GameName.UI.Session
 
         private const string Yuki = "유키";
 
-        // 방 사양: 시작 신뢰도 3, 한 판 추출 자원 5.
+        // 방 사양: 시작 신뢰도 3, 시작 히로민 15(추출 9, 이동 문턱과 같은 값이라
+        // 런 시작 시엔 항상 곧장 이동할 수 있다), 대화 1회 +3, 런당 기회 2.
         private const int StartingTrust = 3;
-        private const int ExtractionBudget = 5;
+        private const int StartingHiromi = 15;
+        private const int StartingChance = 2;
+        private const int MoveHiromiCost = 15;
 
         // 랜덤 분기 풀 확정 시드. 데모 데이터엔 아직 풀이 없어 쓰이지 않지만,
         // 실제 데이터 소스가 생기기 전까지 고정값을 박아 둔다.
@@ -46,15 +50,18 @@ namespace GameName.UI.Session
             { 0, 0.5f },
         };
 
-        // 판을 시작할 때 지갑에 들고 있는 색. R·G·B 하나씩 쥐고 출발한다 —
-        // 첫 방부터 마스크 구간을 하나는 풀어 볼 수 있게 하는 시작 밑천이다.
-        private static readonly Dictionary<MemoryColor, int> StartingMemoryColors =
-            new Dictionary<MemoryColor, int>
-            {
-                { MemoryColor.Red, 1 },
-                { MemoryColor.Green, 1 },
-                { MemoryColor.Blue, 1 },
-            };
+        // 검열 키 하나를 풀려면 제시할 기억이 어느 태그를 가져야 하는지.
+        // 색과 달리 대사 원문에서 저절로 나오지 않아 따로 적는다 — 각 키를
+        // 실제로 푸는 핵심 단서에 매겨 둔 태그와 짝을 맞춘다.
+        private static readonly CensorKeyTagRequirement[] CensorKeyTagRequirements =
+        {
+            new CensorKeyTagRequirement(
+                new CensorKey("rooftop-blanket"), new[] { new ClueTag("room1.blanket") }),
+            new CensorKeyTagRequirement(
+                new CensorKey("rooftop-goodbye"), new[] { new ClueTag("room2.goodbye") }),
+            new CensorKeyTagRequirement(
+                new CensorKey("missed-words"), new[] { new ClueTag("room3.missedWords") }),
+        };
 
         // 단서가 놓이는 가로 자리(비율). 종류별로 나눠 두어 겹침 경고를 피한다.
         private static readonly float[] FloorSlots = { 0.18f, 0.50f, 0.82f };
@@ -72,11 +79,11 @@ namespace GameName.UI.Session
             AddPlacements(cluePlacements, room3);
 
             var run = new RunDefinition(
-                new[] { room1, room2, room3 }, StartingTrust, ExtractionBudget, RunSeed);
+                new[] { room1, room2, room3 }, StartingTrust, StartingHiromi, RunSeed,
+                CensorKeyTagRequirements, StartingChance, MoveHiromiCost);
             var roomIds = new List<MemoryRoomId> { Room1, Room2, Room3 };
 
-            return new GameSessionData(
-                cluePlacements, roomIds, run, VisibilityByTrust, StartingMemoryColors);
+            return new GameSessionData(cluePlacements, roomIds, run, VisibilityByTrust);
         }
 
         // 방 단서는 5개까지 놓이지만 가방은 3칸이다 — 한 방의 단서를 전부
@@ -94,8 +101,10 @@ namespace GameName.UI.Session
         {
             var clues = new[]
             {
-                // 핵심 단서 — 파란 기억을 품고 있어 추출하면 rooftop-blanket 검열이 풀린다.
-                Clue("clue-r1-blanket", "낡은 모포", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Blue),
+                // 핵심 단서 — 파란 기억을 품고 있어 색만으로는 힌트지만, 실제로
+                // rooftop-blanket을 여는 것은 room1.blanket 태그다.
+                Clue("clue-r1-blanket", "낡은 모포", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Blue,
+                    "room1.blanket"),
                 Clue("clue-r1-picturebook", "표지가 닳은 그림책", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Red),
                 Clue("clue-r1-cicada-net", "부러진 매미채", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Green),
                 Clue("clue-r1-drawing", "크레파스로 그린 그림", ClueKind.Poster, PosterSlots[0], MemoryColor.Green),
@@ -134,10 +143,17 @@ namespace GameName.UI.Session
         {
             var clues = new[]
             {
-                Clue("clue-r2-photo", "빛바랜 사진 한 장", ClueKind.Poster, PosterSlots[0], MemoryColor.Green),
+                // 핵심 단서 — 초록 기억을 품고 있어 색만으로는 힌트지만, 실제로
+                // rooftop-goodbye를 여는 것은 room2.goodbye 태그다.
+                Clue("clue-r2-photo", "빛바랜 사진 한 장", ClueKind.Poster, PosterSlots[0], MemoryColor.Green,
+                    "room2.goodbye"),
                 // 이 방에서도 예전 색(B)이 나올 수 있다 — 색은 시간순 방과 1:1이 아니다.
-                Clue("clue-r2-ribbon", "교복 리본", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Blue),
-                Clue("clue-r2-letter", "부치지 못한 편지", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Green),
+                // 리본과 편지 둘 다 "그때 손에 쥐고 있던 것"을 가리키는 같은 태그를
+                // 갖는다 — 어느 쪽을 답으로 내도 정답이어야 하기 때문이다.
+                Clue("clue-r2-ribbon", "교복 리본", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Blue,
+                    "room2.heldItem"),
+                Clue("clue-r2-letter", "부치지 못한 편지", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Green,
+                    "room2.heldItem"),
                 Clue("clue-r2-tape", "이름 없는 카세트테이프", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Red),
                 Clue("clue-r2-band-poster", "귀퉁이가 찢어진 밴드 포스터", ClueKind.Poster, PosterSlots[1], MemoryColor.Red),
             };
@@ -163,7 +179,7 @@ namespace GameName.UI.Session
                 DialogueLineDefinition.ClueSelection(
                     new DialogueLineId("r2-q"), Yuki,
                     "그때 넌 손에 뭔가를 꼭 쥐고 있었어. 만지작거리면서. ...그게 뭐였는지 기억나?",
-                    new[] { new ClueId("clue-r2-ribbon"), new ClueId("clue-r2-letter") },
+                    new[] { new ClueTag("room2.heldItem") },
                     correctNext: new DialogueLineId("r2-q-right"),
                     incorrectNext: new DialogueLineId("r2-q-wrong-1")),
 
@@ -196,8 +212,10 @@ namespace GameName.UI.Session
         {
             var clues = new[]
             {
-                // 핵심 단서 — 빨간 기억을 품고 있어 추출하면 missed-words 검열이 풀린다.
-                Clue("clue-r3-watch", "깨진 손목시계", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Red),
+                // 핵심 단서 — 빨간 기억을 품고 있어 색만으로는 힌트지만, 실제로
+                // missed-words를 여는 것은 room3.missedWords 태그다.
+                Clue("clue-r3-watch", "깨진 손목시계", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Red,
+                    "room3.missedWords"),
                 Clue("clue-r3-keychain", "낡은 열쇠고리", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Blue),
                 Clue("clue-r3-coin", "구부러진 동전", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Green),
                 Clue("clue-r3-xray-poster", "엑스레이 필름", ClueKind.Poster, PosterSlots[0], MemoryColor.Red),
@@ -231,8 +249,11 @@ namespace GameName.UI.Session
         // ── 조립 헬퍼 ────────────────────────────────────────────────────
 
         private static ClueDefinition Clue(
-            string id, string displayName, ClueKind kind, float ratio, MemoryColor hiddenColor) =>
-            new ClueDefinition(new ClueId(id), kind, displayName, new CluePositionRatio(ratio), hiddenColor);
+            string id, string displayName, ClueKind kind, float ratio, MemoryColor hiddenColor,
+            params string[] tags) =>
+            new ClueDefinition(
+                new ClueId(id), kind, displayName, new CluePositionRatio(ratio), hiddenColor,
+                tags.Select(t => new ClueTag(t)).ToArray());
 
         private static DialogueLineDefinition Line(
             string id, string speaker, string authoredText, params ChoiceDefinition[] choices) =>

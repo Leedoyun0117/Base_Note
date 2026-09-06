@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GameName.Core.Clues;
 using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.Memories;
@@ -9,18 +10,23 @@ namespace GameName.UI.MemoryRoom.Dialogue
     // 대화 패널의 Core 연동. 화면 컨트롤러 패턴 그대로 — Core 처리기를 직접
     // 조작하지 않고, 눌림을 처리기 호출로 옮기고 이벤트를 듣고 다시 그린다.
     //
-    // 마스크 구간 클릭은 대화를 막지 않는다. 기억제가 없으면 안내 한 줄만 띄우고
-    // 끝이다 — 기억제는 필수 열쇠가 아니라 문맥 추론을 돕는 보조이기 때문이다.
+    // 마스크 구간 클릭은 대화를 막지 않는다. 추출한 기억이 하나도 없으면 안내
+    // 한 줄만 띄우고 끝이다 — 기억 제시는 필수 열쇠가 아니라 문맥 추론을 돕는
+    // 보조이기 때문이다. 손에 든 기억이 있으면 그 목록을 팝업에 띄워 고르게
+    // 하고, 실제로 맞는지(태그가 겹치는지)는 CensorUnlockProcessor가 판정한다 —
+    // 여기서는 색을 힌트 문구로만 보여 준다.
     public sealed class DialoguePanelController : IDisposable
     {
         private readonly IDialoguePanelView _view;
         private readonly DialogueProgressor _progressor;
         private readonly CensorUnlockProcessor _censorUnlock;
-        private readonly IMemoryColorWallet _wallet;
+        private readonly IExtractedMemoryStore _memories;
+        private readonly IMemoryRoomClueTracker _clueTracker;
         private readonly ICensorKeyColorMap _keyColors;
+        private readonly Func<MemoryColor, string> _colorDisplayName;
         private readonly IDisposable[] _subscriptions;
 
-        // 확인 팝업이 떠 있는 동안 어느 키를 풀지 붙들어 둔다.
+        // 제시 팝업이 떠 있는 동안 어느 키를 풀지 붙들어 둔다.
         private CensorKey? _pendingKey;
 
         // 런이 끝났다. 이 뒤로는 어떤 이벤트가 와도 패널을 다시 그리지 않는다.
@@ -30,22 +36,26 @@ namespace GameName.UI.MemoryRoom.Dialogue
             IDialoguePanelView view,
             DialogueProgressor progressor,
             CensorUnlockProcessor censorUnlock,
-            IMemoryColorWallet wallet,
+            IExtractedMemoryStore memories,
+            IMemoryRoomClueTracker clueTracker,
             ICensorKeyColorMap keyColors,
+            Func<MemoryColor, string> colorDisplayName,
             IEventBus eventBus)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _progressor = progressor ?? throw new ArgumentNullException(nameof(progressor));
             _censorUnlock = censorUnlock ?? throw new ArgumentNullException(nameof(censorUnlock));
-            _wallet = wallet ?? throw new ArgumentNullException(nameof(wallet));
+            _memories = memories ?? throw new ArgumentNullException(nameof(memories));
+            _clueTracker = clueTracker ?? throw new ArgumentNullException(nameof(clueTracker));
             _keyColors = keyColors ?? throw new ArgumentNullException(nameof(keyColors));
+            _colorDisplayName = colorDisplayName ?? throw new ArgumentNullException(nameof(colorDisplayName));
             if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
 
             _view.MaskClicked += OnMaskClicked;
             _view.ChoiceClicked += id => _progressor.Select(id);
             _view.ClueAnswerClicked += id => _progressor.SelectClue(id);
             _view.SkipClueAnswerClicked += () => _progressor.SkipClueSelection();
-            _view.UnlockConfirmed += OnUnlockConfirmed;
+            _view.MemoryPresented += OnMemoryPresented;
             _view.UnlockCancelled += OnUnlockCancelled;
 
             _subscriptions = new[]
@@ -78,16 +88,26 @@ namespace GameName.UI.MemoryRoom.Dialogue
             _view.HideUnlockPrompt();
             _view.SetNotice(null);
 
-            var summary =
-                $"모은 기억색  —  R {_wallet.GetCount(MemoryColor.Red)}" +
-                $"   G {_wallet.GetCount(MemoryColor.Green)}" +
-                $"   B {_wallet.GetCount(MemoryColor.Blue)}";
+            var red = 0;
+            var green = 0;
+            var blue = 0;
+            foreach (var memory in _memories.All)
+            {
+                switch (memory.Color)
+                {
+                    case MemoryColor.Red: red++; break;
+                    case MemoryColor.Green: green++; break;
+                    default: blue++; break;
+                }
+            }
+
+            var summary = $"모은 기억색  —  R {red}   G {green}   B {blue}";
             _view.SetLine(string.Empty, "기억이 여기서 끝난다.\n" + summary);
             _view.SetChoices(Array.Empty<KeyValuePair<ChoiceId, string>>());
         }
 
         // 단서 손 상태가 바뀌었을 때 — ClueSelection 줄에서만 다시 그린다.
-        // 텍스트 선택지 줄에서는 안내 문구·확인 팝업을 괜히 지우지 않는다.
+        // 텍스트 선택지 줄에서는 안내 문구·제시 팝업을 괜히 지우지 않는다.
         private void RerenderIfClueSelection()
         {
             if (!_runEnded && _progressor.CurrentLine != null
@@ -133,31 +153,49 @@ namespace GameName.UI.MemoryRoom.Dialogue
 
         private void OnMaskClicked(CensorKey key)
         {
-            if (!_keyColors.TryGetColor(key, out var color))
-                return;
-
-            if (_wallet.GetCount(color) <= 0)
+            var options = BuildMemoryOptions();
+            if (options.Count == 0)
             {
-                _view.SetNotice("이 기억을 밝힐 기억제가 없습니다. (문맥으로도 진행할 수 있습니다)");
+                _view.SetNotice("제시할 추출한 기억이 없습니다. (문맥으로도 진행할 수 있습니다)");
                 return;
             }
 
             _pendingKey = key;
-            _view.ShowUnlockPrompt("기억제 1개를 써서 이 구간을 밝힙니다.");
+
+            // 색은 힌트일 뿐이다 — 맞는 색을 골라도 태그가 다르면 해금은 실패한다.
+            var message = _keyColors.TryGetColor(key, out var color)
+                ? $"제시할 기억을 고르세요. (힌트: {_colorDisplayName(color)} 계열)"
+                : "제시할 기억을 고르세요.";
+            _view.ShowUnlockPrompt(message, options);
         }
 
-        private void OnUnlockConfirmed()
+        private List<KeyValuePair<ClueId, string>> BuildMemoryOptions()
+        {
+            var options = new List<KeyValuePair<ClueId, string>>();
+            foreach (var memory in _memories.All)
+            {
+                var hasName = _clueTracker.TryGetDefinition(memory.SourceClueId, out var definition)
+                    && !string.IsNullOrEmpty(definition.DisplayName);
+                var name = hasName ? definition.DisplayName : memory.SourceClueId.Value;
+                var label = $"{name} ({_colorDisplayName(memory.Color)})";
+                options.Add(new KeyValuePair<ClueId, string>(memory.SourceClueId, label));
+            }
+
+            return options;
+        }
+
+        private void OnMemoryPresented(ClueId presentedClueId)
         {
             if (!_pendingKey.HasValue)
                 return;
 
-            var result = _censorUnlock.Unlock(_pendingKey.Value);
+            var result = _censorUnlock.Unlock(_pendingKey.Value, presentedClueId);
             _pendingKey = null;
 
             if (!result.Succeeded)
             {
                 _view.HideUnlockPrompt();
-                _view.SetNotice("해금에 실패했습니다.");
+                _view.SetNotice("해금에 실패했습니다 — 이 기억은 이 질문과 맞지 않는 것 같습니다.");
                 return;
             }
 

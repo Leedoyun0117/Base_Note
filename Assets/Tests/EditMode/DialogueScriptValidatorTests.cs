@@ -28,8 +28,14 @@ namespace GameName.Core.Tests.EditMode
         private static IReadOnlyList<ScriptIssue> Warnings(IReadOnlyList<ScriptIssue> issues) =>
             issues.Where(i => i.Severity == ScriptIssueSeverity.Warning).ToArray();
 
-        private static ClueDefinition Clue(string id, MemoryColor hidden, float position, ClueKind kind = ClueKind.Poster) =>
-            new ClueDefinition(new ClueId(id), kind, id, new CluePositionRatio(position), hidden);
+        // 태그를 따로 안 주면 단서 id 자체를 태그로 삼는다 — 기존 테스트가
+        // "이 단서 id로 답한다"고 표현하던 것을 태그 판정으로 옮겨도 그대로
+        // 성립하게 하기 위한 기본값이다.
+        private static ClueDefinition Clue(
+            string id, MemoryColor hidden, float position, ClueKind kind = ClueKind.Poster, string[] tags = null) =>
+            new ClueDefinition(
+                new ClueId(id), kind, id, new CluePositionRatio(position), hidden,
+                (tags ?? new[] { id }).Select(t => new ClueTag(t)).ToArray());
 
         private static ChoiceDefinition Choice(
             string id,
@@ -62,7 +68,7 @@ namespace GameName.Core.Tests.EditMode
                 lines);
 
         private static RunDefinition Run(params RoomDefinition[] rooms) =>
-            new RunDefinition(rooms, startingTrust: 50, extractionBudget: 5);
+            new RunDefinition(rooms, startingTrust: 50, startingHiromi: 5);
 
         private static RunDefinition RunWith(RoomDefinition room) =>
             Run(room, Room("room-2"), Room("room-3"));
@@ -390,10 +396,10 @@ namespace GameName.Core.Tests.EditMode
         // ── ClueSelection 줄 검증 ─────────────────────────────────────────
 
         private static DialogueLineDefinition ClueSelLine(
-            string id, string[] required, string correctNext, string incorrectNext) =>
+            string id, string[] requiredTags, string correctNext, string incorrectNext) =>
             DialogueLineDefinition.ClueSelection(
                 new DialogueLineId(id), "화자", "무엇을 들고 있었어?",
-                System.Array.ConvertAll(required, r => new ClueId(r)),
+                System.Array.ConvertAll(requiredTags, t => new ClueTag(t)),
                 new DialogueLineId(correctNext), new DialogueLineId(incorrectNext));
 
         private static RoomDefinition ClueSelRoom(
@@ -639,13 +645,13 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 풀_후보로_넣은_ClueSelection_라인도_성립_검사를_받는다()
         {
-            // 정답 단서 집합이 비어 있고 분기도 안 지정된 ClueSelection 후보.
+            // 정답 태그 집합이 비어 있고 분기도 안 지정된 ClueSelection 후보.
             var broken = DialogueLineDefinition.ClueSelection(
                 new DialogueLineId("slot"), "화자", "무엇을 쥐고 있었어?",
-                System.Array.Empty<ClueId>(), null, null);
+                System.Array.Empty<ClueTag>(), null, null);
             var ok = DialogueLineDefinition.ClueSelection(
                 new DialogueLineId("slot"), "화자", "그때 손엔 뭐가?",
-                new[] { new ClueId("room-1-clue") },
+                new[] { new ClueTag("room-1-clue") },
                 new DialogueLineId("line-2"), new DialogueLineId("line-2"));
 
             var room = RoomWithPools(

@@ -18,6 +18,7 @@ namespace GameName.UI.MemoryRoom
     //   · 하단 대화 패널(DialoguePanelController) — 검열 렌더링된 대사와 선택지
     //   · 필요할 때만 뜨는 오버레이 — 가방(인벤토리)·단서 설명 창
     //   · 가방 안의 사물 용도 선택(ClueUsePanelController)
+    //   · 가방 안의 "다음 기억으로" 레버(MemoryMoveLeverController)
     //   · 가방 오버레이의 두 번째 탭 — 복원도(RestorationScreenController),
     //     탭 전환은 OverlayTabController
     // 이들을 서로 잇는 일은 전부 여기서 한다. 각 조각은 서로를 알지 못한다.
@@ -35,6 +36,7 @@ namespace GameName.UI.MemoryRoom
         private readonly ClueZoomScreenController _clueZoom;
         private readonly InventoryScreenController _inventory;
         private readonly ClueUsePanelController _clueUsePanel;
+        private readonly MemoryMoveLeverController _memoryMoveLever;
         private readonly RestorationScreenController _restoration;
         private readonly OverlayTabController _overlayTabs;
         private readonly OverlayPanelHost _overlayPanels;
@@ -49,6 +51,7 @@ namespace GameName.UI.MemoryRoom
             ClueZoomScreenController clueZoom,
             InventoryScreenController inventory,
             ClueUsePanelController clueUsePanel,
+            MemoryMoveLeverController memoryMoveLever,
             RestorationScreenController restoration,
             OverlayTabController overlayTabs,
             OverlayPanelHost overlayPanels)
@@ -62,6 +65,7 @@ namespace GameName.UI.MemoryRoom
             _clueZoom = clueZoom ?? throw new ArgumentNullException(nameof(clueZoom));
             _inventory = inventory ?? throw new ArgumentNullException(nameof(inventory));
             _clueUsePanel = clueUsePanel ?? throw new ArgumentNullException(nameof(clueUsePanel));
+            _memoryMoveLever = memoryMoveLever ?? throw new ArgumentNullException(nameof(memoryMoveLever));
             _restoration = restoration ?? throw new ArgumentNullException(nameof(restoration));
             _overlayTabs = overlayTabs ?? throw new ArgumentNullException(nameof(overlayTabs));
             _overlayPanels = overlayPanels ?? throw new ArgumentNullException(nameof(overlayPanels));
@@ -134,6 +138,7 @@ namespace GameName.UI.MemoryRoom
             _clueZoom.Dispose();
             _inventory.Dispose();
             _clueUsePanel.Dispose();
+            _memoryMoveLever.Dispose();
             _restoration.Dispose();
             _overlayTabs.Dispose();
         }

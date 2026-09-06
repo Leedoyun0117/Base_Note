@@ -10,7 +10,8 @@ using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // 인벤토리는 ClueState의 투영이다 — 수집 사건에 채워지고, 추출·방 시작에 비워진다.
+    // 인벤토리는 ClueState의 투영이다 — 수집 사건에 채워지고, 추출·버리기에 비워진다.
+    // 방이 바뀌는 것만으로는 비워지지 않는다(런 전체에 걸쳐 누적).
     public class InventoryProjectionTests
     {
         private static readonly MemoryRoomId TheRoom = new MemoryRoomId("room-1");
@@ -53,14 +54,14 @@ namespace GameName.Core.Tests.EditMode
             fx.Bus.Publish(new ClueCollectedEvent(new ClueId("clue-1"), TheRoom));
             fx.Bus.Publish(new ClueCollectedEvent(new ClueId("clue-2"), TheRoom));
 
-            fx.Bus.Publish(new ClueExtractedEvent(new ClueId("clue-1"), remainingExtractions: 4));
+            fx.Bus.Publish(new ClueExtractedEvent(new ClueId("clue-1")));
 
             Assert.IsFalse(fx.Holds("clue-1"));
             Assert.IsTrue(fx.Holds("clue-2"));
         }
 
         [Test]
-        public void 방이_시작되면_인벤토리가_비워진다()
+        public void 방이_시작돼도_인벤토리는_유지된다()
         {
             var fx = new Fixture("clue-1", "clue-2");
             fx.Bus.Publish(new ClueCollectedEvent(new ClueId("clue-1"), TheRoom));
@@ -68,8 +69,20 @@ namespace GameName.Core.Tests.EditMode
 
             fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-2"), 1));
 
-            Assert.AreEqual(0, fx.Inventory.Items.Count);
+            Assert.AreEqual(2, fx.Inventory.Items.Count, "런 전체에 걸쳐 누적되므로 방 전환으로 비워지면 안 된다.");
         }
 
+        [Test]
+        public void 버리기_사건이_오면_그_단서가_인벤토리에서_빠진다()
+        {
+            var fx = new Fixture("clue-1", "clue-2");
+            fx.Bus.Publish(new ClueCollectedEvent(new ClueId("clue-1"), TheRoom));
+            fx.Bus.Publish(new ClueCollectedEvent(new ClueId("clue-2"), TheRoom));
+
+            fx.Bus.Publish(new ClueDiscardedEvent(new ClueId("clue-1")));
+
+            Assert.IsFalse(fx.Holds("clue-1"));
+            Assert.IsTrue(fx.Holds("clue-2"));
+        }
     }
 }

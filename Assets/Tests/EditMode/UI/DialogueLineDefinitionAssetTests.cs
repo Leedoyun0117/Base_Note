@@ -53,7 +53,7 @@ namespace GameName.UI.Tests.EditMode
             Assert.AreEqual(ChoiceConditionKind.CensorKeyRevealed, line.Choices[1].Condition.Kind);
             Assert.AreEqual(new CensorKey("k"), line.Choices[1].Condition.RequiredCensorKey.Value);
 
-            CollectionAssert.IsEmpty(line.RequiredClueIds);
+            CollectionAssert.IsEmpty(line.RequiredTags);
         }
 
         [Test]
@@ -64,7 +64,7 @@ namespace GameName.UI.Tests.EditMode
                 ""_speaker"": ""유키"",
                 ""_authoredText"": ""그때 뭘 쥐고 있었어?"",
                 ""_lineKind"": 1,
-                ""_requiredClueIds"": [ ""clue-ribbon"", ""clue-letter"", """" ],
+                ""_requiredTags"": [ ""room2.heldItem"", ""room2.other"", """" ],
                 ""_correctNextLineId"": ""r2-q-right"",
                 ""_incorrectNextLineId"": ""r2-q-wrong""
             }");
@@ -72,7 +72,7 @@ namespace GameName.UI.Tests.EditMode
             var line = asset.ToDefinition();
             var expected = DialogueLineDefinition.ClueSelection(
                 new DialogueLineId("r2-q"), "유키", "그때 뭘 쥐고 있었어?",
-                new[] { new ClueId("clue-ribbon"), new ClueId("clue-letter") },
+                new[] { new ClueTag("room2.heldItem"), new ClueTag("room2.other") },
                 new DialogueLineId("r2-q-right"), new DialogueLineId("r2-q-wrong"));
 
             Assert.AreEqual(expected.PromptKind, line.PromptKind);
@@ -83,9 +83,9 @@ namespace GameName.UI.Tests.EditMode
             Assert.AreEqual(expected.CorrectNext, line.CorrectNext);
             Assert.AreEqual(expected.IncorrectNext, line.IncorrectNext);
             CollectionAssert.AreEqual(
-                expected.RequiredClueIds.Select(c => c.Value).ToArray(),
-                line.RequiredClueIds.Select(c => c.Value).ToArray());
-            Assert.AreEqual(2, line.RequiredClueIds.Count, "빈 단서 id 칸은 걸러진다.");
+                expected.RequiredTags.Select(t => t.Value).ToArray(),
+                line.RequiredTags.Select(t => t.Value).ToArray());
+            Assert.AreEqual(2, line.RequiredTags.Count, "빈 태그 칸은 걸러진다.");
             CollectionAssert.IsEmpty(line.Choices);
         }
 
@@ -97,7 +97,7 @@ namespace GameName.UI.Tests.EditMode
                 ""_speaker"": ""유키"",
                 ""_authoredText"": ""?"",
                 ""_lineKind"": 1,
-                ""_requiredClueIds"": [],
+                ""_requiredTags"": [],
                 ""_correctNextLineId"": """",
                 ""_incorrectNextLineId"": """"
             }");
@@ -107,7 +107,7 @@ namespace GameName.UI.Tests.EditMode
             Assert.AreEqual(DialoguePromptKind.ClueSelection, line.PromptKind);
             Assert.IsFalse(line.CorrectNext.HasValue);
             Assert.IsFalse(line.IncorrectNext.HasValue);
-            CollectionAssert.IsEmpty(line.RequiredClueIds);
+            CollectionAssert.IsEmpty(line.RequiredTags);
         }
     }
 }

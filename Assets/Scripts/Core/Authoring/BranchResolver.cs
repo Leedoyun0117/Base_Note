@@ -22,7 +22,9 @@ namespace GameName.Core.Authoring
             foreach (var room in raw.Rooms)
                 rooms.Add(ResolveRoom(room, seed));
 
-            return new RunDefinition(rooms, raw.StartingTrust, raw.ExtractionBudget, raw.Seed);
+            return new RunDefinition(
+                rooms, raw.StartingTrust, raw.StartingHiromi, raw.Seed, raw.CensorKeyTagRequirements,
+                raw.StartingChance, raw.MoveHiromiCost);
         }
 
         private static RoomDefinition ResolveRoom(RoomDefinition room, int seed)

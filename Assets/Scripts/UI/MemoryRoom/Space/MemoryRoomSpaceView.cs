@@ -33,14 +33,23 @@ namespace GameName.UI.MemoryRoom.Space
         [SerializeField] private Transform _spaceRoot;
         [SerializeField] private ScenePointerInput _pointerInput;
 
+        [Header("아트 교체")]
+        [Tooltip("켜면 절차적 방 도형(뒷벽·바닥·천장·좌우벽)의 렌더러를 끈다. " +
+            "픽셀아트 레이어를 Space 아래 깔았을 때 그 뒤에 남는 임시 배경을 숨기는 용도다. " +
+            "도형에는 콜라이더가 없고 이동·배치는 전부 RoomGeometry(순수 계산)가 정하므로 " +
+            "렌더러를 꺼도 게임플레이에는 영향이 없다. 플레이어 박스는 끄지 않는다.")]
+        [SerializeField] private bool _hideStructureRenderers;
+
         [Header("임시 색(아트 교체 전까지)")]
         [SerializeField] private Color _backWallColor = new Color(0.16f, 0.15f, 0.20f);
         [SerializeField] private Color _structureColor = new Color(0.34f, 0.32f, 0.40f);
         [SerializeField] private Color _playerColor = new Color(0.85f, 0.85f, 0.90f);
-        [SerializeField] private Color _posterColor = new Color(0.80f, 0.62f, 0.35f);
-        [SerializeField] private Color _floorObjectColor = new Color(0.45f, 0.68f, 0.72f);
-        [SerializeField] private Color _outlineColor = Color.white;
-        [SerializeField] private float _outlinePadding = 0.14f;
+        // 단서 임시 도형은 배경 팔레트(어두운 청록)에 맞춘다 — 아트 나오기 전까지.
+        // 몸통은 배경에 녹아드는 어두운 청록, 테두리만 밝게 띄워 "집을 수 있는 것"임을 알린다.
+        [SerializeField] private Color _posterColor = new Color(0.20f, 0.34f, 0.32f);
+        [SerializeField] private Color _floorObjectColor = new Color(0.13f, 0.25f, 0.24f);
+        [SerializeField] private Color _outlineColor = new Color(0.72f, 0.98f, 0.92f);
+        [SerializeField] private float _outlinePadding = 0.07f;
 
         // 그리는 순서. 뒷벽이 가장 뒤, 플레이어가 가장 앞이다. 강조 테두리는
         // 자기 본체 바로 뒤에 오도록 본체 순서에서 하나를 빼서 쓴다 — 앞에 두면
@@ -79,19 +88,32 @@ namespace GameName.UI.MemoryRoom.Space
             _roomObject.transform.SetParent(_spaceRoot, worldPositionStays: false);
             var roomRoot = _roomObject.transform;
 
-            SolidShapeFactory.Create("BackWall", roomRoot, RoomGeometry.BackWall(layout), _backWallColor, BackWallOrder);
-            SolidShapeFactory.Create("Floor", roomRoot, RoomGeometry.Floor(layout), _structureColor, StructureOrder);
-            SolidShapeFactory.Create("Ceiling", roomRoot, RoomGeometry.Ceiling(layout), _structureColor, StructureOrder);
-            SolidShapeFactory.Create("LeftWall", roomRoot, RoomGeometry.LeftWall(layout), _structureColor, StructureOrder);
-            SolidShapeFactory.Create("RightWall", roomRoot, RoomGeometry.RightWall(layout), _structureColor, StructureOrder);
+            // 도형은 늘 만든다(테스트가 존재를 확인하고, 좌표 기준은 그대로다).
+            // _hideStructureRenderers면 보이기만 끈다 — 픽셀아트가 뒤를 덮은 상태.
+            var structure = new[]
+            {
+                SolidShapeFactory.Create("BackWall", roomRoot, RoomGeometry.BackWall(layout), _backWallColor, BackWallOrder),
+                SolidShapeFactory.Create("Floor", roomRoot, RoomGeometry.Floor(layout), _structureColor, StructureOrder),
+                SolidShapeFactory.Create("Ceiling", roomRoot, RoomGeometry.Ceiling(layout), _structureColor, StructureOrder),
+                SolidShapeFactory.Create("LeftWall", roomRoot, RoomGeometry.LeftWall(layout), _structureColor, StructureOrder),
+                SolidShapeFactory.Create("RightWall", roomRoot, RoomGeometry.RightWall(layout), _structureColor, StructureOrder),
+            };
+
+            if (_hideStructureRenderers)
+            {
+                foreach (var renderer in structure)
+                    renderer.enabled = false;
+            }
 
             var contentRootObject = new GameObject("Contents");
             contentRootObject.transform.SetParent(roomRoot, worldPositionStays: false);
             _contentRoot = contentRootObject.transform;
 
+            // 플레이어 표식은 조작 가능한 아바타라 어두운 구석에서도 위치를
+            // 놓치면 안 된다 — Unlit로 그려 조명과 무관하게 보이게 한다.
             var playerRenderer = SolidShapeFactory.Create(
                 "Player", roomRoot, Vector2.zero, new Vector2(layout.PlayerWidth, layout.PlayerHeight),
-                _playerColor, PlayerOrder);
+                _playerColor, PlayerOrder, lit: false);
             _player = playerRenderer.gameObject.AddComponent<PlayerCharacter>();
             _player.Configure(layout, startX: 0f);
         }
@@ -162,10 +184,12 @@ namespace GameName.UI.MemoryRoom.Space
             root.transform.SetParent(_contentRoot, worldPositionStays: false);
             root.transform.localPosition = new Vector3(position.x, position.y, 0f);
 
+            // 단서 도형은 "집을 수 있는 것"이라는 어포던스다 — 조명을 받으면
+            // 어두운 구석에서 강조 테두리가 묻혀 신호가 죽는다. Unlit로 그린다.
             var outline = SolidShapeFactory.Create(
                 "Outline", root.transform, Vector2.zero,
-                size + new Vector2(_outlinePadding, _outlinePadding), _outlineColor, bodyOrder - 1);
-            var body = SolidShapeFactory.Create("Body", root.transform, Vector2.zero, size, color, bodyOrder);
+                size + new Vector2(_outlinePadding, _outlinePadding), _outlineColor, bodyOrder - 1, lit: false);
+            var body = SolidShapeFactory.Create("Body", root.transform, Vector2.zero, size, color, bodyOrder, lit: false);
 
             var collider = root.AddComponent<BoxCollider2D>();
             collider.size = body.transform.localScale;

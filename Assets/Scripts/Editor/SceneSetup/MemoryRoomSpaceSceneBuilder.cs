@@ -34,7 +34,7 @@ namespace GameName.UI.Editor.SceneSetup
             if (SerializedFieldBinder.BindObject(spaceView, "_pointerInput", pointerInput, report))
                 report.Linked($"{SpaceObjectName}.Pointer Input → ScenePointerInput");
 
-            SetUpCamera(pointerInput, memoryRoomScreen, layoutAsset, report);
+            SetUpCamera(pointerInput, memoryRoomScreen, spaceView, layoutAsset, report);
 
             return spaceView;
         }
@@ -71,8 +71,11 @@ namespace GameName.UI.Editor.SceneSetup
             return pointerInput;
         }
 
-        // 신뢰가 깎일 때 방 안 콘텐츠를 짧게 흔든다. 카메라에 붙여야 UI 레이어
-        // (마스크·HUD·대화 패널)는 화면 좌표라 흔들리지 않고 씬만 떨린다.
+        // 신뢰가 깎일 때 방 안 콘텐츠를 짧게 흔든다. 컴포넌트는 메인 카메라에
+        // 두지만(부트스트랩이 카메라에서 찾는다) 실제로 미는 것은 _shakeTarget에
+        // 연결한 Space 루트다 — 카메라에는 Pixel Perfect Camera가 붙어 위치를
+        // 픽셀 격자에 스냅하므로, 카메라를 직접 밀면 격자가 떨린다. UI 레이어
+        // (마스크·HUD·대화 패널)는 화면 좌표라 어느 쪽이든 흔들리지 않는다.
         private static CameraShake FindOrAddCameraShake(Camera camera, SceneSetupReport report)
         {
             var existing = camera.GetComponent<CameraShake>();
@@ -118,6 +121,7 @@ namespace GameName.UI.Editor.SceneSetup
         private static void SetUpCamera(
             ScenePointerInput pointerInput,
             MemoryRoomBootstrap memoryRoomScreen,
+            MemoryRoomSpaceView spaceView,
             MemoryRoomLayoutAsset layoutAsset,
             SceneSetupReport report)
         {
@@ -161,6 +165,10 @@ namespace GameName.UI.Editor.SceneSetup
             var cameraShake = FindOrAddCameraShake(camera, report);
             if (SerializedFieldBinder.BindObject(memoryRoomScreen, "_cameraShake", cameraShake, report))
                 report.Linked($"{memoryRoomScreen.name}.Camera Shake → Main Camera의 CameraShake");
+
+            // 흔들림은 카메라가 아니라 Space 루트에 얹는다(위 FindOrAddCameraShake 주석).
+            if (SerializedFieldBinder.BindObject(cameraShake, "_shakeTarget", spaceView.transform, report))
+                report.Linked("CameraShake.Shake Target → Space");
         }
     }
 }

@@ -287,7 +287,7 @@ namespace GameName.Tests.PlayMode
                 "해금 전인데 원문('그 여름밤 옥상')이 이미 화면에 그려져 있다.");
 
             Assert.IsTrue(
-                _session.CensorUnlock.Unlock(new CensorKey("rooftop-blanket")).Succeeded, "해금 실패.");
+                _session.CensorUnlock.Unlock(new CensorKey("rooftop-blanket"), blanketId).Succeeded, "해금 실패.");
             yield return null;
 
             var after = body.Children().OfType<Label>().Select(l => l.text).ToArray();

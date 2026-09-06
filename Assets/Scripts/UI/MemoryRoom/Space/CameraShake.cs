@@ -2,9 +2,16 @@ using UnityEngine;
 
 namespace GameName.UI.MemoryRoom.Space
 {
-    // 신뢰가 깎일 때 방을 흔든다. 카메라 Transform에 오프셋을 주는 방식이라,
-    // 화면 좌표로 그려지는 UI Toolkit 레이어(마스크·HUD·대화 패널)는 영향을
-    // 받지 않고 2D 씬만 떨린다.
+    // 신뢰가 깎일 때 방을 흔든다. 씬 콘텐츠 루트 Transform에 오프셋을 주는
+    // 방식이라, 화면 좌표로 그려지는 UI Toolkit 레이어(마스크·HUD·대화 패널)는
+    // 영향을 받지 않고 2D 씬만 떨린다.
+    //
+    // 카메라가 아니라 _shakeTarget(방 껍데기·단서·배경을 담은 루트)을 흔드는
+    // 이유: 메인 카메라에는 Pixel Perfect Camera가 붙어 LateUpdate에서 위치를
+    // 픽셀 격자에 스냅한다. 같은 프레임에 이 컴포넌트가 카메라를 밀면 둘이
+    // 싸워 픽셀 격자가 떨린다. 카메라는 격자에 고정해 두고 방을 대신 움직인다.
+    // _shakeTarget이 비어 있으면(도구 미실행·단위 테스트) 자기 Transform을
+    // 흔든다 — 예전 동작 그대로다.
     //
     // 흔들림에는 두 겹이 있다:
     //   · 임펄스 — 신뢰가 한 칸 깎인 순간의 짧은 감쇠 흔들림(Shake).
@@ -12,16 +19,16 @@ namespace GameName.UI.MemoryRoom.Space
     //     떨림(SetContinuous). 언제 켜고 끄는지는 컨트롤러가 정한다.
     // 두 겹은 한 프레임 안에서 더해져 함께 적용된다.
     //
-    // Cinemachine 임펄스를 쓰지 않는 이유: 이 씬 카메라는 Cinemachine 가상
-    // 카메라가 아니라 도구가 방 치수로 위치·직교 크기를 직접 잡은 평범한
-    // Camera다. Transform 오프셋 한 겹이 훨씬 얇다.
-    //
     // 세기·길이·문턱은 전부 인스펙터에서 조절한다(코드에 상수를 박지 않는다).
     public sealed class CameraShake : MonoBehaviour
     {
+        [Header("흔들 대상")]
+        [Tooltip("실제로 오프셋을 받을 Transform. 비우면 이 컴포넌트가 붙은 오브젝트를 흔든다.")]
+        [SerializeField] private Transform _shakeTarget;
+
         [Header("임펄스 (신뢰 한 칸 깎임)")]
-        [Tooltip("임펄스의 최대 진폭(월드 단위). 작게 둔다 — 방 한 칸이 수 단위다.")]
-        [SerializeField] private float _magnitude = 0.12f;
+        [Tooltip("임펄스의 최대 진폭(월드 단위). 방 길이에 견줘 아주 작게 둔다.")]
+        [SerializeField] private float _magnitude = 0.0415f;
 
         [Tooltip("한 번의 임펄스가 잦아드는 데 걸리는 시간(초).")]
         [SerializeField] private float _duration = 0.35f;
@@ -31,7 +38,7 @@ namespace GameName.UI.MemoryRoom.Space
 
         [Header("지속 떨림 (신뢰 위태로운 구간)")]
         [Tooltip("SetContinuous(true) 동안 이어지는 미세 떨림의 진폭. 임펄스보다 훨씬 작게.")]
-        [SerializeField] private float _continuousMagnitude = 0.04f;
+        [SerializeField] private float _continuousMagnitude = 0.01385f;
 
         [Tooltip("지속 떨림의 빠르기. 클수록 손이 더 떨리는 느낌.")]
         [SerializeField] private float _continuousFrequency = 14f;
@@ -50,12 +57,15 @@ namespace GameName.UI.MemoryRoom.Space
         // 지금 임펄스가 잦아드는 중인가.
         public bool ImpulseActive => _impulseRemaining > 0f;
 
+        // 오프셋을 실제로 받는 Transform. 인스펙터에서 지정하지 않았으면 자기 자신.
+        private Transform Target => _shakeTarget != null ? _shakeTarget : transform;
+
         private void CaptureRestIfIdle()
         {
             if (_hasRest)
                 return;
 
-            _restLocalPosition = transform.localPosition;
+            _restLocalPosition = Target.localPosition;
             _hasRest = true;
         }
 
@@ -82,7 +92,7 @@ namespace GameName.UI.MemoryRoom.Space
                 CaptureRestIfIdle();
         }
 
-        // 카메라 프레이밍이 끝난 뒤에 오프셋을 얹어야 한 프레임 어긋나지 않는다.
+        // 카메라·픽셀 스냅이 끝난 뒤에 오프셋을 얹어야 한 프레임 어긋나지 않는다.
         private void LateUpdate()
         {
             var offset = Vector3.zero;
@@ -115,7 +125,7 @@ namespace GameName.UI.MemoryRoom.Space
                 return;
             }
 
-            transform.localPosition = _restLocalPosition + offset;
+            Target.localPosition = _restLocalPosition + offset;
         }
 
         private void RestoreRest()
@@ -123,7 +133,7 @@ namespace GameName.UI.MemoryRoom.Space
             if (!_hasRest)
                 return;
 
-            transform.localPosition = _restLocalPosition;
+            Target.localPosition = _restLocalPosition;
             _hasRest = false;
         }
 

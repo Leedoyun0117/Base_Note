@@ -38,8 +38,14 @@ namespace GameName.Core.Dialogue
         private readonly Dictionary<DialogueLineId, DialogueLineDefinition> _linesById =
             new Dictionary<DialogueLineId, DialogueLineDefinition>();
 
+        // 런에 등장하는 모든 단서의 정의 — 방을 가리지 않는다. 단서 상태가 런
+        // 전체에 걸쳐 누적되면서(ClueStateStore) 다른 방에서 집은 단서도 지금
+        // 방 대화에 답으로 낼 수 있어야 하고, 이 처리기가 그 단서의 태그를
+        // 알려면 방 하나가 아니라 런 전체의 저작 데이터를 봐야 한다.
+        private readonly Dictionary<ClueId, ClueDefinition> _clueDefinitionsById =
+            new Dictionary<ClueId, ClueDefinition>();
+
         private MemoryRoomId _roomId;
-        private RoomDefinition _currentRoom;
         private DialogueLineId? _currentLineId;
 
         public DialogueProgressor(
@@ -54,6 +60,10 @@ namespace GameName.Core.Dialogue
             _clueState = clueState ?? throw new ArgumentNullException(nameof(clueState));
             _trust = trust ?? throw new ArgumentNullException(nameof(trust));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+
+            foreach (var room in _rooms)
+            foreach (var clue in room.Clues)
+                _clueDefinitionsById[clue.Id] = clue;
 
             _eventBus.Subscribe<RoomStartedEvent>(e => LoadRoom(e.RoomIndex));
         }
@@ -70,17 +80,18 @@ namespace GameName.Core.Dialogue
                 : null;
 
         // ClueSelection 줄에서 답으로 낼 수 있는 단서 — 지금 들고 있는 것(Collected)만.
-        // 추출했거나 이미 대화에 쓴 단서는 손에 없으므로 제외한다. 이름을 함께
-        // 실어 화면이 단서 정의를 다시 뒤지지 않게 한다.
+        // 방을 가리지 않는다 — 다른 방에서 집은 단서도 손에 있으면 답으로 낼 수
+        // 있다. 추출했거나 이미 대화에 쓰거나 버린 단서는 손에 없으므로 제외한다.
+        // 이름을 함께 실어 화면이 단서 정의를 다시 뒤지지 않게 한다.
         public IReadOnlyList<KeyValuePair<ClueId, string>> SelectableClues()
         {
             var result = new List<KeyValuePair<ClueId, string>>();
 
             var line = CurrentLine;
-            if (_currentRoom == null || line == null || line.PromptKind != DialoguePromptKind.ClueSelection)
+            if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection)
                 return result;
 
-            foreach (var clue in _currentRoom.Clues)
+            foreach (var clue in _clueDefinitionsById.Values)
             {
                 if (_clueState.TryGetState(clue.Id, out var state) && state == ClueState.Collected)
                     result.Add(new KeyValuePair<ClueId, string>(clue.Id, clue.DisplayName));
@@ -171,16 +182,16 @@ namespace GameName.Core.Dialogue
                 return ChoiceSelectionResult.Rejected();
             }
 
-            // 지금 들고 있는 단서만 답이 될 수 있다.
+            // 지금 들고 있는 단서만 답이 될 수 있다 — 어느 방에서 집었는지는 안 본다.
             if (!_clueState.TryGetState(clueId, out var state) || state != ClueState.Collected
-                || !RoomHasClue(clueId))
+                || !_clueDefinitionsById.TryGetValue(clueId, out var clueDefinition))
             {
                 return ChoiceSelectionResult.Rejected();
             }
 
             _clueState.SetState(clueId, ClueState.UsedInDialogue);
 
-            var correct = Contains(line.RequiredClueIds, clueId);
+            var correct = HasAnyMatchingTag(clueDefinition.Tags, line.RequiredTags);
             _eventBus.Publish(new ClueAnsweredEvent(correct));
             EnterLine(correct ? line.CorrectNext.Value : line.IncorrectNext.Value);
             return ChoiceSelectionResult.Advanced();
@@ -210,14 +221,12 @@ namespace GameName.Core.Dialogue
         {
             _linesById.Clear();
             _currentLineId = null;
-            _currentRoom = null;
 
             if (roomIndex < 0 || roomIndex >= _rooms.Count)
                 return;
 
             var room = _rooms[roomIndex];
             _roomId = room.Id;
-            _currentRoom = room;
 
             foreach (var line in room.DialogueLines)
                 _linesById[line.Id] = line;
@@ -232,26 +241,18 @@ namespace GameName.Core.Dialogue
             _eventBus.Publish(new DialogueLineEnteredEvent(lineId));
         }
 
-        private bool RoomHasClue(ClueId clueId)
+        // 단서 하나가 여러 태그를 가질 수 있고 정답 태그도 여러 개일 수 있어
+        // (예: 방을 옮겨 다니며 같은 사실을 가리키는 단서가 늘어나는 경우),
+        // 하나라도 걸치면 정답으로 본다 — 태그 집합끼리의 교집합 유무만 본다.
+        private static bool HasAnyMatchingTag(IReadOnlyList<ClueTag> clueTags, IReadOnlyList<ClueTag> requiredTags)
         {
-            if (_currentRoom == null)
-                return false;
-
-            foreach (var clue in _currentRoom.Clues)
+            for (var i = 0; i < clueTags.Count; i++)
             {
-                if (clue.Id.Equals(clueId))
-                    return true;
-            }
-
-            return false;
-        }
-
-        private static bool Contains(IReadOnlyList<ClueId> ids, ClueId target)
-        {
-            for (var i = 0; i < ids.Count; i++)
-            {
-                if (ids[i].Equals(target))
-                    return true;
+                for (var j = 0; j < requiredTags.Count; j++)
+                {
+                    if (clueTags[i].Equals(requiredTags[j]))
+                        return true;
+                }
             }
 
             return false;

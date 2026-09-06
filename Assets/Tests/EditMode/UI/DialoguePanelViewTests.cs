@@ -32,7 +32,7 @@ namespace GameName.UI.Tests.EditMode
 
             var prompt = new VisualElement { name = "dialogue-unlock-prompt" };
             prompt.Add(new Label { name = "dialogue-unlock-text" });
-            prompt.Add(new Button { name = "dialogue-unlock-confirm" });
+            prompt.Add(new VisualElement { name = "dialogue-unlock-options" });
             prompt.Add(new Button { name = "dialogue-unlock-cancel" });
             root.Add(prompt);
 
@@ -54,6 +54,7 @@ namespace GameName.UI.Tests.EditMode
             public VisualElement Choices => Root.Q<VisualElement>("dialogue-choices");
             public Label Notice => Root.Q<Label>("dialogue-notice");
             public VisualElement Prompt => Root.Q<VisualElement>("dialogue-unlock-prompt");
+            public VisualElement PromptOptions => Root.Q<VisualElement>("dialogue-unlock-options");
         }
 
         [Test]
@@ -117,13 +118,13 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 확인_팝업과_안내는_문구가_있을_때만_보인다()
+        public void 제시_팝업과_안내는_문구가_있을_때만_보인다()
         {
             var fx = new Fixture();
 
             Assert.AreEqual(DisplayStyle.None, fx.Prompt.style.display.value);
 
-            fx.View.ShowUnlockPrompt("기억제 1개를 씁니다.");
+            fx.View.ShowUnlockPrompt("제시할 기억을 고르세요.", Array.Empty<KeyValuePair<ClueId, string>>());
             Assert.AreEqual(DisplayStyle.Flex, fx.Prompt.style.display.value);
 
             fx.View.HideUnlockPrompt();
@@ -131,8 +132,25 @@ namespace GameName.UI.Tests.EditMode
 
             fx.View.SetNotice(null);
             Assert.AreEqual(DisplayStyle.None, fx.Notice.style.display.value);
-            fx.View.SetNotice("기억제가 없습니다.");
+            fx.View.SetNotice("제시할 기억이 없습니다.");
             Assert.AreEqual(DisplayStyle.Flex, fx.Notice.style.display.value);
+        }
+
+        [Test]
+        public void 제시_팝업은_기억마다_버튼을_그린다()
+        {
+            var fx = new Fixture();
+
+            fx.View.ShowUnlockPrompt("제시할 기억을 고르세요.", new[]
+            {
+                new KeyValuePair<ClueId, string>(new ClueId("clue-1"), "낡은 모포 (파랑)"),
+                new KeyValuePair<ClueId, string>(new ClueId("clue-2"), "부치지 못한 편지 (초록)"),
+            });
+
+            var buttons = fx.PromptOptions.Children().OfType<Button>().Select(b => b.text).ToArray();
+            Assert.AreEqual(2, buttons.Length);
+            CollectionAssert.Contains(buttons, "낡은 모포 (파랑)");
+            CollectionAssert.Contains(buttons, "부치지 못한 편지 (초록)");
         }
     }
 }

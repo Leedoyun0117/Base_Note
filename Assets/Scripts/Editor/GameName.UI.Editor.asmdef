@@ -4,7 +4,8 @@
     "references": [
         "GameName.Core",
         "GameName.UI",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.RenderPipelines.Universal.2D.Runtime"
     ],
     "includePlatforms": [
         "Editor"

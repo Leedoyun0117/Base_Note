@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f5b9b37086b97c545bb038a772644eed, type: 3}
   m_Name: MemoryRoomLayout
   m_EditorClassIdentifier: GameName.UI::GameName.UI.MemoryRoom.Space.MemoryRoomLayoutAsset
-  _roomHeight: 4
-  _roomLength: 7
-  _wallThickness: 0.2
-  _playerHeight: 1
-  _playerWidth: 0.4
-  _playerMoveSpeed: 3
-  _edgeMargin: 0.6
-  _posterMountHeight: 2.4
-  _posterSize: 0.8
-  _floorObjectSize: 0.5
-  _exitMarkerWidth: 0.5
-  _exitMarkerHeight: 1.6
-  _cameraVerticalMargin: 0.6
+  _roomHeight: 1.3846154
+  _roomLength: 2.4230769
+  _wallThickness: 0.06923077
+  _playerHeight: 0.34615385
+  _playerWidth: 0.13846155
+  _playerMoveSpeed: 1.0384616
+  _edgeMargin: 0.2076923
+  _posterMountHeight: 0.83076924
+  _posterSize: 0.2769231
+  _floorObjectSize: 0.17307693
+  _exitMarkerWidth: 0.17307693
+  _exitMarkerHeight: 0.55384618
+  _cameraVerticalMargin: 0.2076923

@@ -199,26 +199,30 @@ namespace GameName.Core.Tests.EditMode
 
         // ── ClueSelection: 질문에 단서로 답하기 ─────────────────────────────
 
-        private static ClueDefinition ClueDef(string id) =>
-            new ClueDefinition(new ClueId(id), ClueKind.FloorObject, id, new CluePositionRatio(0.5f), MemoryColor.Red);
+        private static ClueDefinition ClueDef(string id, params string[] tags) =>
+            new ClueDefinition(new ClueId(id), ClueKind.FloorObject, id, new CluePositionRatio(0.5f), MemoryColor.Red,
+                System.Array.ConvertAll(tags, t => new ClueTag(t)));
 
         private static DialogueLineDefinition ClueLine(
-            string id, string[] required, string correctNext, string incorrectNext) =>
+            string id, string[] requiredTags, string correctNext, string incorrectNext) =>
             DialogueLineDefinition.ClueSelection(
                 new DialogueLineId(id), "화자", "무엇을 들고 있었어?",
-                System.Array.ConvertAll(required, r => new ClueId(r)),
+                System.Array.ConvertAll(requiredTags, t => new ClueTag(t)),
                 new DialogueLineId(correctNext), new DialogueLineId(incorrectNext));
 
         private static Fixture ClueSelectionFixture()
         {
+            // clue-a와 clue-b는 같은 태그("answer")를 가진다 — 둘 중 어느 것을
+            // 답으로 내도 정답이 되는 것이 태그 판정의 핵심이다. clue-c는 이
+            // 태그가 없어 오답 서브체인으로 간다.
             var fx = new Fixture("q", new[]
             {
-                ClueLine("q", new[] { "clue-a", "clue-b" }, "right", "wrong-1"),
+                ClueLine("q", new[] { "answer" }, "right", "wrong-1"),
                 Line("right", Choice("r", true)),
                 Line("wrong-1", Choice("w1", true, next: "wrong-2")),
                 Line("wrong-2", Choice("w2", true, next: "merge")),
                 Line("merge", Choice("m", true)),
-            }, new[] { ClueDef("clue-a"), ClueDef("clue-b"), ClueDef("clue-c") });
+            }, new[] { ClueDef("clue-a", "answer"), ClueDef("clue-b", "answer"), ClueDef("clue-c") });
 
             // 세 단서를 손에 든 상태로 만든다.
             foreach (var id in new[] { "clue-a", "clue-b", "clue-c" })
@@ -318,6 +322,79 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(
                 ChoiceSelectionOutcome.Rejected, fx.Progressor.SelectClue(new ClueId("clue-a")).Outcome);
             CollectionAssert.IsEmpty(fx.Progressor.SelectableClues());
+        }
+
+        // ── 단서 누적: 다른 방에서 집은 단서도 지금 방 대화에 쓸 수 있다 ──────
+
+        [Test]
+        public void 다른_방에서_손에_든_단서도_지금_방의_답_목록에_나타난다()
+        {
+            var otherRoomClue = new ClueDefinition(
+                new ClueId("clue-other"), ClueKind.FloorObject, "다른 방 단서",
+                new CluePositionRatio(0.5f), MemoryColor.Red);
+            var otherRoom = new RoomDefinition(
+                new MemoryRoomId("room-0"), new[] { otherRoomClue }, null, Array.Empty<DialogueLineDefinition>());
+
+            var line = DialogueLineDefinition.ClueSelection(
+                new DialogueLineId("q"), "화자", "?", new[] { new ClueTag("answer") },
+                new DialogueLineId("right"), new DialogueLineId("wrong"));
+            var currentRoom = new RoomDefinition(
+                TheRoom, Array.Empty<ClueDefinition>(), new DialogueLineId("q"),
+                new[] { line, Line("right", Choice("r", true)), Line("wrong", Choice("w", true)) });
+
+            var rooms = new[] { otherRoom, currentRoom };
+            var bus = new EventBus(new NoOpEventExceptionHandler());
+            var trust = new TrustGauge(3, bus);
+            var censor = new CensorUnlockLog();
+            var clueState = new ClueStateStore(rooms, bus);
+            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, bus);
+
+            // room-0을 먼저 방문해 단서를 손에 넣는다.
+            bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
+            clueState.SetState(new ClueId("clue-other"), ClueState.Collected);
+
+            // 누적이므로 room-1(지금 방)로 넘어와도 그 단서는 손에 그대로 있다.
+            bus.Publish(new RoomStartedEvent(currentRoom.Id, 1));
+
+            var ids = new List<string>();
+            foreach (var pair in progressor.SelectableClues())
+                ids.Add(pair.Key.Value);
+
+            CollectionAssert.Contains(ids, "clue-other");
+        }
+
+        [Test]
+        public void 다른_방에서_수집한_단서로_지금_방_대화의_정답_분기로_갈_수_있다()
+        {
+            var otherRoomClue = new ClueDefinition(
+                new ClueId("clue-other"), ClueKind.FloorObject, "다른 방 단서",
+                new CluePositionRatio(0.5f), MemoryColor.Red, new[] { new ClueTag("answer") });
+            var otherRoom = new RoomDefinition(
+                new MemoryRoomId("room-0"), new[] { otherRoomClue }, null, Array.Empty<DialogueLineDefinition>());
+
+            var line = DialogueLineDefinition.ClueSelection(
+                new DialogueLineId("q"), "화자", "?", new[] { new ClueTag("answer") },
+                new DialogueLineId("right"), new DialogueLineId("wrong"));
+            var currentRoom = new RoomDefinition(
+                TheRoom, Array.Empty<ClueDefinition>(), new DialogueLineId("q"),
+                new[] { line, Line("right", Choice("r", true)), Line("wrong", Choice("w", true)) });
+
+            var rooms = new[] { otherRoom, currentRoom };
+            var bus = new EventBus(new NoOpEventExceptionHandler());
+            var trust = new TrustGauge(3, bus);
+            var censor = new CensorUnlockLog();
+            var clueState = new ClueStateStore(rooms, bus);
+            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, bus);
+
+            bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
+            clueState.SetState(new ClueId("clue-other"), ClueState.Collected);
+            bus.Publish(new RoomStartedEvent(currentRoom.Id, 1));
+
+            var result = progressor.SelectClue(new ClueId("clue-other"));
+
+            Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
+            Assert.AreEqual(new DialogueLineId("right"), progressor.CurrentLineId);
+            Assert.AreEqual(ClueState.UsedInDialogue, clueState.GetState(new ClueId("clue-other")));
         }
     }
 }

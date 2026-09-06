@@ -179,6 +179,79 @@
     font-size: 13px;
 }
 
+/* ══ 다음 기억으로 레버 ═══════════════════════════════════════════ */
+.memory-move-lever {
+    margin-top: 12px;
+}
+
+.memory-move-lever__button {
+    height: 34px;
+    padding-left: 14px;
+    padding-right: 14px;
+    border-width: 0;
+    border-radius: 6px;
+    background-color: rgb(96, 90, 120);
+    color: rgb(238, 234, 246);
+    font-size: 13px;
+}
+
+.memory-move-lever__button:hover {
+    background-color: rgb(120, 112, 150);
+}
+
+.memory-move-lever__button:disabled {
+    background-color: rgb(52, 50, 60);
+    color: rgb(120, 116, 130);
+}
+
+/* 히로민이 이동 문턱보다 모자랄 때만 뜬다. */
+.memory-move-confirm {
+    display: none;
+    margin-top: 8px;
+    padding: 10px;
+    background-color: rgb(24, 22, 30);
+    border-width: 1px;
+    border-color: rgb(78, 74, 92);
+    border-radius: 6px;
+}
+
+.memory-move-confirm__text {
+    color: rgb(226, 220, 238);
+    font-size: 12px;
+    white-space: normal;
+    margin-bottom: 8px;
+}
+
+.memory-move-confirm__button {
+    height: 30px;
+    padding-left: 12px;
+    padding-right: 12px;
+    margin-bottom: 6px;
+    border-width: 0;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+/* 기회를 쓰는 선택지 — 대가가 있는 쪽이니 경고색으로 눈에 띄게 한다. */
+.memory-move-confirm__button--force {
+    background-color: rgb(150, 90, 90);
+    color: rgb(246, 234, 234);
+}
+
+.memory-move-confirm__button--force:hover {
+    background-color: rgb(170, 105, 105);
+}
+
+/* 대가 없는 선택지 — 되돌아가는 쪽이니 차분하게 눈에 덜 띄도록. */
+.memory-move-confirm__button--cancel {
+    background-color: rgb(64, 60, 76);
+    color: rgb(220, 214, 232);
+}
+
+.memory-move-confirm__button--cancel:hover {
+    background-color: rgb(80, 76, 96);
+}
+
 /* ══ 오버레이 셸 · 탭 바 ═══════════════════════════════════════════
    가방과 복원도를 같은 프레임 안에서 전환한다. 셸 크기를 고정해 탭을
    바꿔도 창이 튀지 않는다. */

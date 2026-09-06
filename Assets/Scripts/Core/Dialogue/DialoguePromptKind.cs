@@ -10,9 +10,9 @@ namespace GameName.Core.Dialogue
         TextChoice,
 
         // "이 질문엔 가진 단서로 답하라": 들고 있는(Collected) 단서 목록에서
-        // 하나를 골라 답한다. 정답 집합(RequiredClueIds)에 속하면 CorrectNext로,
-        // 아니면 IncorrectNext(오답 서브체인)로 간다. 이 종류의 줄에는 텍스트
-        // 선택지를 두지 않는다.
+        // 하나를 골라 답한다. 그 단서의 태그가 정답 태그 집합(RequiredTags)에
+        // 걸치면 CorrectNext로, 아니면 IncorrectNext(오답 서브체인)로 간다.
+        // 이 종류의 줄에는 텍스트 선택지를 두지 않는다.
         ClueSelection
     }
 }

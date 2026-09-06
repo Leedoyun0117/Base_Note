@@ -91,8 +91,9 @@ namespace GameName.UI.Authoring
         [SerializeField] private List<ChoiceEntry> _choices = new List<ChoiceEntry>();
 
         [Header("단서로 답하기 (LineKind = ClueSelection)")]
-        // 이 중 하나면 정답. 여러 개 가능(학생증·교복 둘 다 정답 등).
-        [SerializeField] private List<string> _requiredClueIds = new List<string>();
+        // 손에 든 단서의 태그가 이 중 하나라도 걸치면 정답. 단서 id가 아니라
+        // 태그를 적는다 — 같은 태그를 가진 단서면 무엇을 내도 정답이 된다.
+        [SerializeField] private List<string> _requiredTags = new List<string>();
         // 정답 단서를 냈을 때 가는 줄, 오답이거나 넘겼을 때 가는 줄(오답 서브체인의
         // 첫 줄). 아직 안 채웠으면 비워 둔다 — 검증기가 껍데기 줄을 잡는다.
         [SerializeField] private string _correctNextLineId;
@@ -104,13 +105,13 @@ namespace GameName.UI.Authoring
 
             if (_lineKind == LineKind.ClueSelection)
             {
-                var required = new List<ClueId>(_requiredClueIds.Count);
-                foreach (var clueId in _requiredClueIds)
+                var required = new List<ClueTag>(_requiredTags.Count);
+                foreach (var tag in _requiredTags)
                 {
                     // 인스펙터에서 비어 있는 칸 하나 때문에 줄 전체를 못 읽게 만들지
-                    // 않는다. 정답 단서가 하나도 없다는 것 자체는 검증기가 잡는다.
-                    if (!string.IsNullOrWhiteSpace(clueId))
-                        required.Add(new ClueId(clueId));
+                    // 않는다. 정답 태그가 하나도 없다는 것 자체는 검증기가 잡는다.
+                    if (!string.IsNullOrWhiteSpace(tag))
+                        required.Add(new ClueTag(tag));
                 }
 
                 return DialogueLineDefinition.ClueSelection(

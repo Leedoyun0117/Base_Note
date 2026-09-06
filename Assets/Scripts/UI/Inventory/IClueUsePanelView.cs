@@ -10,11 +10,13 @@ namespace GameName.UI.Inventory
     public interface IClueUsePanelView
     {
         event Action Extract;
+        event Action Discard;
         event Action Closed;
 
         void Open(string title);
         void Close();
         void SetActions(bool extractEnabled, string extractReason);
+        void SetDiscardAction(bool discardEnabled, string discardReason);
         void SetResult(string message);
     }
 }

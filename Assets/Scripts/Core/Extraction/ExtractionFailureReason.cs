@@ -3,7 +3,7 @@ namespace GameName.Core.Extraction
     // 추출 시도가 실패한 이유.
     public enum ExtractionFailureReason
     {
-        // 남은 추출 자원이 없다.
+        // 추출에 드는 히로민(9)이 지금 가진 것보다 많다.
         ResourceExhausted,
 
         // 아직 수집되지 않은 단서. 방에 놓인 채로는 추출할 수 없다.

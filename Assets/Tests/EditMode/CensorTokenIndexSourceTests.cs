@@ -54,7 +54,7 @@ namespace GameName.Core.Tests.EditMode
                         }),
                 },
                 startingTrust: 50,
-                extractionBudget: 5);
+                startingHiromi: 5);
 
         [Test]
         public void 같은_판을_여러_번_물어도_원문은_한_번만_파싱된다()

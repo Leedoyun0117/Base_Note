@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: DotTexture
+  m_Shader: {fileID: 4800000, guid: 698830a7b4124218bef1bde9dc10c69b, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords:
+  - _DITHER_ON
+  - _POSTERIZE_ON
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _PaletteTex:
+        m_Texture: {fileID: 2800000, guid: c46dd7af7b174eb5bb5a80cc05d6e296, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Dither: 1
+    - _DitherStrength: 0.4
+    - _EdgeLineWidth: 2
+    - _EdgeRoughness: 6
+    - _Palette: 0
+    - _PaletteBlend: 1
+    - _Posterize: 1
+    - _PosterizeSteps: 10
+    - _TearChunkHeight: 12
+    - _TearSpikeVariance: 0.6
+    m_Colors:
+    - _EdgeLineColor: {r: 0.7, g: 1, b: 0.92, a: 1}
+    - _RefResolution: {r: 320, g: 180, b: 0, a: 0}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1

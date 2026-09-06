@@ -22,7 +22,19 @@
         <ui:VisualElement name="hud-bar" class="hud-bar" picking-mode="Ignore">
             <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">
                 <ui:Label name="hud-trust" text="" class="hud-bar__stat" />
-                <ui:Label name="hud-extraction" text="" class="hud-bar__stat" />
+
+                <!-- 히로민 게이지. 채워진 만큼이 보유량이고, 세로선(hud-hiromi-marker)이
+                     이동 문턱 자리다. 문턱보다 채움이 짧으면(강제 이동 상태)
+                     hud-hiromi-fill의 below-threshold 수식 클래스가 붙어 색이 바뀐다. -->
+                <ui:VisualElement name="hud-hiromi-group" class="hud-hiromi-group" picking-mode="Ignore">
+                    <ui:Label name="hud-hiromi-value" text="" class="hud-bar__stat" />
+                    <ui:VisualElement name="hud-hiromi-track" class="hud-hiromi-track" picking-mode="Ignore">
+                        <ui:VisualElement name="hud-hiromi-fill" class="hud-hiromi-fill" picking-mode="Ignore" />
+                        <ui:VisualElement name="hud-hiromi-marker" class="hud-hiromi-marker" picking-mode="Ignore" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+
+                <ui:Label name="hud-chance" text="" class="hud-bar__stat" />
                 <ui:VisualElement class="hud-bar__wallet" picking-mode="Ignore">
                     <ui:Label name="hud-wallet-r" text="" class="hud-bar__wallet-item hud-bar__wallet-item--r" />
                     <ui:Label name="hud-wallet-g" text="" class="hud-bar__wallet-item hud-bar__wallet-item--g" />
@@ -51,12 +63,14 @@
             <ui:VisualElement name="dialogue-choices" class="dialogue-panel__choices" picking-mode="Ignore" />
             <ui:Label name="dialogue-notice" text="" class="dialogue-panel__notice" picking-mode="Ignore" />
 
-            <!-- 마스크 구간을 눌렀을 때 뜨는 확인 팝업. 평소에는 숨겨져 있다.
-                 버튼은 클릭을 받아야 하므로 컨테이너만 Ignore로 둔다. -->
+            <!-- 마스크 구간을 눌렀을 때 뜨는 기억 제시 팝업. 평소에는 숨겨져
+                 있다. 제시할 수 있는 추출된 기억마다 버튼이 하나씩 코드에서
+                 채워진다(dialogue-unlock-options). 버튼은 클릭을 받아야
+                 하므로 컨테이너만 Ignore로 둔다. -->
             <ui:VisualElement name="dialogue-unlock-prompt" class="dialogue-unlock-prompt" picking-mode="Ignore">
                 <ui:Label name="dialogue-unlock-text" text="" class="dialogue-unlock-prompt__text" picking-mode="Ignore" />
+                <ui:VisualElement name="dialogue-unlock-options" class="dialogue-unlock-prompt__options" picking-mode="Ignore" />
                 <ui:VisualElement class="dialogue-unlock-prompt__actions" picking-mode="Ignore">
-                    <ui:Button name="dialogue-unlock-confirm" text="해금" class="dialogue-unlock-prompt__confirm" />
                     <ui:Button name="dialogue-unlock-cancel" text="취소" class="dialogue-unlock-prompt__cancel" />
                 </ui:VisualElement>
             </ui:VisualElement>

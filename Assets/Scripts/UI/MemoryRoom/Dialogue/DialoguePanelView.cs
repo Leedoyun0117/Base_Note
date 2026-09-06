@@ -27,12 +27,13 @@ namespace GameName.UI.MemoryRoom.Dialogue
 
         private readonly VisualElement _unlockPrompt;
         private readonly Label _unlockText;
+        private readonly VisualElement _unlockOptions;
 
         public event Action<CensorKey> MaskClicked;
         public event Action<ChoiceId> ChoiceClicked;
         public event Action<ClueId> ClueAnswerClicked;
         public event Action SkipClueAnswerClicked;
-        public event Action UnlockConfirmed;
+        public event Action<ClueId> MemoryPresented;
         public event Action UnlockCancelled;
 
         public DialoguePanelView(
@@ -52,8 +53,8 @@ namespace GameName.UI.MemoryRoom.Dialogue
 
             _unlockPrompt = root.Q<VisualElement>("dialogue-unlock-prompt");
             _unlockText = root.Q<Label>("dialogue-unlock-text");
+            _unlockOptions = root.Q<VisualElement>("dialogue-unlock-options");
 
-            root.Q<Button>("dialogue-unlock-confirm").clicked += () => UnlockConfirmed?.Invoke();
             root.Q<Button>("dialogue-unlock-cancel").clicked += () => UnlockCancelled?.Invoke();
 
             HideUnlockPrompt();
@@ -131,9 +132,22 @@ namespace GameName.UI.MemoryRoom.Dialogue
                 string.IsNullOrEmpty(message) ? DisplayStyle.None : DisplayStyle.Flex;
         }
 
-        public void ShowUnlockPrompt(string message)
+        public void ShowUnlockPrompt(string message, IReadOnlyList<KeyValuePair<ClueId, string>> memoryOptions)
         {
             _unlockText.text = message ?? string.Empty;
+
+            _unlockOptions.Clear();
+            foreach (var option in memoryOptions)
+            {
+                var id = option.Key;
+                var button = new Button(() => MemoryPresented?.Invoke(id))
+                {
+                    text = string.IsNullOrEmpty(option.Value) ? id.Value : option.Value,
+                };
+                button.AddToClassList("dialogue-unlock-prompt__option");
+                _unlockOptions.Add(button);
+            }
+
             _unlockPrompt.style.display = DisplayStyle.Flex;
         }
 

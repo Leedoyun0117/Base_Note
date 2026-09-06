@@ -23,19 +23,25 @@
 
     --radius: 3px;
 
-    /* 신뢰가 깎일 때 마스크가 좁아지는 데 걸리는 시간. 이 한 곳에서만 정한다. */
-    --mask-shrink-duration: 0.4s;
+    /* 신뢰가 깎일 때 마스크가 좁아지는 데 걸리는 시간. 이 한 곳에서만 정한다.
+       "방금 줄어들었다"가 인지될 만큼 짧게. */
+    --mask-shrink-duration: 0.22s;
 }
 
 /* ── 신뢰 축소 마스크 ─────────────────────────────────────────────
-   좌우에서 안쪽으로 닫히는 어두운 판. 폭은 코드가 style.width(%)로 정하고
-   (기본 0 = 안 보임), 좁아지는 연출은 여기 transition이 맡는다. */
+   좌우에서 안쪽으로 닫히는 판. 폭은 코드가 style.width(%)로 정하고
+   (기본 0), 좁아지는 연출은 여기 transition이 맡는다.
+
+   이 판은 이제 아무것도 그리지 않는다 — 덮인 영역의 시각 처리(도트 열화 +
+   종이 찢은 경계선)는 전부 URP 풀스크린 셰이더(DotTexture)가 담당한다.
+   UI 직선으로는 찢긴 불규칙 윤곽을 만들 수 없기 때문. 이 판이 남아 있는
+   이유는 하나뿐: 애니메이션되는 폭을 MemoryRoomBootstrap이 매 프레임 읽어
+   셰이더 경계를 같은 속도로 열고 닫는다. */
 .mask-panel {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 0;
-    background-color: rgba(5, 5, 7, 0.92);
     transition-property: width;
     transition-duration: var(--mask-shrink-duration);
     transition-timing-function: ease-in-out;
@@ -88,6 +94,48 @@
     font-size: 11px;
     color: var(--text-dim);
     margin-right: var(--space-4);
+}
+
+/* 히로민 게이지 — 채워진 만큼이 보유량, 세로선이 이동 문턱. */
+.hud-hiromi-group {
+    flex-direction: row;
+    align-items: center;
+    margin-right: var(--space-4);
+}
+
+.hud-hiromi-track {
+    position: relative;
+    width: 64px;
+    height: 8px;
+    background-color: var(--surface-raised);
+    border-width: 1px;
+    border-color: var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-left: var(--space-1);
+}
+
+.hud-hiromi-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 0%;
+    background-color: var(--success);
+}
+
+/* 히로민이 이동 문턱보다 적을 때 — "강제 이동" 상태를 색으로 드러낸다. */
+.hud-hiromi-fill--below-threshold {
+    background-color: var(--danger);
+}
+
+.hud-hiromi-marker {
+    position: absolute;
+    top: -1px;
+    bottom: -1px;
+    width: 2px;
+    left: 0%;
+    background-color: var(--text);
 }
 
 /* 색별 기억제 보유 수 — 세 칸을 나란히. */
