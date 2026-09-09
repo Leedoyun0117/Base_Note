@@ -32,10 +32,13 @@ namespace GameName.Core.Tests.EditMode
         // "이 단서 id로 답한다"고 표현하던 것을 태그 판정으로 옮겨도 그대로
         // 성립하게 하기 위한 기본값이다.
         private static ClueDefinition Clue(
-            string id, MemoryColor hidden, float position, ClueKind kind = ClueKind.Poster, string[] tags = null) =>
+            string id, MemoryColor hidden, float position, ClueKind kind = ClueKind.Poster,
+            string[] tags = null, string[] subTags = null) =>
             new ClueDefinition(
                 new ClueId(id), kind, id, new CluePositionRatio(position), hidden,
-                (tags ?? new[] { id }).Select(t => new ClueTag(t)).ToArray());
+                (tags ?? new[] { id }).Select(ClueTag.Center)
+                    .Concat((subTags ?? System.Array.Empty<string>()).Select(ClueTag.Sub))
+                    .ToArray());
 
         private static ChoiceDefinition Choice(
             string id,
@@ -474,11 +477,11 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 앞_방_단서_태그로_답하는_ClueSelection은_통과한다()
+        public void 앞_방_단서_태그로만_답할_수_있는_ClueSelection은_오류다()
         {
-            // 방 2의 줄이 방 1에서 주운 단서 태그를 정답으로 요구한다. 손에 든
-            // 단서는 방을 넘어 남으므로 정상 저작이다 — 방 단위로만 봤다면 오류로
-            // 잡혔을 것이다.
+            // 방 2의 줄이 방 1에서만 주울 수 있는 단서 태그를 정답으로 요구한다.
+            // 손에 든 단서는 방을 넘어갈 때 전부 버려지므로(RoomEntryInventoryClear)
+            // 방 2에선 낼 수 없는 답 — 저작 오류다.
             var room1 = Room("room-1", new[] { Clue("room1-key", MemoryColor.Red, 0.2f) }, null);
 
             var clueLine = DialogueLineDefinition.ClueSelection(
@@ -490,8 +493,8 @@ namespace GameName.Core.Tests.EditMode
                 new[] { Clue("room-2-clue", MemoryColor.Red, 0.2f) },
                 "q", clueLine, Line("right"), Line("wrong"));
 
-            CollectionAssert.IsEmpty(
-                Errors(Validator().Validate(Run(room1, room2, Room("room-3")))));
+            Assert.GreaterOrEqual(
+                Errors(Validator().Validate(Run(room1, room2, Room("room-3")))).Count, 1);
         }
 
         [Test]
@@ -512,6 +515,52 @@ namespace GameName.Core.Tests.EditMode
                 Line("right", "", Choice("r-end", isCorrect: true, next: "merge")),
                 Line("wrong-1", "", Choice("w1", isCorrect: true, next: "merge")),
                 Line("merge", "", Choice("m-end", isCorrect: true)));
+
+            CollectionAssert.IsEmpty(Errors(Validator().Validate(RunWith(room))));
+        }
+
+        [Test]
+        public void 질문의_중심축_태그를_중심축으로_가진_단서가_방에_없으면_오류다()
+        {
+            // 이 방 단서는 "held"를 곁축으로만 갖는다 — 그걸로 답해 봤자 스치기만
+            // 하고 완전적합은 못 된다. 그런데 질문은 "held"를 중심축으로 요구한다.
+            var clue = Clue(
+                "clue-a", MemoryColor.Red, 0.2f,
+                tags: new[] { "clue-a.topic" }, subTags: new[] { "held" });
+
+            var room = Room(
+                "room-1",
+                new[] { clue },
+                "q",
+                DialogueLineDefinition.ClueSelection(
+                    new DialogueLineId("q"), "화자", "그때 뭘 쥐고 있었어?",
+                    new[] { new ClueTag("held") },
+                    new DialogueLineId("right"), new DialogueLineId("wrong")),
+                Line("right", "", Choice("r-end", isCorrect: true)),
+                Line("wrong", "", Choice("w-end", isCorrect: true)));
+
+            Assert.IsTrue(
+                Errors(Validator().Validate(RunWith(room))).Any(e => e.Description.Contains("완전적합")),
+                "중심축 정답을 낼 단서가 없는 방은 저작 시점에 걸려야 한다.");
+        }
+
+        [Test]
+        public void 곁축_정답_태그는_중심축_단서로_커버되면_오류가_아니다()
+        {
+            var clue = Clue(
+                "clue-a", MemoryColor.Red, 0.2f,
+                tags: new[] { "held" }, subTags: new[] { "rooftop" });
+
+            var room = Room(
+                "room-1",
+                new[] { clue },
+                "q",
+                DialogueLineDefinition.ClueSelection(
+                    new DialogueLineId("q"), "화자", "그때 옥상에서 뭘 쥐고 있었어?",
+                    new[] { new ClueTag("held"), ClueTag.Sub("rooftop") },
+                    new DialogueLineId("right"), new DialogueLineId("wrong")),
+                Line("right", "", Choice("r-end", isCorrect: true)),
+                Line("wrong", "", Choice("w-end", isCorrect: true)));
 
             CollectionAssert.IsEmpty(Errors(Validator().Validate(RunWith(room))));
         }
@@ -702,7 +751,8 @@ namespace GameName.Core.Tests.EditMode
         [Test]
         public void 풀_후보로_넣은_ClueSelection_라인도_성립_검사를_받는다()
         {
-            // 정답 태그 집합이 비어 있고 분기도 안 지정된 ClueSelection 후보.
+            // 정답 태그 집합이 비어 있는 ClueSelection 후보 — 어떤 단서를 내밀어도
+            // 오답이라 성립하지 않는다.
             var broken = DialogueLineDefinition.ClueSelection(
                 new DialogueLineId("slot"), "화자", "무엇을 쥐고 있었어?",
                 System.Array.Empty<ClueTag>(), null, null);

@@ -145,7 +145,7 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 방이_바뀌면_신뢰_표시가_시작값으로_리셋된다()
+        public void 방이_바뀌어도_신뢰_표시는_유지된다()
         {
             var fx = new Fixture(startingTrust: 3);
             fx.Trust.Decrease(2);
@@ -153,8 +153,9 @@ namespace GameName.UI.Tests.EditMode
 
             fx.Bus.Publish(new RoomStartedEvent(TheRoom, 1));
 
-            Assert.AreEqual(3, fx.Trust.Current, "TrustGauge가 방 시작에 리셋되어야 한다.");
-            StringAssert.Contains("3", fx.Text("hud-trust"));
+            // 인내심은 런 전체에 걸쳐 이어진다 — 방이 바뀌어도 그대로다.
+            Assert.AreEqual(1, fx.Trust.Current);
+            StringAssert.Contains("1", fx.Text("hud-trust"));
         }
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using GameName.Core.Mind;
 
 namespace GameName.Core.Authoring
 {
@@ -41,6 +42,22 @@ namespace GameName.Core.Authoring
         // 주석과 같다 — 같은 키가 여러 방의 대사에 걸쳐 쓰일 수 있다.
         public IReadOnlyList<CensorKeyTagRequirement> CensorKeyTagRequirements { get; }
 
+        // 런 시작 시 나츠의 안정 축 위치와 그 축의 침체·흥분 양 끝.
+        // -100..0..+100은 지금의 저작값일 뿐이라 상수가 아니라 데이터로 둔다.
+        public int StartingStability { get; }
+        public int StabilityMin { get; }
+        public int StabilityMax { get; }
+
+        // 신뢰(유키의 인내심)가 안정 축 이탈로 깎이는 규칙의 두 수치.
+        // |안정 위치| 가 자유 폭(FreeBand) 이내면 깎이지 않고, 넘어서면 매 답변마다
+        // round((|위치| - FreeBand) / Divisor) 만큼 깎인다. 계산은
+        // StabilityTrustErosionListener가 하고, 여기 있는 것은 그 두 수치뿐이다.
+        public int TrustErosionFreeBand { get; }
+        public int TrustErosionDivisor { get; }
+
+        // 런 시작 시 나츠의 심리 상태. 기억 해석 방식을 결정한다.
+        public PsychologyState StartingPsychology { get; }
+
         public RunDefinition(
             IReadOnlyList<RoomDefinition> rooms,
             int startingTrust,
@@ -48,7 +65,13 @@ namespace GameName.Core.Authoring
             int seed = 0,
             IReadOnlyList<CensorKeyTagRequirement> censorKeyTagRequirements = null,
             int startingChance = 2,
-            int moveHiromiCost = 15)
+            int moveHiromiCost = 15,
+            int startingStability = 0,
+            int stabilityMin = -100,
+            int stabilityMax = 100,
+            int trustErosionFreeBand = 20,
+            int trustErosionDivisor = 10,
+            PsychologyState startingPsychology = PsychologyState.Optimism)
         {
             Rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
             StartingTrust = startingTrust;
@@ -57,6 +80,12 @@ namespace GameName.Core.Authoring
             CensorKeyTagRequirements = censorKeyTagRequirements ?? Array.Empty<CensorKeyTagRequirement>();
             StartingChance = startingChance;
             MoveHiromiCost = moveHiromiCost;
+            StartingStability = startingStability;
+            StabilityMin = stabilityMin;
+            StabilityMax = stabilityMax;
+            TrustErosionFreeBand = trustErosionFreeBand;
+            TrustErosionDivisor = trustErosionDivisor;
+            StartingPsychology = startingPsychology;
         }
     }
 }

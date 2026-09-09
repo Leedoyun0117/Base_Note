@@ -82,7 +82,7 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 방이_다시_시작되면_신뢰_리셋으로_지속_떨림도_꺼진다()
+        public void 방이_다시_시작돼도_신뢰가_낮으면_지속_떨림은_유지된다()
         {
             var fx = new Fixture(startingTrust: 3, continuousAtOrBelow: 1);
             try
@@ -90,10 +90,11 @@ namespace GameName.UI.Tests.EditMode
                 fx.Trust.Decrease(3); // 3 → 0, 지속 떨림 켜짐
                 Assert.IsTrue(fx.Shake.ContinuousActive);
 
+                // 신뢰는 이제 방마다 리셋되지 않는다 — 0 그대로라 떨림도 켜진 채다.
                 fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-2"), 1));
 
-                Assert.AreEqual(3, fx.Trust.Current);
-                Assert.IsFalse(fx.Shake.ContinuousActive);
+                Assert.AreEqual(0, fx.Trust.Current);
+                Assert.IsTrue(fx.Shake.ContinuousActive);
             }
             finally
             {

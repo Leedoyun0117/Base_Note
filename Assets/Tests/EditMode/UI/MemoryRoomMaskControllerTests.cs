@@ -80,7 +80,7 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 방이_다시_시작되면_그_방의_신뢰로_비율을_다시_적용한다()
+        public void 방이_다시_시작돼도_신뢰는_유지되고_그_값으로_비율을_다시_적용한다()
         {
             var fx = new Fixture(startingTrust: 3);
 
@@ -89,9 +89,10 @@ namespace GameName.UI.Tests.EditMode
 
             fx.Bus.Publish(new RoomStartedEvent(new GameName.Core.MemoryRooms.MemoryRoomId("room-2"), 1));
 
-            // TrustGauge가 시작값으로 리셋 → 정책 비율도 3짜리로 돌아온다.
-            Assert.AreEqual(3, fx.Trust.Current);
-            Assert.AreEqual(Table[3], fx.View.LastAppliedRatio);
+            // TrustGauge는 이제 방마다 리셋되지 않는다 — 신뢰는 1 그대로이고,
+            // 컨트롤러는 방 시작에 그 1짜리 비율을 다시 적용한다.
+            Assert.AreEqual(1, fx.Trust.Current);
+            Assert.AreEqual(Table[1], fx.View.LastAppliedRatio);
         }
     }
 }

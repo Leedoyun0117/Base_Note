@@ -6,7 +6,8 @@ using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // 신뢰도는 감소만 하고, 0에서 멈추며, 값이 실제로 바뀔 때만 사건을 낸다.
+    // 신뢰도(유키의 인내심)는 감소만 하고, 0에서 멈추며, 값이 실제로 바뀔 때만
+    // 사건을 낸다. 런 전체에 걸쳐 이어진다 — 방이 바뀌어도 리셋되지 않는다.
     public class TrustGaugeTests
     {
         private static EventBus Bus() => new EventBus(new NoOpEventExceptionHandler());
@@ -73,30 +74,16 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 방이_시작되면_시작값으로_되돌아간다()
+        public void 방이_바뀌어도_리셋되지_않는다()
         {
             var bus = Bus();
             var gauge = new TrustGauge(3, bus);
-            gauge.Decrease(3);
+            gauge.Decrease(2);
             var seen = Record(bus);
 
             bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-2"), 1));
 
-            Assert.AreEqual(3, gauge.Current);
-            Assert.AreEqual(1, seen.Count);
-            Assert.AreEqual(0, seen[0].Previous);
-            Assert.AreEqual(3, seen[0].Current);
-        }
-
-        [Test]
-        public void 신뢰도가_그대로인_방_시작은_사건을_내지_않는다()
-        {
-            var bus = Bus();
-            var gauge = new TrustGauge(3, bus);
-            var seen = Record(bus);
-
-            bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-1"), 0));
-
+            Assert.AreEqual(1, gauge.Current, "인내심은 런 전체에 걸쳐 이어진다.");
             CollectionAssert.IsEmpty(seen);
         }
     }

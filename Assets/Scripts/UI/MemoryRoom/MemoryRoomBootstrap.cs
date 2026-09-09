@@ -99,7 +99,7 @@ namespace GameName.UI.MemoryRoom
                 root, session.CensoredTextParser, session.CensorResolver, _memoryColorLabels);
             var dialogueController = new DialoguePanelController(
                 dialogueView, session.Dialogue, session.CensorUnlock, session.Memories, session.ClueTracker,
-                session.CensorKeyColors, _memoryColorLabels.DisplayName, session.EventBus);
+                session.CensorKeyColors, _memoryColorLabels.DisplayName, session.CurrentRoomId, session.EventBus);
 
             // ── 오버레이: 단서 설명 창 ──────────────────────────────────
             var zoomView = new ClueZoomScreenView(_overlayPanels.RootOf(OverlayPanel.ClueZoom));

@@ -1,11 +1,11 @@
 using System.Collections.Generic;
-using System.Linq;
 using GameName.Core.Authoring;
 using GameName.Core.Clues;
 using GameName.Core.Dialogue;
 using GameName.Core.Inventory;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
+using GameName.Core.Mind;
 
 namespace GameName.UI.Session
 {
@@ -37,17 +37,35 @@ namespace GameName.UI.Session
         private const int StartingChance = 2;
         private const int MoveHiromiCost = 15;
 
+        // 안정 축: 침체 -100 ~ 안정 0 ~ 흥분 +100. 런 시작 시 안정(0)에서 출발한다.
+        // 피드백 대사가 이 값을 움직이는 것은 후속 단계에서 붙는다.
+        private const int StartingStability = 0;
+        private const int StabilityMin = -100;
+        private const int StabilityMax = 100;
+
+        // 신뢰(유키의 인내심)가 안정 축 이탈로 깎이는 규칙: |안정 위치| 가 20 이내면
+        // 깎이지 않고, 넘어서면 매 답변마다 round((|위치| - 20) / 10) 만큼 깎인다.
+        private const int TrustErosionFreeBand = 20;
+        private const int TrustErosionDivisor = 10;
+
+        // 심리 상태 시작값. 기억 해석 방식을 결정한다(후속 단계).
+        private const PsychologyState StartingPsychology = PsychologyState.Optimism;
+
         // 랜덤 분기 풀 확정 시드. 데모 데이터엔 아직 풀이 없어 쓰이지 않지만,
         // 실제 데이터 소스가 생기기 전까지 고정값을 박아 둔다.
         private const int RunSeed = 20260903;
 
-        // 신뢰도 → 방 가시 비율. 3에서 방 전체가 보이고, 깎일수록 가운데만 남는다.
+        // 신뢰도 → 방 가시 비율. 신뢰로 방을 좁히던 마스크 연출은 이번 개편에서
+        // 꺼 둔다([G] 시청각 피드백은 범위 밖) — 배관(IVisibilityPolicy·
+        // IClueAccessPolicy·MemoryRoomMaskController)은 그대로 두고 표를 전부
+        // 1.0으로 채워 항상 방 전체가 보이게만 한다. 조사 페이즈/대화 페이즈가
+        // 갈리면 조사 제한은 별도 축(조사 횟수)이 맡는다.
         private static readonly Dictionary<int, float> VisibilityByTrust = new Dictionary<int, float>
         {
             { 3, 1.0f },
-            { 2, 0.75f },
-            { 1, 0.5f },
-            { 0, 0.5f },
+            { 2, 1.0f },
+            { 1, 1.0f },
+            { 0, 1.0f },
         };
 
         // 검열 키 하나를 풀려면 제시할 기억이 어느 태그를 가져야 하는지.
@@ -67,21 +85,33 @@ namespace GameName.UI.Session
         private static readonly float[] FloorSlots = { 0.18f, 0.50f, 0.82f };
         private static readonly float[] PosterSlots = { 0.30f, 0.70f };
 
-        public static GameSessionData CreateWorldData()
+        public static GameSessionData CreateWorldData() => CreateWorldData(roomLimit: 0);
+
+        // roomLimit: 앞에서부터 몇 개의 방만 살릴지. 0 이하거나 방 수 이상이면
+        // 전부 쓴다. 방 3(R)을 손대지 않고 "앞 두 방만 도는 판"을 만드는 데 쓴다 —
+        // 마지막 방을 마치면 RunProgressor가 그대로 RunCompletedEvent를 낸다.
+        public static GameSessionData CreateWorldData(int roomLimit)
         {
-            var room1 = BuildRoom1();
-            var room2 = BuildRoom2();
-            var room3 = BuildRoom3();
+            var rooms = new List<RoomDefinition> { BuildRoom1(), BuildRoom2(), BuildRoom3() };
+            var roomIds = new List<MemoryRoomId> { Room1, Room2, Room3 };
+
+            if (roomLimit > 0 && roomLimit < rooms.Count)
+            {
+                rooms.RemoveRange(roomLimit, rooms.Count - roomLimit);
+                roomIds.RemoveRange(roomLimit, roomIds.Count - roomLimit);
+            }
 
             var cluePlacements = new List<CluePlacement>();
-            AddPlacements(cluePlacements, room1);
-            AddPlacements(cluePlacements, room2);
-            AddPlacements(cluePlacements, room3);
+            foreach (var room in rooms)
+                AddPlacements(cluePlacements, room);
 
+            // 검열 키별 요구 태그는 목록 그대로 넘긴다 — 살아 있는 방이 쓰지 않는
+            // 키의 항목은 검증기도 런타임도 참조하지 않아 무해하다.
             var run = new RunDefinition(
-                new[] { room1, room2, room3 }, StartingTrust, StartingHiromi, RunSeed,
-                CensorKeyTagRequirements, StartingChance, MoveHiromiCost);
-            var roomIds = new List<MemoryRoomId> { Room1, Room2, Room3 };
+                rooms.ToArray(), StartingTrust, StartingHiromi, RunSeed,
+                CensorKeyTagRequirements, StartingChance, MoveHiromiCost,
+                StartingStability, StabilityMin, StabilityMax,
+                TrustErosionFreeBand, TrustErosionDivisor, StartingPsychology);
 
             return new GameSessionData(cluePlacements, roomIds, run, VisibilityByTrust);
         }
@@ -91,156 +121,146 @@ namespace GameName.UI.Session
         public static GameSessionSettings CreateSettings() =>
             new GameSessionSettings(new InventorySettings(initialCapacity: 3));
 
+        // ── 대화는 전부 "가진 물건으로 답하기"다 ──────────────────────────
+        // 텍스트 선택지는 없다. 매 줄에서 유키가 뭔가를 묻고, 플레이어는 손에
+        // 든 단서(물건) 하나를 골라 답한다. 그 물건의 태그가 정답 태그와 걸치면
+        // CorrectNext로, 아니면 IncorrectNext로 간다. 분기가 비어 있으면(null)
+        // 그 답으로 방의 대화가 끝난다.
+        //
+        // 단서마다 태그를 하나씩 매겨 "어느 물건이 어느 질문의 답인지"를 정한다.
+        // 검열 토큰([[색:키:원문]])은 그대로 둔다 — 추출한 기억을 제시해 푸는
+        // 별개 상호작용이고, 답하기와 함께 걸려도 무해하다.
+
         // ── 방1 — B, 유년기, 옥상·모포 ─────────────────────────────────────
-        // 튜토리얼 성격: 정답 근거를 대화 안에서 직접 준다. 검열된 "옥상"과
-        // 나란히 "모포"·"여름밤"·"옥상"이 검열 없이 등장해, 기억제 없이 문맥만으로
-        // 유추할 수 있다. 정답 선택지 둘 다 IsCorrect지만 구체적인 쪽이 더 깊은
-        // 대사로 이어지고, 오답 하나는 명백히 다른 사건을 가리켜 신뢰를 깎는다.
-        // 전부 텍스트 선택지다(ClueSelection 없음).
         private static RoomDefinition BuildRoom1()
         {
             var clues = new[]
             {
-                // 핵심 단서 — 파란 기억을 품고 있어 색만으로는 힌트지만, 실제로
-                // rooftop-blanket을 여는 것은 room1.blanket 태그다.
+                // 핵심 단서 — rooftop-blanket 검열을 여는 것도 room1.blanket 태그다.
                 Clue("clue-r1-blanket", "낡은 모포", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Blue,
                     "room1.blanket"),
-                Clue("clue-r1-picturebook", "표지가 닳은 그림책", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Red),
-                Clue("clue-r1-cicada-net", "부러진 매미채", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Green),
-                Clue("clue-r1-drawing", "크레파스로 그린 그림", ClueKind.Poster, PosterSlots[0], MemoryColor.Green),
-                Clue("clue-r1-star-poster", "빛바랜 별자리 포스터", ClueKind.Poster, PosterSlots[1], MemoryColor.Red),
+                Clue("clue-r1-picturebook", "표지가 닳은 그림책", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Red,
+                    "room1.book"),
+                Clue("clue-r1-cicada-net", "부러진 매미채", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Green,
+                    "room1.daytime"),
+                Clue("clue-r1-drawing", "크레파스로 그린 그림", ClueKind.Poster, PosterSlots[0], MemoryColor.Green,
+                    "room1.drawing"),
+                Clue("clue-r1-star-poster", "빛바랜 별자리 포스터", ClueKind.Poster, PosterSlots[1], MemoryColor.Red,
+                    "room1.stars"),
             };
 
             var lines = new[]
             {
-                Line("r1-a", Yuki,
-                    "우리, [[B:rooftop-blanket:그 여름밤 옥상]] 기억나? 네가 모포를 들고 올라왔었잖아.",
-                    Choice("r1-a-vague", "응... 그랬던 것 같아.", isCorrect: true, next: "r1-b-vague"),
-                    Choice("r1-a-specific", "그날 옥상에서 네가 춥다길래 모포 덮어줬지.", isCorrect: true, next: "r1-b-specific"),
-                    Choice("r1-a-wrong", "아, 너희 집 마당에서 불꽃놀이 하던 날?", isCorrect: false, next: "r1-a")),
+                ClueLine("r1-a", Yuki,
+                    "우리, [[B:rooftop-blanket:그 여름밤 옥상]]에서 있었던 일 말이야. 네가 뭘 하나 들고 올라왔었잖아. ...그게 뭐였어?",
+                    "room1.blanket", correctNext: "r1-b", incorrectNext: "r1-a-miss"),
+                ClueLine("r1-a-miss", Yuki,
+                    "아니. 그건 아니었어. ...춥다길래 네가 덮어 준 거.",
+                    "room1.blanket", correctNext: "r1-b", incorrectNext: "r1-b"),
 
-                Line("r1-b-vague", Yuki,
-                    "그 정도로만 남았구나. ...뭐, 오래된 일이니까.",
-                    Choice("r1-b-vague-end", "미안, 잘 안 떠올라.", isCorrect: true)),
+                ClueLine("r1-b", Yuki,
+                    "낮엔 해 질 때까지 밖에 있었잖아. 뭐 하고 놀았더라?",
+                    "room1.daytime", correctNext: "r1-c", incorrectNext: "r1-c"),
 
-                Line("r1-b-specific", Yuki,
-                    "맞아. 여름밤이었고 별이 잘 보였어. 넌 아무 말 없이 옆에 있어줬지.",
-                    Choice("r1-b-specific-end", "그 밤은 나도 기억해.", isCorrect: true)),
+                ClueLine("r1-c", Yuki,
+                    "밤엔 나란히 누워서 위를 봤지. 뭘 보고 있었어?",
+                    "room1.stars", correctNext: "r1-close-warm", incorrectNext: "r1-close-plain"),
+
+                ClueLine("r1-close-warm", Yuki,
+                    "맞아. 넌 별자리 이름을 다 외우고 있었어. 하나씩 알려 줬잖아.",
+                    "room1.book", correctNext: null, incorrectNext: null),
+                ClueLine("r1-close-plain", Yuki,
+                    "뭐, 됐어. 오래된 일이니까.",
+                    "room1.book", correctNext: null, incorrectNext: null),
             };
 
             return new RoomDefinition(Room1, clues, new DialogueLineId("r1-a"), lines);
         }
 
         // ── 방2 — G, 청소년기, 옥상·작별 ──────────────────────────────────
-        // "그날"이 방1의 옥상과 같은 자리라는 걸 플레이어가 스스로 잇는다. 이번엔
-        // 대사에 "옥상"을 직접 반복하지 않는다. 구체적 선택지는 검열 키가 풀린
-        // 뒤에만 보인다.
-        //
-        // 중간에 ClueSelection 줄(r2-q)을 하나 둔다 — "그때 뭘 쥐고 있었어?"에
-        // 리본이나 편지로 답하면 정답, 엉뚱한 물건이면 오답 서브체인 2줄을 거쳐
-        // 메인 줄기(r2-end)로 합류한다. 나머지 줄은 그대로 텍스트 선택지다.
         private static RoomDefinition BuildRoom2()
         {
             var clues = new[]
             {
-                // 핵심 단서 — 초록 기억을 품고 있어 색만으로는 힌트지만, 실제로
-                // rooftop-goodbye를 여는 것은 room2.goodbye 태그다.
+                // 핵심 단서 — rooftop-goodbye 검열을 여는 것도 room2.goodbye 태그다.
                 Clue("clue-r2-photo", "빛바랜 사진 한 장", ClueKind.Poster, PosterSlots[0], MemoryColor.Green,
                     "room2.goodbye"),
-                // 이 방에서도 예전 색(B)이 나올 수 있다 — 색은 시간순 방과 1:1이 아니다.
-                // 리본과 편지 둘 다 "그때 손에 쥐고 있던 것"을 가리키는 같은 태그를
-                // 갖는다 — 어느 쪽을 답으로 내도 정답이어야 하기 때문이다.
+                // 리본과 편지 둘 다 "그때 손에 쥐고 있던 것"이라 같은 태그를 갖는다.
                 Clue("clue-r2-ribbon", "교복 리본", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Blue,
                     "room2.heldItem"),
                 Clue("clue-r2-letter", "부치지 못한 편지", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Green,
                     "room2.heldItem"),
-                Clue("clue-r2-tape", "이름 없는 카세트테이프", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Red),
-                Clue("clue-r2-band-poster", "귀퉁이가 찢어진 밴드 포스터", ClueKind.Poster, PosterSlots[1], MemoryColor.Red),
+                Clue("clue-r2-tape", "이름 없는 카세트테이프", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Red,
+                    "room2.mixtape"),
+                Clue("clue-r2-band-poster", "귀퉁이가 찢어진 밴드 포스터", ClueKind.Poster, PosterSlots[1], MemoryColor.Red,
+                    "room2.band"),
             };
 
             var lines = new[]
             {
-                Line("r2-a", Yuki,
-                    "나 전학 가던 날 말이야. [[G:rooftop-goodbye:그날의 작별]], 넌 끝내 안 왔잖아.",
-                    Choice("r2-a-vague", "그때 좀 일이 있었어.", isCorrect: true, next: "r2-b"),
-                    GatedChoice(
-                        "r2-a-specific", "그날 옥상에 안 나가서 미안했어.", isCorrect: true, next: "r2-c",
-                        ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey("rooftop-goodbye")))),
+                ClueLine("r2-a", Yuki,
+                    "나 전학 가던 날, [[G:rooftop-goodbye:그날의 작별]] 말이야. 그때 우리가 뭘 두고 얘기했는지 기억나?",
+                    "room2.goodbye", correctNext: "r2-b", incorrectNext: "r2-a-miss"),
+                ClueLine("r2-a-miss", Yuki,
+                    "아니. ...그 사진. 둘이 찍은 거. 결국 나만 갖고 갔지.",
+                    "room2.goodbye", correctNext: "r2-b", incorrectNext: "r2-b"),
 
-                Line("r2-b", Yuki,
-                    "'일이 있었다'는 말로 덮는구나. ...늘 그런 식이었지.",
-                    Choice("r2-b-continue", "…", isCorrect: true, next: "r2-q")),
+                ClueLine("r2-b", Yuki,
+                    "그때 넌 손에 뭔가를 꼭 쥐고 있었어. 만지작거리면서. ...그게 뭐였어?",
+                    "room2.heldItem", correctNext: "r2-c", incorrectNext: "r2-c"),
 
-                Line("r2-c", Yuki,
-                    "기억하고 있었구나. 난 한참을 서 있었어. 네가 올 줄 알고.",
-                    Choice("r2-c-continue", "늦었지만, 지금이라도 말할게. 미안했어.", isCorrect: true, next: "r2-q")),
+                ClueLine("r2-c", Yuki,
+                    "나한테 주려던 거였잖아. 근데 끝내 안 줬어. 대신 뭘 건넸지?",
+                    "room2.mixtape", correctNext: "r2-close-warm", incorrectNext: "r2-close-plain"),
 
-                // ── 단서로 답하는 줄 ──
-                DialogueLineDefinition.ClueSelection(
-                    new DialogueLineId("r2-q"), Yuki,
-                    "그때 넌 손에 뭔가를 꼭 쥐고 있었어. 만지작거리면서. ...그게 뭐였는지 기억나?",
-                    new[] { new ClueTag("room2.heldItem") },
-                    correctNext: new DialogueLineId("r2-q-right"),
-                    incorrectNext: new DialogueLineId("r2-q-wrong-1")),
-
-                Line("r2-q-right", Yuki,
-                    "맞아. 그거였어. 손에서 안 놓더라.",
-                    Choice("r2-q-right-continue", "…", isCorrect: true, next: "r2-end")),
-
-                // 오답 서브체인 2줄 — 여기서는 목록 UI 없이 계속하기로만 진행한다.
-                Line("r2-q-wrong-1", Yuki,
-                    "아니. 그건 아니었어.",
-                    Choice("r2-q-wrong-1-continue", "…", isCorrect: true, next: "r2-q-wrong-2")),
-                Line("r2-q-wrong-2", Yuki,
-                    "됐어. 사실 그렇게 중요한 것도 아니야.",
-                    Choice("r2-q-wrong-2-continue", "…", isCorrect: true, next: "r2-end")),
-
-                // 메인 줄기 합류점.
-                Line("r2-end", Yuki,
-                    "그래도, 물어봐 줘서 좋았어.",
-                    Choice("r2-end-done", "나도.", isCorrect: true)),
+                ClueLine("r2-close-warm", Yuki,
+                    "그 테이프, 아직 갖고 있어. 늘어질 때까지 들었어.",
+                    "room2.band", correctNext: null, incorrectNext: null),
+                ClueLine("r2-close-plain", Yuki,
+                    "됐어. 그래도, 물어봐 줘서 좋았어.",
+                    "room2.band", correctNext: null, incorrectNext: null),
             };
 
             return new RoomDefinition(Room2, clues, new DialogueLineId("r2-a"), lines);
         }
 
         // ── 방3 — R, 트라우마, 사고·전하지 못한 말 ────────────────────────
-        // 방1·2의 사건은 절대 언급하지 않는다. 나츠·유키의 정서적 맥락만으로
-        // "하지 못한 말"의 내용을 유추한다. 같은 키(missed-words)를 여러 줄에
-        // 나눠 심어 한 번에 함께 풀리게 한다. 정답은 가장 짧고 담백한 문장이다.
         private static RoomDefinition BuildRoom3()
         {
             var clues = new[]
             {
-                // 핵심 단서 — 빨간 기억을 품고 있어 색만으로는 힌트지만, 실제로
-                // missed-words를 여는 것은 room3.missedWords 태그다.
+                // 핵심 단서 — missed-words 검열을 여는 것도 room3.missedWords 태그다.
                 Clue("clue-r3-watch", "깨진 손목시계", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Red,
                     "room3.missedWords"),
-                Clue("clue-r3-keychain", "낡은 열쇠고리", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Blue),
-                Clue("clue-r3-coin", "구부러진 동전", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Green),
-                Clue("clue-r3-xray-poster", "엑스레이 필름", ClueKind.Poster, PosterSlots[0], MemoryColor.Red),
-                Clue("clue-r3-notice-poster", "떼어낸 게시판 안내문", ClueKind.Poster, PosterSlots[1], MemoryColor.Green),
+                Clue("clue-r3-keychain", "낡은 열쇠고리", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Blue,
+                    "room3.keychain"),
+                Clue("clue-r3-coin", "구부러진 동전", ClueKind.FloorObject, FloorSlots[2], MemoryColor.Green,
+                    "room3.coin"),
+                Clue("clue-r3-xray-poster", "엑스레이 필름", ClueKind.Poster, PosterSlots[0], MemoryColor.Red,
+                    "room3.xray"),
+                Clue("clue-r3-notice-poster", "떼어낸 게시판 안내문", ClueKind.Poster, PosterSlots[1], MemoryColor.Green,
+                    "room3.notice"),
             };
 
             var lines = new[]
             {
-                Line("r3-a", Yuki,
-                    "결국 [[R:missed-words:그때 하지 못한 말]]은 못 들었네.",
-                    Choice("r3-a-continue", "......", isCorrect: true, next: "r3-b"),
-                    Choice("r3-a-wrong",
-                        "그날 병원 복도가 유난히 길었던 거, 기억나. 형광등이 하나 깜빡였고—",
-                        isCorrect: false, next: "r3-a")),
+                ClueLine("r3-a", Yuki,
+                    "결국 [[R:missed-words:그때 하지 못한 말]]은 못 들었네. ...그날, 뭐가 네 손에 있었지?",
+                    "room3.missedWords", correctNext: "r3-b", incorrectNext: "r3-a-miss"),
+                ClueLine("r3-a-miss", Yuki,
+                    "아니야. ...그 시계. 멈춘 채로 네가 계속 쥐고 있었어.",
+                    "room3.missedWords", correctNext: "r3-b", incorrectNext: "r3-b"),
 
-                Line("r3-b", Yuki,
+                ClueLine("r3-b", Yuki,
                     "[[R:missed-words:그 말]], 아직도 안에 담아두고 있지. 얼굴에 다 쓰여 있어.",
-                    Choice("r3-b-short", "보고 싶었어.", isCorrect: true, next: "r3-c"),
-                    Choice("r3-b-long",
-                        "그때 네가 얼마나 힘들었을지 생각하면 나는 아직도 잠이 안 오고, 그날 이후로 계속—",
-                        isCorrect: false, next: "r3-b")),
+                    "room3.missedWords", correctNext: "r3-close-warm", incorrectNext: "r3-close-plain"),
 
-                Line("r3-c", Yuki,
+                ClueLine("r3-close-warm", Yuki,
                     "그 말이었구나. ...나도. 나도 그랬어.",
-                    Choice("r3-c-end", "이제 됐어.", isCorrect: true)),
+                    "room3.coin", correctNext: null, incorrectNext: null),
+                ClueLine("r3-close-plain", Yuki,
+                    "이제 됐어. 늦었지만.",
+                    "room3.coin", correctNext: null, incorrectNext: null),
             };
 
             return new RoomDefinition(Room3, clues, new DialogueLineId("r3-a"), lines);
@@ -248,29 +268,35 @@ namespace GameName.UI.Session
 
         // ── 조립 헬퍼 ────────────────────────────────────────────────────
 
+        // 첫 태그가 이 단서의 중심축, 뒤따르는 것들이 곁축(장소·시간 등)이다.
+        // 지금 데모는 단서마다 중심축 하나씩만 매긴다 — 곁축 콘텐츠는 등급
+        // 판정기가 실제로 소비하는 단계에서 서사 맥락과 함께 붙인다.
         private static ClueDefinition Clue(
             string id, string displayName, ClueKind kind, float ratio, MemoryColor hiddenColor,
-            params string[] tags) =>
+            string centerTag, params string[] subTags) =>
             new ClueDefinition(
                 new ClueId(id), kind, displayName, new CluePositionRatio(ratio), hiddenColor,
-                tags.Select(t => new ClueTag(t)).ToArray());
+                BuildTags(centerTag, subTags));
 
-        private static DialogueLineDefinition Line(
-            string id, string speaker, string authoredText, params ChoiceDefinition[] choices) =>
-            new DialogueLineDefinition(new DialogueLineId(id), speaker, authoredText, choices);
+        // "가진 물건으로 답하는" 줄. 중심축 정답 태그 하나(+ 필요하면 곁축),
+        // 정답/오답 다음 줄(비우면 대화 종료).
+        private static DialogueLineDefinition ClueLine(
+            string id, string speaker, string authoredText, string requiredCenterTag,
+            string correctNext, string incorrectNext, params string[] requiredSubTags) =>
+            DialogueLineDefinition.ClueSelection(
+                new DialogueLineId(id), speaker, authoredText,
+                BuildTags(requiredCenterTag, requiredSubTags),
+                correctNext == null ? (DialogueLineId?)null : new DialogueLineId(correctNext),
+                incorrectNext == null ? (DialogueLineId?)null : new DialogueLineId(incorrectNext));
 
-        private static ChoiceDefinition Choice(string id, string text, bool isCorrect, string next = null) =>
-            new ChoiceDefinition(
-                new ChoiceId(id), text, isCorrect,
-                next == null ? (DialogueLineId?)null : new DialogueLineId(next),
-                ChoiceCondition.None);
-
-        private static ChoiceDefinition GatedChoice(
-            string id, string text, bool isCorrect, string next, ChoiceCondition condition) =>
-            new ChoiceDefinition(
-                new ChoiceId(id), text, isCorrect,
-                next == null ? (DialogueLineId?)null : new DialogueLineId(next),
-                condition);
+        private static ClueTag[] BuildTags(string centerTag, string[] subTags)
+        {
+            var tags = new ClueTag[1 + (subTags?.Length ?? 0)];
+            tags[0] = ClueTag.Center(centerTag);
+            for (var i = 0; i < (subTags?.Length ?? 0); i++)
+                tags[i + 1] = ClueTag.Sub(subTags[i]);
+            return tags;
+        }
 
         private static void AddPlacements(ICollection<CluePlacement> into, RoomDefinition room)
         {

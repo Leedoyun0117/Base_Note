@@ -28,26 +28,22 @@ namespace GameName.UI.Authoring
         [Header("감춰진 것")]
         [SerializeField] private MemoryColor _hiddenColor = MemoryColor.Red;
 
-        // 이 단서가 무엇에 대한 것인지 나타내는 저작 태그(예: "Yuki.toy").
-        // 검열 해금·ClueSelection 정답 판정이 실제로 보는 값이다 — 색은 힌트일
-        // 뿐이고 이 배열이 진짜 기준이다.
+        // 이 단서의 중심축 태그(예: "Yuki.toy") — 그 단서가 "정말로 무엇에
+        // 대한 것인가". 검열 해금·ClueSelection 정답 판정이 보는 값이고, 질문의
+        // 중심축과 맞을 때만 완전적합 정답이 된다. 색은 힌트일 뿐이다.
         [SerializeField] private string[] _tags = System.Array.Empty<string>();
+
+        // 곁축 태그(장소·시간 등). 중심축은 어긋났지만 스치기는 한 답에 부분
+        // 점수를 주는 근거다 — 등급 판정기만 축을 구분해서 본다.
+        [SerializeField] private string[] _subTags = System.Array.Empty<string>();
 
         public string DisplayName => _displayName;
 
         public ClueDefinition ToDefinition()
         {
-            var tags = new List<ClueTag>(_tags?.Length ?? 0);
-            if (_tags != null)
-            {
-                foreach (var tag in _tags)
-                {
-                    // 인스펙터에서 비어 있는 칸 하나 때문에 단서 전체를 못 읽게
-                    // 만들지 않는다.
-                    if (!string.IsNullOrWhiteSpace(tag))
-                        tags.Add(new ClueTag(tag));
-                }
-            }
+            var tags = new List<ClueTag>((_tags?.Length ?? 0) + (_subTags?.Length ?? 0));
+            AppendTags(tags, _tags, ClueTagAxis.Center);
+            AppendTags(tags, _subTags, ClueTagAxis.Sub);
 
             return new ClueDefinition(
                 new ClueId(_clueId),
@@ -56,6 +52,17 @@ namespace GameName.UI.Authoring
                 new CluePositionRatio(_positionRatio),
                 _hiddenColor,
                 tags);
+        }
+
+        // 인스펙터에서 비어 있는 칸 하나 때문에 단서 전체를 못 읽게 만들지 않는다.
+        private static void AppendTags(List<ClueTag> into, string[] raw, ClueTagAxis axis)
+        {
+            if (raw == null) return;
+            foreach (var tag in raw)
+            {
+                if (!string.IsNullOrWhiteSpace(tag))
+                    into.Add(new ClueTag(tag, axis));
+            }
         }
     }
 }

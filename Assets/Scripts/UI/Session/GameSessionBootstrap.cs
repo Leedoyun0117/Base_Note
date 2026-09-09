@@ -13,11 +13,18 @@ namespace GameName.UI.Session
     [DefaultExecutionOrder(-100)]
     public sealed class GameSessionBootstrap : MonoBehaviour
     {
+        // 앞에서부터 몇 개의 방만 도는 판으로 할지. 0 = 전체(기본). 방 3을
+        // 건드리지 않고 "앞 두 방짜리" 씬을 만드는 데만 쓰는 임시 손잡이다 —
+        // 기존 씬의 컴포넌트는 이 필드가 없어 0으로 역직렬화되므로 동작이
+        // 그대로다.
+        [SerializeField] private int _roomLimit;
+
         public GameSession Session { get; private set; }
 
         private void Awake()
         {
-            Session = new GameSession(DemoGameData.CreateWorldData(), DemoGameData.CreateSettings());
+            Session = new GameSession(
+                DemoGameData.CreateWorldData(_roomLimit), DemoGameData.CreateSettings());
         }
 
         private void OnDestroy()

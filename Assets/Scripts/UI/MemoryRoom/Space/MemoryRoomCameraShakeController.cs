@@ -11,12 +11,15 @@ namespace GameName.UI.MemoryRoom.Space
     //
     // "얼마나" 흔들지는 CameraShake(인스펙터)가, "언제"는 이 컨트롤러가 정한다.
     // 문턱은 생성 시 주입받는다 — 기본은 1(마지막 한 칸)이다.
+    //
+    // 신뢰는 이제 런 전체에 걸쳐 이어지므로(방마다 리셋되지 않는다) 방 시작을
+    // 계기로 다시 판정할 것이 없다 — TrustChangedEvent 하나만 듣는다.
     public sealed class MemoryRoomCameraShakeController : IDisposable
     {
         private readonly CameraShake _cameraShake;
         private readonly ITrustReader _trust;
         private readonly int _continuousAtOrBelow;
-        private readonly IDisposable[] _subscriptions;
+        private readonly IDisposable _subscription;
 
         public MemoryRoomCameraShakeController(
             CameraShake cameraShake, ITrustReader trust, IEventBus eventBus, int continuousAtOrBelow = 1)
@@ -27,12 +30,7 @@ namespace GameName.UI.MemoryRoom.Space
 
             _continuousAtOrBelow = continuousAtOrBelow;
 
-            _subscriptions = new[]
-            {
-                eventBus.Subscribe<TrustChangedEvent>(OnTrustChanged),
-                // 방이 바뀌면 신뢰가 시작값으로 리셋되므로 지속 떨림도 다시 판정한다.
-                eventBus.Subscribe<RoomStartedEvent>(_ => SyncContinuous()),
-            };
+            _subscription = eventBus.Subscribe<TrustChangedEvent>(OnTrustChanged);
 
             SyncContinuous();
         }
@@ -50,9 +48,7 @@ namespace GameName.UI.MemoryRoom.Space
 
         public void Dispose()
         {
-            foreach (var subscription in _subscriptions)
-                subscription.Dispose();
-
+            _subscription.Dispose();
             _cameraShake.SetContinuous(false);
         }
     }

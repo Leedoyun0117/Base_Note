@@ -91,9 +91,13 @@ namespace GameName.UI.Authoring
         [SerializeField] private List<ChoiceEntry> _choices = new List<ChoiceEntry>();
 
         [Header("단서로 답하기 (LineKind = ClueSelection)")]
-        // 손에 든 단서의 태그가 이 중 하나라도 걸치면 정답. 단서 id가 아니라
-        // 태그를 적는다 — 같은 태그를 가진 단서면 무엇을 내도 정답이 된다.
+        // 이 질문의 중심축 정답 태그. 손에 든 단서가 이 태그를 중심축으로
+        // 가지면 완전적합 정답이다. 단서 id가 아니라 태그를 적는 이유: 같은
+        // 태그를 가진 단서면 무엇을 내도 같은 판정을 받는다.
         [SerializeField] private List<string> _requiredTags = new List<string>();
+        // 곁축 정답 태그(장소·시간 등). 중심축이 어긋난 답이 이 태그로 스치면
+        // 등급 판정기가 부분 점수를 준다.
+        [SerializeField] private List<string> _requiredSubTags = new List<string>();
         // 정답 단서를 냈을 때 가는 줄, 오답이거나 넘겼을 때 가는 줄(오답 서브체인의
         // 첫 줄). 아직 안 채웠으면 비워 둔다 — 검증기가 껍데기 줄을 잡는다.
         [SerializeField] private string _correctNextLineId;
@@ -105,14 +109,11 @@ namespace GameName.UI.Authoring
 
             if (_lineKind == LineKind.ClueSelection)
             {
-                var required = new List<ClueTag>(_requiredTags.Count);
-                foreach (var tag in _requiredTags)
-                {
-                    // 인스펙터에서 비어 있는 칸 하나 때문에 줄 전체를 못 읽게 만들지
-                    // 않는다. 정답 태그가 하나도 없다는 것 자체는 검증기가 잡는다.
-                    if (!string.IsNullOrWhiteSpace(tag))
-                        required.Add(new ClueTag(tag));
-                }
+                var required = new List<ClueTag>(_requiredTags.Count + _requiredSubTags.Count);
+                // 인스펙터에서 비어 있는 칸 하나 때문에 줄 전체를 못 읽게 만들지
+                // 않는다. 정답 태그가 하나도 없다는 것 자체는 검증기가 잡는다.
+                AppendTags(required, _requiredTags, ClueTagAxis.Center);
+                AppendTags(required, _requiredSubTags, ClueTagAxis.Sub);
 
                 return DialogueLineDefinition.ClueSelection(
                     id, _speaker, _authoredText, required,
@@ -125,6 +126,16 @@ namespace GameName.UI.Authoring
                 choices.Add(choice.ToDefinition());
 
             return new DialogueLineDefinition(id, _speaker, _authoredText, choices);
+        }
+
+        private static void AppendTags(List<ClueTag> into, List<string> raw, ClueTagAxis axis)
+        {
+            if (raw == null) return;
+            foreach (var tag in raw)
+            {
+                if (!string.IsNullOrWhiteSpace(tag))
+                    into.Add(new ClueTag(tag, axis));
+            }
         }
     }
 }

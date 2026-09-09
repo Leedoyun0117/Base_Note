@@ -11,8 +11,9 @@ using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // 표시 가능한 선택지 필터링은 검열/단서 판정에 위임하고, 오답은 게이지에
-    // 위임하며, 신뢰 0 뒤로는 입력을 받지 않는다.
+    // 표시 가능한 선택지 필터링은 검열/단서 판정에 위임한다. 신뢰도는 이제 이
+    // 처리기가 깎지 않고(안정 축 이탈에 따라 별도 리스너가 깎는다), 읽기만 해서
+    // 신뢰 0 뒤로는 입력을 받지 않는다.
     public class DialogueProgressorTests
     {
         private static readonly MemoryRoomId TheRoom = new MemoryRoomId("room-1");
@@ -144,16 +145,18 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 오답_선택지는_게이지에_위임해_신뢰도를_1_깎는다()
+        public void 오답_선택지도_이제_신뢰도를_직접_깎지_않는다()
         {
             var fx = new Fixture("line-1", new[]
             {
                 Line("line-1", Choice("wrong", false, next: "line-1"), Choice("right", true)),
             });
 
-            fx.Progressor.Select(new ChoiceId("wrong"));
+            var result = fx.Progressor.Select(new ChoiceId("wrong"));
 
-            Assert.AreEqual(2, fx.Trust.Current);
+            // 신뢰는 안정 축 이탈로만 깎인다 — 이 처리기는 손대지 않는다.
+            Assert.AreEqual(3, fx.Trust.Current);
+            Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
         }
 
         [Test]
@@ -189,9 +192,8 @@ namespace GameName.Core.Tests.EditMode
                 Line("line-1", Choice("wrong", false, next: "line-1"), Choice("right", true)),
             });
 
-            fx.Progressor.Select(new ChoiceId("wrong")); // 3 → 2
-            fx.Progressor.Select(new ChoiceId("wrong")); // 2 → 1
-            fx.Progressor.Select(new ChoiceId("wrong")); // 1 → 0
+            // 안정 축 이탈로 인내심이 바닥났다고 치고 게이지를 직접 0으로 민다.
+            fx.Trust.Decrease(3);
 
             Assert.AreEqual(0, fx.Trust.Current);
             Assert.AreEqual(ChoiceSelectionOutcome.Ignored, fx.Progressor.Select(new ChoiceId("right")).Outcome);
@@ -208,7 +210,8 @@ namespace GameName.Core.Tests.EditMode
             DialogueLineDefinition.ClueSelection(
                 new DialogueLineId(id), "화자", "무엇을 들고 있었어?",
                 System.Array.ConvertAll(requiredTags, t => new ClueTag(t)),
-                new DialogueLineId(correctNext), new DialogueLineId(incorrectNext));
+                correctNext == null ? (DialogueLineId?)null : new DialogueLineId(correctNext),
+                incorrectNext == null ? (DialogueLineId?)null : new DialogueLineId(incorrectNext));
 
         private static Fixture ClueSelectionFixture()
         {
@@ -261,7 +264,7 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 오답_단서는_오답_분기로_가고_신뢰는_깎지_않는다()
+        public void 오답_단서는_오답_분기로_가고_신뢰는_이_처리기가_건드리지_않는다()
         {
             var fx = ClueSelectionFixture();
 
@@ -269,10 +272,39 @@ namespace GameName.Core.Tests.EditMode
 
             Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
             Assert.AreEqual(new DialogueLineId("wrong-1"), fx.Progressor.CurrentLineId);
-            Assert.AreEqual(3, fx.Trust.Current, "단서 오답은 신뢰를 깎지 않는다.");
+            Assert.AreEqual(3, fx.Trust.Current, "신뢰는 안정 축 이탈로만 깎인다.");
             Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId("clue-c")));
-            CollectionAssert.AreEqual(new[] { false }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect),
-                "오답은 신뢰를 안 깎는 대신 ClueAnsweredEvent(false)로만 흔적을 남긴다.");
+            CollectionAssert.AreEqual(new[] { false }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect));
+        }
+
+        [Test]
+        public void 분기가_null이면_그_답으로_대화가_끝난다()
+        {
+            var fx = new Fixture("q", new[]
+            {
+                ClueLine("q", new[] { "answer" }, correctNext: null, incorrectNext: null),
+            }, new[] { ClueDef("clue-a", "answer") });
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
+
+            var result = fx.Progressor.SelectClue(new ClueId("clue-a"));
+
+            Assert.AreEqual(ChoiceSelectionOutcome.DialogueEnded, result.Outcome);
+            Assert.IsNull(fx.Progressor.CurrentLine);
+            Assert.AreEqual(1, fx.Ended.Count);
+        }
+
+        [Test]
+        public void 넘어가기_분기가_null이면_넘어가기로_대화가_끝난다()
+        {
+            var fx = new Fixture("q", new[]
+            {
+                ClueLine("q", new[] { "answer" }, correctNext: null, incorrectNext: null),
+            }, new[] { ClueDef("clue-a", "answer") });
+
+            var result = fx.Progressor.SkipClueSelection();
+
+            Assert.AreEqual(ChoiceSelectionOutcome.DialogueEnded, result.Outcome);
+            Assert.AreEqual(1, fx.Ended.Count);
         }
 
         [Test]

@@ -7,7 +7,8 @@ using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // 방은 대화 종료로 클리어되거나 신뢰 0으로 실패한다. 둘이 겹치면 실패가 이긴다.
+    // 방은 신뢰 0으로만 무너진다(RoomFailedEvent). 대화 완주로 떠나는 것은
+    // 화면의 "다음으로" 버튼이 RoomClearedEvent를 내므로 이 심판은 관여하지 않는다.
     public class RoomCompletionArbiterTests
     {
         private sealed class MutableTrust : ITrustReader
@@ -34,19 +35,7 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 신뢰가_남은_채_대화가_끝나면_클리어다()
-        {
-            var fx = new Fixture();
-
-            fx.Bus.Publish(new DialogueEndedEvent(TheRoom));
-
-            Assert.AreEqual(1, fx.Cleared.Count);
-            Assert.AreEqual(TheRoom, fx.Cleared[0].RoomId);
-            CollectionAssert.IsEmpty(fx.Failed);
-        }
-
-        [Test]
-        public void 신뢰가_0에_닿으면_즉시_실패다()
+        public void 신뢰가_0에_닿으면_실패다()
         {
             var fx = new Fixture();
             fx.Trust.Current = 0;
@@ -54,62 +43,48 @@ namespace GameName.Core.Tests.EditMode
             fx.Bus.Publish(new TrustChangedEvent(1, 0));
 
             Assert.AreEqual(1, fx.Failed.Count);
+            Assert.AreEqual(TheRoom, fx.Failed[0].RoomId);
             CollectionAssert.IsEmpty(fx.Cleared);
         }
 
         [Test]
-        public void 신뢰_0과_대화_종료가_겹치면_실패가_이긴다()
-        {
-            var fx = new Fixture();
-            fx.Trust.Current = 0;
-
-            fx.Bus.Publish(new TrustChangedEvent(1, 0)); // 먼저 동기 발행되는 쪽
-            fx.Bus.Publish(new DialogueEndedEvent(TheRoom));
-
-            Assert.AreEqual(1, fx.Failed.Count);
-            CollectionAssert.IsEmpty(fx.Cleared);
-        }
-
-        [Test]
-        public void 대화_종료_시점에_신뢰가_0이면_클리어가_아니라_실패다()
-        {
-            var fx = new Fixture();
-            fx.Trust.Current = 0;
-
-            // 신뢰가 다른 경로로 0이 되어 TrustChangedEvent를 못 봤더라도,
-            // 대화 종료 시점에 신뢰를 다시 확인한다.
-            fx.Bus.Publish(new DialogueEndedEvent(TheRoom));
-
-            Assert.AreEqual(1, fx.Failed.Count);
-            CollectionAssert.IsEmpty(fx.Cleared);
-        }
-
-        [Test]
-        public void 한_방은_정확히_한_번만_닫힌다()
+        public void 대화_종료는_이_심판을_통하지_않는다()
         {
             var fx = new Fixture();
 
             fx.Bus.Publish(new DialogueEndedEvent(TheRoom));
-            fx.Bus.Publish(new DialogueEndedEvent(TheRoom));
-            fx.Trust.Current = 0;
-            fx.Bus.Publish(new TrustChangedEvent(1, 0));
 
-            Assert.AreEqual(1, fx.Cleared.Count);
+            CollectionAssert.IsEmpty(fx.Cleared, "대화 완주는 '다음으로' 버튼이 처리한다.");
             CollectionAssert.IsEmpty(fx.Failed);
+        }
+
+        [Test]
+        public void 신뢰_0_사건이_겹쳐_와도_한_번만_실패한다()
+        {
+            var fx = new Fixture();
+            fx.Trust.Current = 0;
+
+            fx.Bus.Publish(new TrustChangedEvent(1, 0));
+            fx.Bus.Publish(new TrustChangedEvent(0, 0));
+
+            Assert.AreEqual(1, fx.Failed.Count);
         }
 
         [Test]
         public void 방이_다시_시작되면_래치가_풀려_다음_판정을_받는다()
         {
             var fx = new Fixture();
-            fx.Bus.Publish(new DialogueEndedEvent(TheRoom));
+            fx.Trust.Current = 0;
+            fx.Bus.Publish(new TrustChangedEvent(1, 0)); // room-1 실패
 
             var room2 = new MemoryRoomId("room-2");
+            fx.Trust.Current = 3;
             fx.Bus.Publish(new RoomStartedEvent(room2, 1));
-            fx.Bus.Publish(new DialogueEndedEvent(room2));
+            fx.Trust.Current = 0;
+            fx.Bus.Publish(new TrustChangedEvent(1, 0)); // room-2 실패
 
-            Assert.AreEqual(2, fx.Cleared.Count);
-            Assert.AreEqual(room2, fx.Cleared[1].RoomId);
+            Assert.AreEqual(2, fx.Failed.Count);
+            Assert.AreEqual(room2, fx.Failed[1].RoomId);
         }
     }
 }

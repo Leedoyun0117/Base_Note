@@ -4,6 +4,7 @@ using GameName.Core.Clues;
 using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.Memories;
+using GameName.Core.MemoryRooms;
 
 namespace GameName.UI.MemoryRoom.Dialogue
 {
@@ -24,13 +25,25 @@ namespace GameName.UI.MemoryRoom.Dialogue
         private readonly IMemoryRoomClueTracker _clueTracker;
         private readonly ICensorKeyColorMap _keyColors;
         private readonly Func<MemoryColor, string> _colorDisplayName;
+        private readonly IEventBus _eventBus;
         private readonly IDisposable[] _subscriptions;
+
+        // 대화가 끝난 방을 떠나는 "다음으로" 버튼의 식별자. 저작 데이터에는 없는
+        // 예약 값이라 실제 선택지와 겹치지 않는다. 나중에 이 자리는 레버가 된다.
+        private static readonly ChoiceId AdvanceChoiceId = new ChoiceId("__room-advance__");
 
         // 제시 팝업이 떠 있는 동안 어느 키를 풀지 붙들어 둔다.
         private CensorKey? _pendingKey;
 
         // 런이 끝났다. 이 뒤로는 어떤 이벤트가 와도 패널을 다시 그리지 않는다.
         private bool _runEnded;
+
+        // 이 방의 대화가 끝나 "다음으로" 버튼만 남은 상태. 다음 방이 시작되거나
+        // 런이 끝나면 풀린다.
+        private bool _awaitingAdvance;
+
+        // 지금 진행 중인 방 — "다음으로"를 누를 때 RoomClearedEvent에 실어야 한다.
+        private MemoryRoomId _currentRoomId;
 
         public DialoguePanelController(
             IDialoguePanelView view,
@@ -40,6 +53,7 @@ namespace GameName.UI.MemoryRoom.Dialogue
             IMemoryRoomClueTracker clueTracker,
             ICensorKeyColorMap keyColors,
             Func<MemoryColor, string> colorDisplayName,
+            MemoryRoomId initialRoomId,
             IEventBus eventBus)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
@@ -49,10 +63,14 @@ namespace GameName.UI.MemoryRoom.Dialogue
             _clueTracker = clueTracker ?? throw new ArgumentNullException(nameof(clueTracker));
             _keyColors = keyColors ?? throw new ArgumentNullException(nameof(keyColors));
             _colorDisplayName = colorDisplayName ?? throw new ArgumentNullException(nameof(colorDisplayName));
-            if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
+            _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+
+            // 첫 RoomStartedEvent는 이 패널이 만들어지기 전(세션 조립 중)에
+            // 지나갔으므로, 지금 진행 중인 방을 인자로 받아 둔다.
+            _currentRoomId = initialRoomId;
 
             _view.MaskClicked += OnMaskClicked;
-            _view.ChoiceClicked += id => _progressor.Select(id);
+            _view.ChoiceClicked += OnChoiceClicked;
             _view.ClueAnswerClicked += id => _progressor.SelectClue(id);
             _view.SkipClueAnswerClicked += () => _progressor.SkipClueSelection();
             _view.MemoryPresented += OnMemoryPresented;
@@ -60,11 +78,12 @@ namespace GameName.UI.MemoryRoom.Dialogue
 
             _subscriptions = new[]
             {
-                eventBus.Subscribe<RoomStartedEvent>(_ => Rerender()),
+                eventBus.Subscribe<RoomStartedEvent>(OnRoomStarted),
                 eventBus.Subscribe<DialogueLineEnteredEvent>(_ => Rerender()),
                 eventBus.Subscribe<ChoiceSelectedEvent>(_ => Rerender()),
-                // 대화가 끝나면(마지막 방이면 뒤이어 RoomStartedEvent도 없다) 패널을 비운다.
-                eventBus.Subscribe<DialogueEndedEvent>(_ => Rerender()),
+                // 대화가 끝나면 패널에 "다음으로" 버튼만 남긴다 — 방을 떠나는 것은
+                // 자동이 아니라 플레이어가 그 버튼을 눌러야 한다.
+                eventBus.Subscribe<DialogueEndedEvent>(_ => OnDialogueEnded()),
                 // 검열이 풀리면 이 줄에 있든 다른 줄에 있든 원문으로 돌아와야 한다.
                 eventBus.Subscribe<CensorKeyUnlockedEvent>(_ => Rerender()),
                 // ClueSelection 줄에 머무는 동안 방에서 단서를 집거나(손에 들어옴)
@@ -84,6 +103,7 @@ namespace GameName.UI.MemoryRoom.Dialogue
         private void ShowRunEnded()
         {
             _runEnded = true;
+            _awaitingAdvance = false;
             _pendingKey = null;
             _view.HideUnlockPrompt();
             _view.SetNotice(null);
@@ -104,6 +124,39 @@ namespace GameName.UI.MemoryRoom.Dialogue
             var summary = $"모은 기억색  —  R {red}   G {green}   B {blue}";
             _view.SetLine(string.Empty, "기억이 여기서 끝난다.\n" + summary);
             _view.SetChoices(Array.Empty<KeyValuePair<ChoiceId, string>>());
+        }
+
+        private void OnRoomStarted(RoomStartedEvent e)
+        {
+            _currentRoomId = e.RoomId;
+            _awaitingAdvance = false;
+            Rerender();
+        }
+
+        // 이 방의 대화가 끝났다 — CurrentLine은 이제 null이다. 패널을 비우는
+        // 대신 "다음으로" 버튼을 남긴다(Rerender가 _awaitingAdvance를 보고 그린다).
+        private void OnDialogueEnded()
+        {
+            if (_runEnded)
+                return;
+
+            _awaitingAdvance = true;
+            Rerender();
+        }
+
+        private void OnChoiceClicked(ChoiceId id)
+        {
+            if (id.Equals(AdvanceChoiceId))
+            {
+                if (!_awaitingAdvance)
+                    return;
+
+                _awaitingAdvance = false;
+                _eventBus.Publish(new RoomClearedEvent(_currentRoomId));
+                return;
+            }
+
+            _progressor.Select(id);
         }
 
         // 단서 손 상태가 바뀌었을 때 — ClueSelection 줄에서만 다시 그린다.
@@ -129,9 +182,13 @@ namespace GameName.UI.MemoryRoom.Dialogue
             var line = _progressor.CurrentLine;
             if (line == null)
             {
-                // 대화가 끝났거나 방 사이다 — 패널을 비운다.
                 _view.SetLine(string.Empty, string.Empty);
-                _view.SetChoices(Array.Empty<KeyValuePair<ChoiceId, string>>());
+
+                // 이 방의 대화가 끝났으면 방을 떠나는 버튼을 남기고, 아직
+                // 시작 전이거나 방 사이면 비운다.
+                _view.SetChoices(_awaitingAdvance
+                    ? new[] { new KeyValuePair<ChoiceId, string>(AdvanceChoiceId, "다음으로") }
+                    : Array.Empty<KeyValuePair<ChoiceId, string>>());
                 return;
             }
 

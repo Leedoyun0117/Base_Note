@@ -135,7 +135,7 @@ namespace GameName.UI.Tests.EditMode
                 Bus.Publish(new RoomStartedEvent(room.Id, 0));
 
                 Controller = new DialoguePanelController(
-                    View, Progressor, censorUnlock, Memories, tracker, colorMap, ColorName, Bus);
+                    View, Progressor, censorUnlock, Memories, tracker, colorMap, ColorName, room.Id, Bus);
             }
 
             private static IReadOnlyList<CluePlacement> BuildPlacements(RoomDefinition room)
@@ -250,17 +250,33 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 다음_대사가_없는_선택_후_패널이_종료_상태를_반영한다()
+        public void 다음_대사가_없는_선택_후_패널에_다음으로_버튼만_남는다()
         {
             var fx = new Fixture();
 
             fx.View.RaiseChoiceClicked(new ChoiceId("go"));   // line-1 → line-2
-            fx.View.RaiseChoiceClicked(new ChoiceId("end"));  // line-2 → 종료
+            fx.View.RaiseChoiceClicked(new ChoiceId("end"));  // line-2 → 대화 종료
 
             Assert.IsNull(fx.Progressor.CurrentLine);
             Assert.AreEqual(string.Empty, fx.View.LastSpeaker);
             Assert.AreEqual(string.Empty, fx.View.LastAuthoredText);
-            CollectionAssert.IsEmpty(fx.View.LastChoices);
+            Assert.AreEqual(1, fx.View.LastChoices.Count, "방을 떠나는 버튼만 남아야 한다.");
+            Assert.AreEqual("다음으로", fx.View.LastChoices[0].Value);
+        }
+
+        [Test]
+        public void 다음으로_버튼을_누르면_지금_방의_RoomClearedEvent가_나간다()
+        {
+            var fx = new Fixture();
+            var cleared = new List<RoomClearedEvent>();
+            fx.Bus.Subscribe<RoomClearedEvent>(cleared.Add);
+
+            fx.View.RaiseChoiceClicked(new ChoiceId("go"));
+            fx.View.RaiseChoiceClicked(new ChoiceId("end"));      // 대화 종료 → "다음으로"
+            fx.View.RaiseChoiceClicked(fx.View.LastChoices[0].Key); // "다음으로" 클릭
+
+            Assert.AreEqual(1, cleared.Count);
+            Assert.AreEqual(TheRoom, cleared[0].RoomId);
         }
 
         [Test]

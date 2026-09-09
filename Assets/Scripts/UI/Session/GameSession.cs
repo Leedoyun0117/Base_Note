@@ -9,6 +9,7 @@ using GameName.Core.Hiromi;
 using GameName.Core.Inventory;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
+using GameName.Core.Mind;
 using GameName.Core.Progression;
 using GameName.Core.Restoration;
 using GameName.Core.Trust;
@@ -26,8 +27,8 @@ namespace GameName.UI.Session
     // 생성자에 밀어 넣어 서로 연결할 뿐이다.
     //
     // 방 진행은 RunProgressor가 강제한다. 플레이어가 방을 걸어서 오갈 수는 없고,
-    // 방이 닫히면(대화 종료 성공 또는 신뢰 0) RoomCompletionArbiter가 종료 사건을
-    // 내고 RunProgressor가 그 자리에서 다음 방의 RoomStartedEvent를 발행한다.
+    // 대화를 다 본 뒤 "다음으로" 버튼을 눌러야 넘어간다(히로민 15를 치른다) —
+    // 신뢰 0으로 방이 무너지면 다음 방 없이 그 자리에서 런이 끝난다.
     public sealed class GameSession
     {
         public IEventBus EventBus { get; }
@@ -46,6 +47,11 @@ namespace GameName.UI.Session
         public IClueStateReader ClueState { get; }
 
         public ITrustReader Trust { get; }
+
+        // 나츠의 안정 축(침체 ~ 안정 ~ 흥분 연속값)과 심리 상태(낙관/광기/우울).
+        // 피드백 대사가 안정 축을 움직이고, 그 위치가 유키의 인내심(Trust)을 깎는다.
+        public IStabilityReader Stability { get; }
+        public IPsychologyReader Psychology { get; }
 
         // 지금 손에 든 추출된 기억 — 검열 해금에 제시할 후보들. 옛
         // IMemoryColorWallet(색→개수) 자리를 대신한다.
@@ -133,6 +139,19 @@ namespace GameName.UI.Session
             _ = new ChanceExhaustionListener(EventBus);
             _ = new HiromiDialogueEarningListener(hiromi, EventBus);
 
+            var stability = new StabilityAxis(
+                run.StartingStability, run.StabilityMin, run.StabilityMax, EventBus);
+            Stability = stability;
+
+            var psychology = new PsychologyTracker(run.StartingPsychology, EventBus);
+            Psychology = psychology;
+
+            // 안정 축이 중심에서 멀리 벗어나 있으면 답변마다 유키의 인내심이 깎인다.
+            // (예전의 "오답이면 신뢰 -1"을 대체한다 — 이제 신뢰는 답의 질이 아니라
+            //  나츠가 얼마나 불안정한 상태로 대화하는가에 반응한다.)
+            _ = new StabilityTrustErosionListener(
+                stability, trust, run.TrustErosionFreeBand, run.TrustErosionDivisor, EventBus);
+
             var clueState = new ClueStateStore(run.Rooms, EventBus);
             ClueState = clueState;
 
@@ -149,8 +168,11 @@ namespace GameName.UI.Session
             ClueDiscardProcessor = new ClueDiscardProcessor(clueState, EventBus);
 
             // 인벤토리는 ClueState의 투영 — 수집/추출/버리기 사건을 듣고 스스로 갱신한다.
-            // 방이 바뀌어도 비우지 않는다 — 단서 상태가 런 전체에 걸쳐 누적된다.
             _ = new InventoryProjection(Inventory, clueTracker, EventBus);
+
+            // 다음 방으로 넘어가면 손에 든 단서는 전부 두고 나온다 — 각 기억은
+            // 그 안에서 완결되고, 앞 방 물건으로 나중 방에 답하는 흐름은 없다.
+            _ = new RoomEntryInventoryClear(Inventory, ClueDiscardProcessor, EventBus);
 
             // 복원도는 런 전체에 걸쳐 산다 — RoomStartedEvent를 구독하지 않으므로
             // 방이 바뀌어도 내용이 유지된다. 리스너가 MemoryColorRevealedEvent를
@@ -180,6 +202,8 @@ namespace GameName.UI.Session
             _ = new RoomCompletionArbiter(trust, EventBus);
             var runProgressor = new RunProgressor(run.Rooms, EventBus);
             MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, hiromi, chance, runProgressor);
+            // 방을 다 보고 "다음으로"를 누르면 그 이동에도 이동 비용(15)이 든다.
+            _ = new RoomClearanceMoveListener(MemoryMove, EventBus);
             MoveHiromiCost = run.MoveHiromiCost;
 
             // 현재 방 추적. RunProgressor.Start()가 첫 RoomStartedEvent를 내기 전에 걸어 둔다.
