@@ -48,7 +48,7 @@ namespace GameName.Core.Tests.EditMode
 
                 Trust = new TrustGauge(3, Bus);
                 ClueState = new ClueStateStore(rooms, Bus);
-                Progressor = new DialogueProgressor(rooms, Censor, ClueState, Trust, Bus);
+                Progressor = new DialogueProgressor(rooms, Censor, ClueState, Trust, new TagMatchGrader(), Bus);
 
                 Bus.Subscribe<DialogueLineEnteredEvent>(Entered.Add);
                 Bus.Subscribe<ChoiceSelectedEvent>(Selected.Add);
@@ -259,7 +259,8 @@ namespace GameName.Core.Tests.EditMode
                 Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
                 Assert.AreEqual(new DialogueLineId("right"), fx.Progressor.CurrentLineId);
                 Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId(answer)));
-                CollectionAssert.AreEqual(new[] { true }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect));
+                CollectionAssert.AreEqual(
+                    new[] { MatchGrade.Exact }, fx.ClueAnswered.ConvertAll(e => e.Grade));
             }
         }
 
@@ -274,7 +275,32 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(new DialogueLineId("wrong-1"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(3, fx.Trust.Current, "신뢰는 안정 축 이탈로만 깎인다.");
             Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId("clue-c")));
-            CollectionAssert.AreEqual(new[] { false }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect));
+            CollectionAssert.AreEqual(
+                new[] { MatchGrade.None }, fx.ClueAnswered.ConvertAll(e => e.Grade));
+        }
+
+        [Test]
+        public void 중심축이_어긋난_부분적합_답은_오답_분기로_간다()
+        {
+            // 질문은 중심축 "answer"를 요구한다. clue-side는 그 말을 곁축으로만
+            // 가져 스치기는 하지만(부분적합) 중심축이 아니라 오답 분기로 가야 한다.
+            var line = DialogueLineDefinition.ClueSelection(
+                new DialogueLineId("q"), "화자", "?", new[] { new ClueTag("answer") },
+                new DialogueLineId("right"), new DialogueLineId("wrong"));
+            var sideClue = new ClueDefinition(
+                new ClueId("clue-side"), ClueKind.FloorObject, "곁", new CluePositionRatio(0.5f),
+                MemoryColor.Red, new[] { ClueTag.Center("other"), ClueTag.Sub("answer") });
+            var fx = new Fixture("q", new[]
+            {
+                line, Line("right", Choice("r", true)), Line("wrong", Choice("w", true)),
+            }, new[] { sideClue });
+            fx.ClueState.SetState(new ClueId("clue-side"), ClueState.Collected);
+
+            fx.Progressor.SelectClue(new ClueId("clue-side"));
+
+            Assert.AreEqual(new DialogueLineId("wrong"), fx.Progressor.CurrentLineId);
+            CollectionAssert.AreEqual(
+                new[] { MatchGrade.Partial }, fx.ClueAnswered.ConvertAll(e => e.Grade));
         }
 
         [Test]
@@ -340,8 +366,8 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
             Assert.AreEqual(new DialogueLineId("wrong-1"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(ClueState.Collected, fx.ClueState.GetState(new ClueId("clue-a")), "넘어가면 단서를 소모하지 않는다.");
-            CollectionAssert.AreEqual(new[] { false }, fx.ClueAnswered.ConvertAll(e => e.WasCorrect),
-                "넘어가기도 정답이 아니므로 ClueAnsweredEvent(false)다.");
+            CollectionAssert.AreEqual(new[] { MatchGrade.None }, fx.ClueAnswered.ConvertAll(e => e.Grade),
+                "넘어가기는 답을 안 낸 것이므로 MatchGrade.None이다.");
         }
 
         [Test]
@@ -379,7 +405,7 @@ namespace GameName.Core.Tests.EditMode
             var trust = new TrustGauge(3, bus);
             var censor = new CensorUnlockLog();
             var clueState = new ClueStateStore(rooms, bus);
-            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, bus);
+            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, new TagMatchGrader(), bus);
 
             // room-0을 먼저 방문해 단서를 손에 넣는다.
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
@@ -416,7 +442,7 @@ namespace GameName.Core.Tests.EditMode
             var trust = new TrustGauge(3, bus);
             var censor = new CensorUnlockLog();
             var clueState = new ClueStateStore(rooms, bus);
-            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, bus);
+            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, new TagMatchGrader(), bus);
 
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
             clueState.SetState(new ClueId("clue-other"), ClueState.Collected);

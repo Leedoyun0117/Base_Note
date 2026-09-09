@@ -77,7 +77,8 @@ namespace GameName.Core.Tests.EditMode
                 _ = new RoomEntryInventoryClear(Inventory, Discard, Bus);
                 Extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
                 CensorUnlock = new CensorUnlockProcessor(Memories, CensorLog, requiredTags, Bus);
-                Dialogue = new DialogueProgressor(run.Rooms, CensorLog, ClueState, Trust, Bus);
+                Dialogue = new DialogueProgressor(
+                    run.Rooms, CensorLog, ClueState, Trust, new TagMatchGrader(), Bus);
                 _ = new RoomCompletionArbiter(Trust, Bus);
                 Run = new RunProgressor(run.Rooms, Bus);
                 MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, Hiromi, Chance, Run);

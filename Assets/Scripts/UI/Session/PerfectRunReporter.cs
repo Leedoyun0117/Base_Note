@@ -1,4 +1,5 @@
 using System;
+using GameName.Core.Clues;
 using GameName.Core.Events;
 
 namespace GameName.UI.Session
@@ -6,8 +7,8 @@ namespace GameName.UI.Session
     // 한 판을 "모든 최적 선택"으로 완주했는지 콘솔에 알리는 테스트용 관찰자.
     //
     // 최적이 아닌 것: 텍스트 선택지 오답(TrustChangedEvent의 감소), ClueSelection
-    // 오답 또는 넘어가기(ClueAnsweredEvent.WasCorrect == false). 둘 중 하나라도
-    // 있었으면 흠집으로 본다.
+    // 답이 완전적합(MatchGrade.Exact)이 아니었던 것(오답·넘어가기·부분적합 전부).
+    // 둘 중 하나라도 있었으면 흠집으로 본다.
     //
     // 게임 규칙이 아니라 진단이라 Core에 두지 않는다 — RunCompletedEvent 시점에
     // 흠집이 없었으면 "클리어"를 찍기만 한다.
@@ -29,7 +30,7 @@ namespace GameName.UI.Session
                 }),
                 eventBus.Subscribe<ClueAnsweredEvent>(e =>
                 {
-                    if (!e.WasCorrect)
+                    if (e.Grade != MatchGrade.Exact)
                         _flawless = false;
                 }),
                 eventBus.Subscribe<RunCompletedEvent>(_ => Report()),

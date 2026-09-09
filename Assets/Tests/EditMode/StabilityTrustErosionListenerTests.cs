@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using GameName.Core.Clues;
 using GameName.Core.Events;
 using GameName.Core.Mind;
 using GameName.Core.Trust;
@@ -32,7 +33,9 @@ namespace GameName.Core.Tests.EditMode
                 Bus.Subscribe<TrustChangedEvent>(TrustChanges.Add);
             }
 
-            public void Answer(bool correct) => Bus.Publish(new ClueAnsweredEvent(correct));
+            // 침식은 답의 등급을 보지 않는다 — 답변이 일어났다는 사실만 센다.
+            public void Answer(bool correct) =>
+                Bus.Publish(new ClueAnsweredEvent(correct ? MatchGrade.Exact : MatchGrade.None));
         }
 
         [Test]

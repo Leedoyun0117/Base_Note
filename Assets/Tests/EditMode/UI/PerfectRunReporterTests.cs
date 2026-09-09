@@ -1,3 +1,4 @@
+using GameName.Core.Clues;
 using GameName.Core.Events;
 using GameName.UI.Session;
 using NUnit.Framework;
@@ -8,7 +9,7 @@ namespace GameName.UI.Tests.EditMode
 {
     // "모든 최적 선택으로 완주했는가"를 콘솔에 알리는 테스트용 관찰자.
     //   · 텍스트 선택지 오답 → TrustChangedEvent 감소
-    //   · ClueSelection 오답/넘어가기 → ClueAnsweredEvent.WasCorrect == false
+    //   · ClueSelection 답이 완전적합이 아님 → ClueAnsweredEvent.Grade != Exact
     // 둘 중 하나라도 있었으면 "클리어"가 아니다.
     public class PerfectRunReporterTests
     {
@@ -42,21 +43,21 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 단서_오답이_있었으면_클리어가_아니다()
+        public void 단서_답이_완전적합이_아니었으면_클리어가_아니다()
         {
             var bus = NewBusWithReporter();
-            bus.Publish(new ClueAnsweredEvent(false));
+            bus.Publish(new ClueAnsweredEvent(MatchGrade.Partial));
 
             LogAssert.Expect(LogType.Log, NotClear);
             bus.Publish(new RunCompletedEvent());
         }
 
         [Test]
-        public void 신뢰_상승이나_정답_단서는_흠집이_아니다()
+        public void 신뢰_상승이나_완전적합_단서는_흠집이_아니다()
         {
             var bus = NewBusWithReporter();
             bus.Publish(new TrustChangedEvent(2, 3)); // 방 전환 리셋 등
-            bus.Publish(new ClueAnsweredEvent(true));
+            bus.Publish(new ClueAnsweredEvent(MatchGrade.Exact));
 
             LogAssert.Expect(LogType.Log, Clear);
             bus.Publish(new RunCompletedEvent());

@@ -35,6 +35,12 @@ namespace GameName.Core.Dialogue
         // 덩어리이기 때문이다.
         private readonly IClueStateMutator _clueState;
         private readonly ITrustReader _trust;
+
+        // 답의 적합도를 5단계로 매긴다. 직접 태그를 대조하지 않고 주입받는
+        // 이유: 심리 × 안정 조합이 등급을 뒤집는 규칙([10])이 이 판정을 감싸게
+        // 되어 있다.
+        private readonly ITagMatchGrader _grader;
+
         private readonly IEventBus _eventBus;
 
         private readonly Dictionary<DialogueLineId, DialogueLineDefinition> _linesById =
@@ -55,12 +61,14 @@ namespace GameName.Core.Dialogue
             ICensorResolver censorResolver,
             IClueStateMutator clueState,
             ITrustReader trust,
+            ITagMatchGrader grader,
             IEventBus eventBus)
         {
             _rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
             _censorResolver = censorResolver ?? throw new ArgumentNullException(nameof(censorResolver));
             _clueState = clueState ?? throw new ArgumentNullException(nameof(clueState));
             _trust = trust ?? throw new ArgumentNullException(nameof(trust));
+            _grader = grader ?? throw new ArgumentNullException(nameof(grader));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
             foreach (var room in _rooms)
@@ -159,13 +167,14 @@ namespace GameName.Core.Dialogue
             return ChoiceSelectionResult.DialogueEnded();
         }
 
-        // ClueSelection 줄에 단서로 답한다. 정답 태그에 걸치면 CorrectNext로,
-        // 아니면 IncorrectNext로 간다. 그 분기가 비어 있으면(null) 그 답으로
-        // 대화가 끝난다 — 방의 마지막 줄이 그렇게 저작된다.
+        // ClueSelection 줄에 단서로 답한다. 답의 등급이 중심축까지 맞는 쪽이면
+        // (높음·완전적합) CorrectNext로, 아니면 IncorrectNext로 간다. 그 분기가
+        // 비어 있으면(null) 그 답으로 대화가 끝난다 — 방의 마지막 줄이 그렇게
+        // 저작된다.
         //
-        // 답이 맞았는지는 ClueAnsweredEvent에 실어 알린다 — 신뢰는 이 처리기가
-        // 직접 깎지 않고, 안정 축 이탈에 따라 답변마다 깎이는 것이라 별도
-        // 리스너의 몫이다. 고른 단서는 정답이든 오답이든 UsedInDialogue로 소모된다.
+        // 매긴 등급은 ClueAnsweredEvent에 실어 알린다 — 신뢰는 이 처리기가 직접
+        // 깎지 않고, 안정 축 이탈에 따라 답변마다 깎이는 것이라 별도 리스너의
+        // 몫이다. 고른 단서는 등급과 무관하게 UsedInDialogue로 소모된다.
         public ChoiceSelectionResult SelectClue(ClueId clueId)
         {
             if (_trust.Current == 0)
@@ -187,16 +196,16 @@ namespace GameName.Core.Dialogue
             // 내민 물건은 맞든 틀리든 손에서 나간다 — 가방이 그 사실을 이 사건으로 안다.
             _eventBus.Publish(new ClueUsedInDialogueEvent(clueId));
 
-            var correct = HasAnyMatchingTag(clueDefinition.Tags, line.RequiredTags);
+            var grade = _grader.Grade(line.RequiredTags, clueDefinition.Tags);
             // 이 발행이 안정 축 이탈만큼 신뢰를 깎을 수 있고(동기), 신뢰 0이면
             // 그 자리에서 런이 끝난다.
-            _eventBus.Publish(new ClueAnsweredEvent(correct));
+            _eventBus.Publish(new ClueAnsweredEvent(grade));
 
             // 신뢰가 0으로 떨어져 런이 끝났다면 이 답의 대화 이동은 없던 일이 된다.
             if (_trust.Current == 0 || !_roomId.Equals(roomAtSelection))
                 return ChoiceSelectionResult.DialogueEnded();
 
-            return AdvanceOrEnd(correct ? line.CorrectNext : line.IncorrectNext);
+            return AdvanceOrEnd(IsCorrectBranch(grade) ? line.CorrectNext : line.IncorrectNext);
         }
 
         // 단서로 답하지 않고 넘어간다 — 답으로 낼 단서가 없거나, 그냥 넘기고
@@ -215,7 +224,7 @@ namespace GameName.Core.Dialogue
                 return ChoiceSelectionResult.Rejected();
 
             var roomAtSkip = _roomId;
-            _eventBus.Publish(new ClueAnsweredEvent(false));
+            _eventBus.Publish(new ClueAnsweredEvent(MatchGrade.None));
 
             if (_trust.Current == 0 || !_roomId.Equals(roomAtSkip))
                 return ChoiceSelectionResult.DialogueEnded();
@@ -263,22 +272,11 @@ namespace GameName.Core.Dialogue
             _eventBus.Publish(new DialogueLineEnteredEvent(lineId));
         }
 
-        // 단서 하나가 여러 태그를 가질 수 있고 정답 태그도 여러 개일 수 있어
-        // (예: 방을 옮겨 다니며 같은 사실을 가리키는 단서가 늘어나는 경우),
-        // 하나라도 걸치면 정답으로 본다 — 태그 집합끼리의 교집합 유무만 본다.
-        private static bool HasAnyMatchingTag(IReadOnlyList<ClueTag> clueTags, IReadOnlyList<ClueTag> requiredTags)
-        {
-            for (var i = 0; i < clueTags.Count; i++)
-            {
-                for (var j = 0; j < requiredTags.Count; j++)
-                {
-                    if (clueTags[i].Equals(requiredTags[j]))
-                        return true;
-                }
-            }
-
-            return false;
-        }
+        // CorrectNext로 가는 등급 문턱. 중심축(감정)이 맞은 쪽(높음·완전적합)만
+        // "그 답이 맞았다"로 보고, 부분 이하는 오답 서브체인으로 보낸다 — 분기는
+        // 두 갈래뿐이라 어딘가에서 끊어야 하고 중심축이 맞았는지가 그 경계다.
+        // 다섯 단계 자체는 사건에 실려 나가 피드백 대사·안정 축 이동이 그대로 쓴다.
+        private static bool IsCorrectBranch(MatchGrade grade) => grade >= MatchGrade.High;
 
         private bool IsChoiceVisible(ChoiceDefinition choice)
         {

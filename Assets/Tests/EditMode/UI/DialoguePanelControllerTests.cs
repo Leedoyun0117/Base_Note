@@ -128,7 +128,8 @@ namespace GameName.UI.Tests.EditMode
                 var censorUnlock = new CensorUnlockProcessor(Memories, CensorLog, requiredTags, Bus);
                 var tracker = new MemoryRoomClueTracker(BuildPlacements(room));
 
-                Progressor = new DialogueProgressor(run.Rooms, CensorLog, ClueState, trust, Bus);
+                Progressor = new DialogueProgressor(
+                    run.Rooms, CensorLog, ClueState, trust, new TagMatchGrader(), Bus);
 
                 // 방이 시작되어 시작 라인으로 들어간 뒤에 패널을 만든다 — 생산
                 // 코드와 같은 순서(세션 조립 후 화면 부착)다.

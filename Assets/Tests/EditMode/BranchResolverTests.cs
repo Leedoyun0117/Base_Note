@@ -173,7 +173,8 @@ namespace GameName.Core.Tests.EditMode
                 var trust = new TrustGauge(resolvedRun.StartingTrust, Bus);
                 var clueState = new ClueStateStore(resolvedRun.Rooms, Bus);
                 var censor = new CensorUnlockLog();
-                Progressor = new DialogueProgressor(resolvedRun.Rooms, censor, clueState, trust, Bus);
+                Progressor = new DialogueProgressor(
+                    resolvedRun.Rooms, censor, clueState, trust, new TagMatchGrader(), Bus);
                 Bus.Publish(new RoomStartedEvent(resolvedRun.Rooms[0].Id, 0));
             }
         }
