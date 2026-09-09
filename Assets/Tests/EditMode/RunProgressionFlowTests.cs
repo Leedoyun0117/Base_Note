@@ -37,6 +37,8 @@ namespace GameName.Core.Tests.EditMode
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly TrustGauge Trust;
             public readonly StabilityAxis Stability;
+            public readonly PsychologyTracker Psychology;
+            public readonly RoomPhaseCoordinator RoomPhase;
             public readonly StepVisibilityPolicy Visibility = new StepVisibilityPolicy(VisibilityTable);
             public readonly CenteredClueAccessPolicy Access = new CenteredClueAccessPolicy();
             public readonly ExtractedMemoryStore Memories = new ExtractedMemoryStore();
@@ -55,11 +57,16 @@ namespace GameName.Core.Tests.EditMode
             public readonly List<RoomClearedEvent> Cleared = new List<RoomClearedEvent>();
             public readonly List<RunCompletedEvent> Completed = new List<RunCompletedEvent>();
 
-            public World(RunDefinition run, IReadOnlyList<CluePlacement> placements)
+            // investigationsPerRoom: 조사 국면에서 대화 국면으로 넘어가려면 방당
+            // 단서를 몇 개 집어야 하는가. 대부분의 시나리오는 조사에 관심이 없어
+            // 0(방 시작 즉시 대화)을 쓰고, 조사 게이트를 보는 시나리오만 실제 값을 준다.
+            public World(RunDefinition run, IReadOnlyList<CluePlacement> placements,
+                int investigationsPerRoom = 0)
             {
                 Trust = new TrustGauge(run.StartingTrust, Bus);
                 Stability = new StabilityAxis(
                     run.StartingStability, run.StabilityMin, run.StabilityMax, Bus);
+                Psychology = new PsychologyTracker(run.StartingPsychology, Bus);
                 _ = new StabilityTrustErosionListener(
                     Stability, Trust, run.TrustErosionFreeBand, run.TrustErosionDivisor, Bus);
                 Hiromi = new HiromiWallet(run.StartingHiromi, Bus);
@@ -78,9 +85,9 @@ namespace GameName.Core.Tests.EditMode
                 Dialogue = new DialogueProgressor(
                     run.Rooms, ClueState, Trust,
                     new MemoryEffectResolver(new TagMatchGrader(), 20, 30),
-                    new PsychologyTracker(run.StartingPsychology, Bus), Stability, Bus);
-                // 조사 한도 0 = 방이 시작되면 곧장 대화 국면으로.
-                _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(Bus), 0, Bus);
+                    Psychology, Stability, Bus);
+                RoomPhase = new RoomPhaseCoordinator(Bus);
+                _ = new RoomInvestigationCounter(RoomPhase, investigationsPerRoom, Bus);
                 _ = new RoomCompletionArbiter(Trust, Bus);
                 Run = new RunProgressor(run.Rooms, Bus);
                 MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, Hiromi, Chance, Run);
@@ -310,6 +317,81 @@ namespace GameName.Core.Tests.EditMode
             world.Dialogue.SkipClueSelection();        // q2 답변 — 이제 |위치| 25 > 20
 
             Assert.AreEqual(2, world.Trust.Current, "자유 폭을 넘긴 상태의 답변이 신뢰를 깎는다.");
+        }
+
+        // ── 시나리오: 조사 국면 → 즉석 추출 → 답변 → 기억 소모가 한 줄로 이어진다 ──
+
+        [Test]
+        public void 조사_한도를_채우면_대화가_시작되고_추출한_기억은_답으로_내면_소모된다()
+        {
+            var clue = new ClueDefinition(
+                new ClueId("c"), ClueKind.Poster, "물건", new CluePositionRatio(0.5f), MemoryColor.Blue,
+                new[] { new ClueTag("a") });
+            var room1 = new RoomDefinition(
+                new MemoryRoomId("room-1"), new[] { clue }, new DialogueLineId("q"),
+                new[]
+                {
+                    DialogueLineDefinition.ClueSelection(
+                        new DialogueLineId("q"), "화자", "?", new[] { new ClueTag("a") }, null, null),
+                });
+            var run = new RunDefinition(
+                new[] { room1, Room("room-2"), Room("room-3") }, startingTrust: 3, startingHiromi: 30);
+            var world = new World(
+                run, new[] { new CluePlacement(new MemoryRoomId("room-1"), clue) }, investigationsPerRoom: 1);
+            world.Run.Start();
+
+            Assert.AreEqual(RoomPhase.Investigation, world.RoomPhase.Current);
+            Assert.IsNull(world.Dialogue.CurrentLine, "조사 국면에서는 대화가 없다.");
+
+            Assert.IsTrue(world.Collection.Collect(new ClueId("c")).Succeeded);
+            Assert.AreEqual(RoomPhase.Dialogue, world.RoomPhase.Current, "조사 한도(1)를 채우면 대화 국면.");
+            Assert.AreEqual(new DialogueLineId("q"), world.Dialogue.CurrentLineId);
+
+            Assert.IsTrue(world.Extraction.Extract(new ClueId("c")).Succeeded);
+            Assert.AreEqual(21, world.Hiromi.Remaining);
+            Assert.IsTrue(world.Memories.TryGet(new ClueId("c"), out _));
+
+            world.Dialogue.SelectClue(new ClueId("c"));
+
+            Assert.AreEqual(ClueState.UsedInDialogue, world.ClueState.GetState(new ClueId("c")));
+            Assert.IsFalse(world.Memories.TryGet(new ClueId("c"), out _), "답으로 낸 추출 기억은 소모된다.");
+        }
+
+        // ── 시나리오: 광기 + 불안정에서 태그가 맞는 답이 오답 피드백으로 뒤집힌다 ──
+
+        [Test]
+        public void 광기_불안정_상태에서는_태그가_맞는_답도_오답_피드백_줄로_가_그_줄의_안정_델타를_받는다()
+        {
+            var clue = new ClueDefinition(
+                new ClueId("c"), ClueKind.Poster, "물건", new CluePositionRatio(0.5f), MemoryColor.Blue,
+                new[] { new ClueTag("a") });
+            var room1 = new RoomDefinition(
+                new MemoryRoomId("room-1"), new[] { clue }, new DialogueLineId("q"),
+                new[]
+                {
+                    DialogueLineDefinition.ClueSelection(
+                        new DialogueLineId("q"), "화자", "?", new[] { new ClueTag("a") },
+                        new DialogueLineId("warm"), new DialogueLineId("cold")),
+                    new DialogueLineDefinition(
+                        new DialogueLineId("warm"), "화자", "", new[] { Choice("w", true) }, stabilityDelta: 10),
+                    new DialogueLineDefinition(
+                        new DialogueLineId("cold"), "화자", "", new[] { Choice("c2", true) }, stabilityDelta: -10),
+                });
+            var run = new RunDefinition(
+                new[] { room1, Room("room-2"), Room("room-3") }, startingTrust: 3, startingHiromi: 3);
+            var world = new World(run, new[] { new CluePlacement(new MemoryRoomId("room-1"), clue) });
+            world.Run.Start();
+
+            Assert.IsTrue(world.Collection.Collect(new ClueId("c")).Succeeded);
+            world.Psychology.SetState(PsychologyState.Mania);
+            world.Stability.Shift(40); // 자유 폭(20)을 한 칸(step 30)어치 넘김
+
+            world.Dialogue.SelectClue(new ClueId("c")); // 태그로는 완전적합
+
+            Assert.AreEqual(new DialogueLineId("cold"), world.Dialogue.CurrentLineId,
+                "광기 + 불안정 → 역전 → 오답 피드백(cold)으로 간다.");
+            Assert.AreEqual(30, world.Stability.Position,
+                "정답 피드백(warm, +10)이 아니라 오답 피드백(cold, -10)을 받아 40 → 30.");
         }
     }
 }

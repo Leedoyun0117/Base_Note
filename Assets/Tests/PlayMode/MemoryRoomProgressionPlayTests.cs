@@ -42,12 +42,50 @@ namespace GameName.Tests.PlayMode
             yield return null;
         }
 
+        // 데모 각 방에서, 대화 국면으로 넘어가는 데 쓸 단서 후보들. 방당
+        // InvestigationsPerRoom(데모 기본 3)개를 집으면 조사 국면이 끝난다.
+        private static readonly Dictionary<string, string[]> InvestigateWith =
+            new Dictionary<string, string[]>
+            {
+                ["room-1"] = new[]
+                {
+                    "clue-r1-blanket", "clue-r1-picturebook", "clue-r1-cicada-net",
+                    "clue-r1-drawing", "clue-r1-star-poster",
+                },
+                ["room-2"] = new[]
+                {
+                    "clue-r2-photo", "clue-r2-ribbon", "clue-r2-letter",
+                    "clue-r2-tape", "clue-r2-band-poster",
+                },
+                ["room-3"] = new[]
+                {
+                    "clue-r3-watch", "clue-r3-keychain", "clue-r3-coin",
+                    "clue-r3-xray-poster", "clue-r3-notice-poster",
+                },
+            };
+
+        // 조사 국면을 끝내 대화 국면으로 넘어간다. preferred에 준 단서를 먼저
+        // 집어(그 방의 답으로 쓰려는 것), 남은 조사 횟수를 다른 단서로 채운다.
+        private void ReachDialoguePhase(params string[] preferred)
+        {
+            var pool = InvestigateWith[_session.CurrentRoomId.Value];
+            var order = preferred.Concat(pool.Where(id => !preferred.Contains(id)));
+
+            foreach (var id in order)
+            {
+                if (_session.RoomPhase.Current == RoomPhase.Dialogue)
+                    break;
+                _session.ClueCollectionProcessor.Collect(new ClueId(id));
+            }
+        }
+
         // 지금 방의 대화를 끝까지 소진한다 — 모든 줄이 "가진 물건으로 답하기"라,
-        // 답을 모르는 테스트는 매 줄 넘어간다(SkipClueSelection: 신뢰 안 깎이고
-        // 다음 줄로). 대화가 끝나면 방은 자동으로 안 닫힌다 — "다음으로" 버튼을
-        // 눌러야 하고, 그건 지금 방의 RoomClearedEvent를 낸다.
+        // 답을 모르는 테스트는 매 줄 넘어간다(SkipClueSelection). 대화가 끝나면
+        // 방은 자동으로 안 닫힌다 — "다음으로" 버튼을 눌러야 하고, 그건 지금
+        // 방의 RoomClearedEvent를 낸다.
         private void ExhaustCurrentRoom()
         {
+            ReachDialoguePhase();
             var room = _session.CurrentRoomId;
             for (var guard = 0;
                  guard < 32 && _session.CurrentRoomId.Equals(room) && _session.Dialogue.CurrentLine != null;
@@ -116,35 +154,30 @@ namespace GameName.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator 틀린_물건을_세_번_내밀면_방이_무너지고_런이_끝난다()
+        public IEnumerator 한_방에서_오답만_내도_방은_무너지지_않고_대화가_끝까지_진행된다()
         {
+            // 2차 모델: 오답 자체는 신뢰를 깎지 않는다(신뢰는 안정 축 이탈에만
+            // 반응하고, 한 방의 피드백 델타만으로는 자유 폭을 못 넘는다). 오답
+            // 서브체인을 지나 대화가 정상적으로 끝나야 한다.
             var failed = false;
-            var completed = false;
             _session.EventBus.Subscribe<RoomFailedEvent>(_ => failed = true);
-            _session.EventBus.Subscribe<RunCompletedEvent>(_ => completed = true);
 
-            // 정답이 아닌 물건 3개를 손에 든다(가방 3칸).
-            foreach (var id in new[] { "clue-r1-picturebook", "clue-r1-drawing", "clue-r1-star-poster" })
-                Assert.IsTrue(
-                    _session.ClueCollectionProcessor.Collect(new ClueId(id)).Succeeded, id + " 수집 실패");
+            ReachDialoguePhase("clue-r1-star-poster"); // 어느 질문에도 안 맞는 물건
 
-            for (var i = 0; i < 6 && _session.CurrentRoomId.Equals(Room1) && _session.Trust.Current > 0; i++)
+            for (var i = 0; i < 12 && _session.Dialogue.CurrentLine != null; i++)
             {
                 var clues = _session.Dialogue.SelectableClues();
-                if (clues.Count == 0)
-                    break;
-                _session.Dialogue.SelectClue(clues[0].Id);
+                if (clues.Count > 0)
+                    _session.Dialogue.SelectClue(clues[0].Id);
+                else
+                    _session.Dialogue.SkipClueSelection();
                 yield return null;
             }
 
-            Assert.AreEqual(0, _session.Trust.Current, "엉뚱한 물건을 세 번 냈는데 신뢰가 0이 아니다.");
-            Assert.IsTrue(failed, "신뢰 0인데 방이 무너지지 않았다.");
-            Assert.IsTrue(completed, "방이 무너졌는데 런이 끝나지 않았다.");
-            Assert.AreEqual(Room1, _session.CurrentRoomId, "실패했는데 다음 방으로 넘어갔다.");
-
-            var body = HudRoot().Q<VisualElement>("dialogue-body");
-            var text = string.Join(" ", body.Children().OfType<Label>().Select(l => l.text));
-            StringAssert.Contains("끝난다", text);
+            Assert.IsFalse(failed, "오답만 냈는데 방이 무너졌다 — 2차 모델에서 오답은 신뢰를 깎지 않는다.");
+            Assert.IsTrue(_session.Trust.Current > 0, "오답만으로 신뢰가 0이 됐다.");
+            Assert.IsNull(_session.Dialogue.CurrentLine, "대화가 끝까지 진행되지 않았다.");
+            Assert.AreEqual(Room1, _session.CurrentRoomId, "'다음으로'를 안 눌렀는데 방이 넘어갔다.");
         }
 
         [UnityTest]
@@ -166,10 +199,12 @@ namespace GameName.Tests.PlayMode
         }
 
         [UnityTest]
+        [Ignore("2차 모델에서 신뢰를 낮추는 경로가 '안정 축 누적 이탈'로 바뀌어 " +
+                "한 방 안에서는 재현 불가(오답은 신뢰를 안 깎는다). 신뢰↔가시 비율↔단서 " +
+                "접근성 배선 자체는 CenteredClueAccessPolicyTests·StepVisibilityPolicyTests·" +
+                "MemoryRoomScreenTrustBoundaryTests가 커버. 콜라이더 육안 검증은 에디터에서.")]
         public IEnumerator 신뢰가_낮아지면_가시_밖_단서의_콜라이더가_꺼진다()
         {
-            // 모포(clue-r1-blanket, 비율 0.18)는 방에 놔두고, 다른 물건 2개를
-            // 엉뚱하게 내밀어 신뢰를 1로 만든다(창 [0.25, 0.75] → 0.18은 밖).
             foreach (var id in new[] { "clue-r1-picturebook", "clue-r1-drawing" })
                 Assert.IsTrue(
                     _session.ClueCollectionProcessor.Collect(new ClueId(id)).Succeeded, id + " 수집 실패");
@@ -222,9 +257,9 @@ namespace GameName.Tests.PlayMode
             yield return null;
             Assert.AreEqual(Room2, _session.CurrentRoomId);
 
-            // r2-b "그때 쥐고 있던 것"의 정답은 리본/편지(room2.heldItem).
-            Assert.IsTrue(
-                _session.ClueCollectionProcessor.Collect(new ClueId("clue-r2-ribbon")).Succeeded, "리본 수집 실패.");
+            // r2-b "그때 쥐고 있던 것"의 정답은 리본/편지(room2.heldItem) —
+            // 조사 국면에서 리본을 손에 넣어 두고 대화로 넘어간다.
+            ReachDialoguePhase("clue-r2-ribbon");
 
             SkipUntilLine("r2-b");
             Assert.AreEqual(new DialogueLineId("r2-b"), _session.Dialogue.CurrentLineId, "r2-b에 도달하지 못했다.");
@@ -236,27 +271,27 @@ namespace GameName.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator 방2_엉뚱한_물건을_내밀면_오답_분기로_가고_신뢰가_깎인다()
+        public IEnumerator 방2_엉뚱한_물건을_내밀면_오답_분기로_합류한다()
         {
             ExhaustCurrentRoom(); // room-1 → room-2
             yield return null;
             Assert.AreEqual(Room2, _session.CurrentRoomId);
-            var trustBefore = _session.Trust.Current;
 
-            Assert.IsTrue(
-                _session.ClueCollectionProcessor.Collect(new ClueId("clue-r2-band-poster")).Succeeded, "포스터 수집 실패.");
+            ReachDialoguePhase("clue-r2-band-poster");
 
             SkipUntilLine("r2-b");
             _session.Dialogue.SelectClue(new ClueId("clue-r2-band-poster")); // room2.band ≠ heldItem → 오답
 
             Assert.AreEqual(new DialogueLineId("r2-c"), _session.Dialogue.CurrentLineId, "오답도 r2-c로 합류한다.");
-            Assert.AreEqual(trustBefore - 1, _session.Trust.Current, "엉뚱한 물건을 내밀면 신뢰가 깎인다.");
             yield return null;
         }
 
         [UnityTest]
         public IEnumerator 방1_대사_원문이_화면에_그대로_그려진다()
         {
+            ReachDialoguePhase(); // 조사 국면을 끝내야 대화가 그려진다
+            yield return null;
+
             var body = HudRoot().Q<VisualElement>("dialogue-body");
             Assert.IsNotNull(body, "대화 본문 요소가 없다(씬 구성이 필요하다).");
 
