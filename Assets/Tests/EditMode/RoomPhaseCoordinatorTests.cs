@@ -6,8 +6,9 @@ using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // 방 국면을 조사 → 대화로 옮기고, 대화 국면에서 DialoguePhaseStartedEvent를
-    // 낸다. 지금은 방이 시작되는 즉시 대화 국면으로 자동 전환한다.
+    // 방이 시작되면 조사 국면으로 두고, BeginDialogue()가 불릴 때 대화 국면으로
+    // 넘기며 DialoguePhaseStartedEvent를 낸다. 전환을 언제 부를지는 이 타입의
+    // 몫이 아니다(RoomInvestigationCounter가 조사 횟수를 다 쓸 때 부른다).
     public class RoomPhaseCoordinatorTests
     {
         private sealed class Fixture
@@ -32,17 +33,30 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 방이_시작되면_조사_국면_뒤_대화_국면으로_자동_전환하며_대화_시작_사건을_낸다()
+        public void 방이_시작되면_조사_국면이_되고_대화는_아직_시작되지_않는다()
         {
             var fx = new Fixture();
 
             fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-2"), 1));
 
+            Assert.AreEqual(RoomPhase.Investigation, fx.Coordinator.Current);
+            CollectionAssert.AreEqual(
+                new[] { RoomPhase.Investigation }, fx.PhaseChanges.ConvertAll(e => e.Phase));
+            CollectionAssert.IsEmpty(fx.DialogueStarts);
+        }
+
+        [Test]
+        public void BeginDialogue를_부르면_대화_국면이_되고_그_방의_대화_시작_사건을_낸다()
+        {
+            var fx = new Fixture();
+            fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-2"), 1));
+
+            fx.Coordinator.BeginDialogue();
+
             Assert.AreEqual(RoomPhase.Dialogue, fx.Coordinator.Current);
             CollectionAssert.AreEqual(
                 new[] { RoomPhase.Investigation, RoomPhase.Dialogue },
                 fx.PhaseChanges.ConvertAll(e => e.Phase));
-
             Assert.AreEqual(1, fx.DialogueStarts.Count);
             Assert.AreEqual(new MemoryRoomId("room-2"), fx.DialogueStarts[0].RoomId);
             Assert.AreEqual(1, fx.DialogueStarts[0].RoomIndex);
@@ -53,6 +67,7 @@ namespace GameName.Core.Tests.EditMode
         {
             var fx = new Fixture();
             fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-1"), 0));
+            fx.Coordinator.BeginDialogue();
 
             fx.Coordinator.BeginDialogue();
 
@@ -64,14 +79,14 @@ namespace GameName.Core.Tests.EditMode
         {
             var fx = new Fixture();
             fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-1"), 0));
+            fx.Coordinator.BeginDialogue();
             fx.PhaseChanges.Clear();
             fx.DialogueStarts.Clear();
 
             fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("room-2"), 1));
 
-            CollectionAssert.AreEqual(
-                new[] { RoomPhase.Investigation, RoomPhase.Dialogue },
-                fx.PhaseChanges.ConvertAll(e => e.Phase));
+            Assert.AreEqual(RoomPhase.Investigation, fx.Coordinator.Current);
+            fx.Coordinator.BeginDialogue();
             Assert.AreEqual(new MemoryRoomId("room-2"), fx.DialogueStarts[0].RoomId);
         }
     }

@@ -117,7 +117,7 @@ namespace GameName.UI.Tests.EditMode
                 Progressor = new DialogueProgressor(
                     run.Rooms, ClueState, trust, new TagMatchGrader(),
                     new StabilityAxis(0, -100, 100, Bus), Bus);
-                _ = new RoomPhaseCoordinator(Bus);
+                _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(Bus), 0, Bus);
 
                 // 방이 시작되어(→ 즉시 대화 국면) 시작 라인으로 들어간 뒤에 패널을
                 // 만든다 — 생산 코드와 같은 순서(세션 조립 후 화면 부착)다.

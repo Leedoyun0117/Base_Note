@@ -186,10 +186,11 @@ namespace GameName.UI.Session
             Dialogue = new DialogueProgressor(
                 run.Rooms, clueState, trust, new TagMatchGrader(), stability, EventBus);
 
-            // 방 국면(조사 → 대화). 지금은 방이 시작되는 즉시 대화 국면으로
-            // 넘긴다 — 조사 횟수 제한이 이 자동 전환을 대체하는 것은 다음 단계다.
+            // 방 국면(조사 → 대화). 방이 시작되면 조사 국면으로 두고,
+            // RoomInvestigationCounter가 방당 조사 횟수를 다 쓰면 대화로 넘긴다.
             var roomPhase = new RoomPhaseCoordinator(EventBus);
             RoomPhase = roomPhase;
+            _ = new RoomInvestigationCounter(roomPhase, run.InvestigationsPerRoom, EventBus);
 
             // ── 방 진행 ────────────────────────────────────────────────────
             _ = new RoomCompletionArbiter(trust, EventBus);

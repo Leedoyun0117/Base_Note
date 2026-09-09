@@ -34,6 +34,12 @@ namespace GameName.Core.Authoring
         // 하나씩 줄고, 0이 되면 런이 끝난다.
         public int StartingChance { get; }
 
+        // 한 방의 조사 국면에서 단서를 몇 개까지 집을 수 있는가. 그 수만큼 집으면
+        // 조사가 끝나고 대화 국면이 시작된다. 지금은 가방 칸 수와 같은 값이라
+        // "가방을 채우면 대화로 넘어간다"로 읽히지만, 더 조인 방을 만들려면
+        // 칸 수보다 작게 저작할 수 있어 데이터로 둔다. 0이면 조사 없이 곧장 대화.
+        public int InvestigationsPerRoom { get; }
+
         // 다음 기억으로 이동하는 데 드는 히로민이자, "지금 그냥 이동해도 되는가"를
         // 가르는 문턱이기도 하다(MemoryMoveProcessor는 이 값을 그대로 소모액으로
         // 쓴다). 상수로 박지 않는 이유: 밸런싱 값이고, 화면(HUD 게이지의 문턱
@@ -77,13 +83,15 @@ namespace GameName.Core.Authoring
             PsychologyState startingPsychology = PsychologyState.Optimism,
             int dialogueHiromiBase = 3,
             int hiromiStabilityBonusBand = 20,
-            int hiromiStabilityBonusDivisor = 4)
+            int hiromiStabilityBonusDivisor = 4,
+            int investigationsPerRoom = 3)
         {
             Rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
             StartingTrust = startingTrust;
             StartingHiromi = startingHiromi;
             Seed = seed;
             StartingChance = startingChance;
+            InvestigationsPerRoom = investigationsPerRoom;
             MoveHiromiCost = moveHiromiCost;
             StartingStability = startingStability;
             StabilityMin = stabilityMin;

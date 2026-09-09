@@ -77,8 +77,8 @@ namespace GameName.Core.Tests.EditMode
                 _ = new ExtractedMemoryConsumptionListener(Memories, Bus);
                 Dialogue = new DialogueProgressor(
                     run.Rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
-                // 방이 시작되면 즉시 대화 국면으로 — DialogueProgressor는 그 사건에서 방을 싣는다.
-                _ = new RoomPhaseCoordinator(Bus);
+                // 조사 한도 0 = 방이 시작되면 곧장 대화 국면으로.
+                _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(Bus), 0, Bus);
                 _ = new RoomCompletionArbiter(Trust, Bus);
                 Run = new RunProgressor(run.Rooms, Bus);
                 MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, Hiromi, Chance, Run);

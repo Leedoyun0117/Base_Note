@@ -56,6 +56,11 @@ namespace GameName.Core.Dialogue
         private readonly Dictionary<ClueId, ClueDefinition> _clueDefinitionsById =
             new Dictionary<ClueId, ClueDefinition>();
 
+        // 이미 답한(또는 넘어간) ClueSelection 줄. 런 전체에 걸쳐 쌓인다 —
+        // LoadRoom이 비우지 않는다. 그래프가 이 줄로 다시 들어오면 재프롬프트
+        // 없이 지나간다: 답은 한 번뿐이고, 두 번째 진입은 그저 통과다.
+        private readonly HashSet<DialogueLineId> _answeredLines = new HashSet<DialogueLineId>();
+
         private MemoryRoomId _roomId;
         private DialogueLineId? _currentLineId;
 
@@ -104,8 +109,11 @@ namespace GameName.Core.Dialogue
             var result = new List<SelectableClue>();
 
             var line = CurrentLine;
-            if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection)
+            if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection
+                || _answeredLines.Contains(line.Id))
+            {
                 return result;
+            }
 
             foreach (var clue in _clueDefinitionsById.Values)
             {
@@ -170,7 +178,9 @@ namespace GameName.Core.Dialogue
             if (selected.Next.HasValue)
             {
                 EnterLine(selected.Next.Value);
-                return ChoiceSelectionResult.Advanced();
+                return _currentLineId.HasValue
+                    ? ChoiceSelectionResult.Advanced()
+                    : ChoiceSelectionResult.DialogueEnded();
             }
 
             _currentLineId = null;
@@ -192,8 +202,11 @@ namespace GameName.Core.Dialogue
                 return ChoiceSelectionResult.Ignored();
 
             var line = CurrentLine;
-            if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection)
+            if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection
+                || _answeredLines.Contains(line.Id))
+            {
                 return ChoiceSelectionResult.Rejected();
+            }
 
             // 지금 손에 있는 단서만 답이 될 수 있다 — 어느 방에서 집었는지는 안
             // 본다. 추출한 단서(Extracted)도 손에 남아 있어 답이 된다.
@@ -202,6 +215,8 @@ namespace GameName.Core.Dialogue
             {
                 return ChoiceSelectionResult.Rejected();
             }
+
+            _answeredLines.Add(line.Id);
 
             var roomAtSelection = _roomId;
             _clueState.SetState(clueId, ClueState.UsedInDialogue);
@@ -232,8 +247,13 @@ namespace GameName.Core.Dialogue
                 return ChoiceSelectionResult.Ignored();
 
             var line = CurrentLine;
-            if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection)
+            if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection
+                || _answeredLines.Contains(line.Id))
+            {
                 return ChoiceSelectionResult.Rejected();
+            }
+
+            _answeredLines.Add(line.Id);
 
             var roomAtSkip = _roomId;
             _eventBus.Publish(new ClueAnsweredEvent(MatchGrade.None));
@@ -251,7 +271,10 @@ namespace GameName.Core.Dialogue
             if (next.HasValue)
             {
                 EnterLine(next.Value);
-                return ChoiceSelectionResult.Advanced();
+                // EnterLine이 이미 답한 줄들을 지나며 대화를 끝냈을 수 있다.
+                return _currentLineId.HasValue
+                    ? ChoiceSelectionResult.Advanced()
+                    : ChoiceSelectionResult.DialogueEnded();
             }
 
             var roomAtSelection = _roomId;
@@ -280,6 +303,25 @@ namespace GameName.Core.Dialogue
 
         private void EnterLine(DialogueLineId lineId)
         {
+            // 이미 답한 ClueSelection 줄로 그래프가 다시 들어오면 재프롬프트
+            // 없이 지나간다 — 재도전은 없다. 안정 델타도 사건도 내지 않는다:
+            // 이 줄을 다시 겪는 것이 아니라 그저 통과하는 것이다. IncorrectNext
+            // 체인을 따라가되, 비어 있거나 (저작 오류로) 순환하면 대화를 끝낸다.
+            var hops = 0;
+            while (_linesById.TryGetValue(lineId, out var passed)
+                   && passed.PromptKind == DialoguePromptKind.ClueSelection
+                   && _answeredLines.Contains(lineId))
+            {
+                if (!passed.IncorrectNext.HasValue || hops++ > _linesById.Count)
+                {
+                    _currentLineId = null;
+                    _eventBus.Publish(new DialogueEndedEvent(_roomId));
+                    return;
+                }
+
+                lineId = passed.IncorrectNext.Value;
+            }
+
             _currentLineId = lineId;
 
             // 이 줄이 피드백 대사라면 그 무게만큼 안정 축을 민다(질문 줄은 0이라

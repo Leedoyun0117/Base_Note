@@ -53,9 +53,10 @@ namespace GameName.Core.Tests.EditMode
                 ClueState = new ClueStateStore(rooms, Bus);
                 Progressor = new DialogueProgressor(
                     rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
-                // 방이 시작되면 대화 국면으로 자동 전환된다 — DialogueProgressor는
+                // 조사 한도 0 = 방이 시작되면 곧장 대화 국면으로 — DialogueProgressor는
                 // 그 사건(DialoguePhaseStartedEvent)에서 방을 싣는다.
-                _ = new RoomPhaseCoordinator(Bus);
+                var phase = new RoomPhaseCoordinator(Bus);
+                _ = new RoomInvestigationCounter(phase, 0, Bus);
 
                 Bus.Subscribe<DialogueLineEnteredEvent>(Entered.Add);
                 Bus.Subscribe<ChoiceSelectedEvent>(Selected.Add);
@@ -306,6 +307,52 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
+        public void 이미_답한_ClueSelection_줄로_다시_들어오면_재프롬프트_없이_지나간다()
+        {
+            var fx = new Fixture("q", new[]
+            {
+                ClueLine("q", new[] { "answer" }, "loop", "end"),
+                Line("loop", Choice("back", true, next: "q")),
+                Line("end", Choice("e", true)),
+            }, new[] { ClueDef("clue-a", "answer") });
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
+
+            fx.Progressor.SelectClue(new ClueId("clue-a"));   // q(답 완료) → loop
+            Assert.AreEqual(new DialogueLineId("loop"), fx.Progressor.CurrentLineId);
+            var answeredSoFar = fx.ClueAnswered.Count;
+
+            var result = fx.Progressor.Select(new ChoiceId("back")); // loop → q(지나감) → end
+
+            Assert.AreEqual(ChoiceSelectionOutcome.Advanced, result.Outcome);
+            Assert.AreEqual(new DialogueLineId("end"), fx.Progressor.CurrentLineId,
+                "이미 답한 q는 재프롬프트 없이 IncorrectNext(end)로 지나간다.");
+            Assert.AreEqual(answeredSoFar, fx.ClueAnswered.Count,
+                "지나가는 것은 답변이 아니다 — 새 ClueAnsweredEvent가 없다.");
+        }
+
+        [Test]
+        public void 이미_답한_줄에_다시_답하려_하면_거부된다()
+        {
+            var fx = new Fixture("q", new[]
+            {
+                ClueLine("q", new[] { "answer" }, "q", "q"), // 자기 자신으로만 이어진다
+            }, new[] { ClueDef("clue-a", "answer"), ClueDef("clue-b", "answer") });
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
+            fx.ClueState.SetState(new ClueId("clue-b"), ClueState.Collected);
+
+            // 첫 답 — q는 CorrectNext=q로 되돌지만, 이미 답한 줄이라 지나가며
+            // IncorrectNext도 q → 순환이라 대화가 끝난다.
+            var first = fx.Progressor.SelectClue(new ClueId("clue-a"));
+            Assert.AreEqual(ChoiceSelectionOutcome.DialogueEnded, first.Outcome);
+            Assert.IsNull(fx.Progressor.CurrentLine);
+
+            // 대화가 끝났으니 두 번째 답은 당연히 거부.
+            Assert.AreEqual(
+                ChoiceSelectionOutcome.Rejected,
+                fx.Progressor.SelectClue(new ClueId("clue-b")).Outcome);
+        }
+
+        [Test]
         public void 중심축이_어긋난_부분적합_답은_오답_분기로_간다()
         {
             // 질문은 중심축 "answer"를 요구한다. clue-side는 그 말을 곁축으로만
@@ -473,7 +520,7 @@ namespace GameName.Core.Tests.EditMode
             var progressor = new DialogueProgressor(
                 rooms, clueState, trust, new TagMatchGrader(),
                 new StabilityAxis(0, -100, 100, bus), bus);
-            _ = new RoomPhaseCoordinator(bus);
+            _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(bus), 0, bus);
 
             // room-0을 먼저 방문해 단서를 손에 넣는다.
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
@@ -512,7 +559,7 @@ namespace GameName.Core.Tests.EditMode
             var progressor = new DialogueProgressor(
                 rooms, clueState, trust, new TagMatchGrader(),
                 new StabilityAxis(0, -100, 100, bus), bus);
-            _ = new RoomPhaseCoordinator(bus);
+            _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(bus), 0, bus);
 
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
             clueState.SetState(new ClueId("clue-other"), ClueState.Collected);
