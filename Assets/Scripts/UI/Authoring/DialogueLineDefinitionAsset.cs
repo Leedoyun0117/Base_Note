@@ -87,6 +87,10 @@ namespace GameName.UI.Authoring
 
         [SerializeField] private LineKind _lineKind = LineKind.TextChoice;
 
+        // 이 줄로 들어설 때 나츠의 안정 축을 미는 양(음수 침체 / 양수 흥분).
+        // 유키의 피드백 대사에만 채우고 질문 줄은 0으로 둔다.
+        [SerializeField] private int _stabilityDelta;
+
         [Header("텍스트 선택지 (LineKind = TextChoice)")]
         [SerializeField] private List<ChoiceEntry> _choices = new List<ChoiceEntry>();
 
@@ -118,14 +122,15 @@ namespace GameName.UI.Authoring
                 return DialogueLineDefinition.ClueSelection(
                     id, _speaker, _authoredText, required,
                     AuthoredIds.OptionalLine(_correctNextLineId),
-                    AuthoredIds.OptionalLine(_incorrectNextLineId));
+                    AuthoredIds.OptionalLine(_incorrectNextLineId),
+                    _stabilityDelta);
             }
 
             var choices = new List<ChoiceDefinition>(_choices.Count);
             foreach (var choice in _choices)
                 choices.Add(choice.ToDefinition());
 
-            return new DialogueLineDefinition(id, _speaker, _authoredText, choices);
+            return new DialogueLineDefinition(id, _speaker, _authoredText, choices, _stabilityDelta);
         }
 
         private static void AppendTags(List<ClueTag> into, List<string> raw, ClueTagAxis axis)

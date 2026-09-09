@@ -4,6 +4,7 @@ using GameName.Core.Authoring;
 using GameName.Core.Clues;
 using GameName.Core.Events;
 using GameName.Core.MemoryRooms;
+using GameName.Core.Mind;
 using GameName.Core.Trust;
 
 namespace GameName.Core.Dialogue
@@ -41,6 +42,11 @@ namespace GameName.Core.Dialogue
         // 되어 있다.
         private readonly ITagMatchGrader _grader;
 
+        // 피드백 대사가 나츠의 심리를 미는 경계. 줄에 들어설 때마다 그 줄의
+        // StabilityDelta를 여기 밀어 넣는다 — 별도 리스너를 두지 않는 이유는
+        // "어느 줄에 있는가"를 이미 이 처리기가 들고 있어서다.
+        private readonly IStabilityAxis _stability;
+
         private readonly IEventBus _eventBus;
 
         private readonly Dictionary<DialogueLineId, DialogueLineDefinition> _linesById =
@@ -62,6 +68,7 @@ namespace GameName.Core.Dialogue
             IClueStateMutator clueState,
             ITrustReader trust,
             ITagMatchGrader grader,
+            IStabilityAxis stability,
             IEventBus eventBus)
         {
             _rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
@@ -69,6 +76,7 @@ namespace GameName.Core.Dialogue
             _clueState = clueState ?? throw new ArgumentNullException(nameof(clueState));
             _trust = trust ?? throw new ArgumentNullException(nameof(trust));
             _grader = grader ?? throw new ArgumentNullException(nameof(grader));
+            _stability = stability ?? throw new ArgumentNullException(nameof(stability));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
             foreach (var room in _rooms)
@@ -269,6 +277,14 @@ namespace GameName.Core.Dialogue
         private void EnterLine(DialogueLineId lineId)
         {
             _currentLineId = lineId;
+
+            // 이 줄이 피드백 대사라면 그 무게만큼 안정 축을 민다(질문 줄은 0이라
+            // 무해하다). 사건 발행 전에 밀어, "줄에 들어섰다"를 받는 쪽이 이미
+            // 움직인 축을 보게 한다. _linesById는 LoadRoom에서 채워지므로 시작
+            // 줄에 대해서도 유효하다.
+            if (_linesById.TryGetValue(lineId, out var line))
+                _stability.Shift(line.StabilityDelta);
+
             _eventBus.Publish(new DialogueLineEnteredEvent(lineId));
         }
 

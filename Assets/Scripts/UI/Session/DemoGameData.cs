@@ -37,8 +37,10 @@ namespace GameName.UI.Session
         private const int StartingChance = 2;
         private const int MoveHiromiCost = 15;
 
-        // 안정 축: 침체 -100 ~ 안정 0 ~ 흥분 +100. 런 시작 시 안정(0)에서 출발한다.
-        // 피드백 대사가 이 값을 움직이는 것은 후속 단계에서 붙는다.
+        // 안정 축: 침체 -100 ~ 안정 0 ~ 흥분 +100. 런 시작 시 안정(0)에서 출발하고,
+        // 유키의 피드백 대사(ClueLine의 stabilityDelta)가 이 값을 민다. 지금 델타
+        // 값은 방향만 맞춘 임시치다 — 심리 상태 × 안정 조합으로 등급·델타를
+        // 재산출하는 단계에서 튜닝한다.
         private const int StartingStability = 0;
         private const int StabilityMin = -100;
         private const int StabilityMax = 100;
@@ -156,7 +158,7 @@ namespace GameName.UI.Session
                     "room1.blanket", correctNext: "r1-b", incorrectNext: "r1-a-miss"),
                 ClueLine("r1-a-miss", Yuki,
                     "아니. 그건 아니었어. ...춥다길래 네가 덮어 준 거.",
-                    "room1.blanket", correctNext: "r1-b", incorrectNext: "r1-b"),
+                    "room1.blanket", correctNext: "r1-b", incorrectNext: "r1-b", stabilityDelta: -6),
 
                 ClueLine("r1-b", Yuki,
                     "낮엔 해 질 때까지 밖에 있었잖아. 뭐 하고 놀았더라?",
@@ -168,10 +170,10 @@ namespace GameName.UI.Session
 
                 ClueLine("r1-close-warm", Yuki,
                     "맞아. 넌 별자리 이름을 다 외우고 있었어. 하나씩 알려 줬잖아.",
-                    "room1.book", correctNext: null, incorrectNext: null),
+                    "room1.book", correctNext: null, incorrectNext: null, stabilityDelta: 10),
                 ClueLine("r1-close-plain", Yuki,
                     "뭐, 됐어. 오래된 일이니까.",
-                    "room1.book", correctNext: null, incorrectNext: null),
+                    "room1.book", correctNext: null, incorrectNext: null, stabilityDelta: -12),
             };
 
             return new RoomDefinition(Room1, clues, new DialogueLineId("r1-a"), lines);
@@ -203,7 +205,7 @@ namespace GameName.UI.Session
                     "room2.goodbye", correctNext: "r2-b", incorrectNext: "r2-a-miss"),
                 ClueLine("r2-a-miss", Yuki,
                     "아니. ...그 사진. 둘이 찍은 거. 결국 나만 갖고 갔지.",
-                    "room2.goodbye", correctNext: "r2-b", incorrectNext: "r2-b"),
+                    "room2.goodbye", correctNext: "r2-b", incorrectNext: "r2-b", stabilityDelta: -8),
 
                 ClueLine("r2-b", Yuki,
                     "그때 넌 손에 뭔가를 꼭 쥐고 있었어. 만지작거리면서. ...그게 뭐였어?",
@@ -215,10 +217,10 @@ namespace GameName.UI.Session
 
                 ClueLine("r2-close-warm", Yuki,
                     "그 테이프, 아직 갖고 있어. 늘어질 때까지 들었어.",
-                    "room2.band", correctNext: null, incorrectNext: null),
+                    "room2.band", correctNext: null, incorrectNext: null, stabilityDelta: 10),
                 ClueLine("r2-close-plain", Yuki,
                     "됐어. 그래도, 물어봐 줘서 좋았어.",
-                    "room2.band", correctNext: null, incorrectNext: null),
+                    "room2.band", correctNext: null, incorrectNext: null, stabilityDelta: -6),
             };
 
             return new RoomDefinition(Room2, clues, new DialogueLineId("r2-a"), lines);
@@ -249,18 +251,19 @@ namespace GameName.UI.Session
                     "room3.missedWords", correctNext: "r3-b", incorrectNext: "r3-a-miss"),
                 ClueLine("r3-a-miss", Yuki,
                     "아니야. ...그 시계. 멈춘 채로 네가 계속 쥐고 있었어.",
-                    "room3.missedWords", correctNext: "r3-b", incorrectNext: "r3-b"),
+                    "room3.missedWords", correctNext: "r3-b", incorrectNext: "r3-b", stabilityDelta: -10),
 
                 ClueLine("r3-b", Yuki,
                     "[[R:missed-words:그 말]], 아직도 안에 담아두고 있지. 얼굴에 다 쓰여 있어.",
-                    "room3.missedWords", correctNext: "r3-close-warm", incorrectNext: "r3-close-plain"),
+                    "room3.missedWords", correctNext: "r3-close-warm", incorrectNext: "r3-close-plain",
+                    stabilityDelta: -8),
 
                 ClueLine("r3-close-warm", Yuki,
                     "그 말이었구나. ...나도. 나도 그랬어.",
-                    "room3.coin", correctNext: null, incorrectNext: null),
+                    "room3.coin", correctNext: null, incorrectNext: null, stabilityDelta: 14),
                 ClueLine("r3-close-plain", Yuki,
                     "이제 됐어. 늦었지만.",
-                    "room3.coin", correctNext: null, incorrectNext: null),
+                    "room3.coin", correctNext: null, incorrectNext: null, stabilityDelta: -10),
             };
 
             return new RoomDefinition(Room3, clues, new DialogueLineId("r3-a"), lines);
@@ -279,15 +282,18 @@ namespace GameName.UI.Session
                 BuildTags(centerTag, subTags));
 
         // "가진 물건으로 답하는" 줄. 중심축 정답 태그 하나(+ 필요하면 곁축),
-        // 정답/오답 다음 줄(비우면 대화 종료).
+        // 정답/오답 다음 줄(비우면 대화 종료). stabilityDelta는 이 줄이 유키의
+        // 피드백 대사일 때 나츠의 안정 축을 미는 양이다(질문 줄은 0).
         private static DialogueLineDefinition ClueLine(
             string id, string speaker, string authoredText, string requiredCenterTag,
-            string correctNext, string incorrectNext, params string[] requiredSubTags) =>
+            string correctNext, string incorrectNext, int stabilityDelta = 0,
+            params string[] requiredSubTags) =>
             DialogueLineDefinition.ClueSelection(
                 new DialogueLineId(id), speaker, authoredText,
                 BuildTags(requiredCenterTag, requiredSubTags),
                 correctNext == null ? (DialogueLineId?)null : new DialogueLineId(correctNext),
-                incorrectNext == null ? (DialogueLineId?)null : new DialogueLineId(incorrectNext));
+                incorrectNext == null ? (DialogueLineId?)null : new DialogueLineId(incorrectNext),
+                stabilityDelta);
 
         private static ClueTag[] BuildTags(string centerTag, string[] subTags)
         {

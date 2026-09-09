@@ -6,6 +6,7 @@ using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
+using GameName.Core.Mind;
 using GameName.Core.Trust;
 using NUnit.Framework;
 
@@ -32,6 +33,7 @@ namespace GameName.Core.Tests.EditMode
         {
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly TrustGauge Trust;
+            public readonly StabilityAxis Stability;
             public readonly CensorUnlockLog Censor = new CensorUnlockLog();
             public readonly ClueStateStore ClueState;
             public readonly DialogueProgressor Progressor;
@@ -47,8 +49,10 @@ namespace GameName.Core.Tests.EditMode
                 var rooms = new[] { room };
 
                 Trust = new TrustGauge(3, Bus);
+                Stability = new StabilityAxis(0, -100, 100, Bus);
                 ClueState = new ClueStateStore(rooms, Bus);
-                Progressor = new DialogueProgressor(rooms, Censor, ClueState, Trust, new TagMatchGrader(), Bus);
+                Progressor = new DialogueProgressor(
+                    rooms, Censor, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
 
                 Bus.Subscribe<DialogueLineEnteredEvent>(Entered.Add);
                 Bus.Subscribe<ChoiceSelectedEvent>(Selected.Add);
@@ -303,6 +307,46 @@ namespace GameName.Core.Tests.EditMode
                 new[] { MatchGrade.Partial }, fx.ClueAnswered.ConvertAll(e => e.Grade));
         }
 
+        // ── 피드백 대사가 안정 축을 민다 ──────────────────────────────────
+
+        private static DialogueLineDefinition Feedback(string id, int stabilityDelta) =>
+            new DialogueLineDefinition(
+                new DialogueLineId(id), "화자", "", new[] { Choice("c", true) }, stabilityDelta);
+
+        [Test]
+        public void 정답_피드백_대사로_들어가면_그_줄의_안정_델타만큼_축이_움직인다()
+        {
+            var fx = new Fixture("q", new[]
+            {
+                ClueLine("q", new[] { "answer" }, "warm", "miss"),
+                Feedback("warm", 15), Feedback("miss", -20),
+            }, new[] { ClueDef("clue-a", "answer") });
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
+
+            Assert.AreEqual(0, fx.Stability.Position, "질문 줄은 축을 건드리지 않는다.");
+
+            fx.Progressor.SelectClue(new ClueId("clue-a")); // 완전적합 → warm
+
+            Assert.AreEqual(new DialogueLineId("warm"), fx.Progressor.CurrentLineId);
+            Assert.AreEqual(15, fx.Stability.Position);
+        }
+
+        [Test]
+        public void 오답_피드백_대사도_그_줄의_안정_델타를_적용한다()
+        {
+            var fx = new Fixture("q", new[]
+            {
+                ClueLine("q", new[] { "answer" }, "warm", "miss"),
+                Feedback("warm", 15), Feedback("miss", -20),
+            }, new[] { ClueDef("clue-c") }); // 태그 없음 → 무관 → miss
+            fx.ClueState.SetState(new ClueId("clue-c"), ClueState.Collected);
+
+            fx.Progressor.SelectClue(new ClueId("clue-c"));
+
+            Assert.AreEqual(new DialogueLineId("miss"), fx.Progressor.CurrentLineId);
+            Assert.AreEqual(-20, fx.Stability.Position);
+        }
+
         [Test]
         public void 분기가_null이면_그_답으로_대화가_끝난다()
         {
@@ -405,7 +449,9 @@ namespace GameName.Core.Tests.EditMode
             var trust = new TrustGauge(3, bus);
             var censor = new CensorUnlockLog();
             var clueState = new ClueStateStore(rooms, bus);
-            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, new TagMatchGrader(), bus);
+            var progressor = new DialogueProgressor(
+                rooms, censor, clueState, trust, new TagMatchGrader(),
+                new StabilityAxis(0, -100, 100, bus), bus);
 
             // room-0을 먼저 방문해 단서를 손에 넣는다.
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
@@ -442,7 +488,9 @@ namespace GameName.Core.Tests.EditMode
             var trust = new TrustGauge(3, bus);
             var censor = new CensorUnlockLog();
             var clueState = new ClueStateStore(rooms, bus);
-            var progressor = new DialogueProgressor(rooms, censor, clueState, trust, new TagMatchGrader(), bus);
+            var progressor = new DialogueProgressor(
+                rooms, censor, clueState, trust, new TagMatchGrader(),
+                new StabilityAxis(0, -100, 100, bus), bus);
 
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
             clueState.SetState(new ClueId("clue-other"), ClueState.Collected);

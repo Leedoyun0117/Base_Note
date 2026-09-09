@@ -7,6 +7,7 @@ using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
+using GameName.Core.Mind;
 using GameName.Core.Trust;
 using GameName.UI.MemoryRoom.Dialogue;
 using NUnit.Framework;
@@ -129,7 +130,8 @@ namespace GameName.UI.Tests.EditMode
                 var tracker = new MemoryRoomClueTracker(BuildPlacements(room));
 
                 Progressor = new DialogueProgressor(
-                    run.Rooms, CensorLog, ClueState, trust, new TagMatchGrader(), Bus);
+                    run.Rooms, CensorLog, ClueState, trust, new TagMatchGrader(),
+                    new StabilityAxis(0, -100, 100, Bus), Bus);
 
                 // 방이 시작되어 시작 라인으로 들어간 뒤에 패널을 만든다 — 생산
                 // 코드와 같은 순서(세션 조립 후 화면 부착)다.

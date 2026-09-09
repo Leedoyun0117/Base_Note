@@ -45,11 +45,18 @@ namespace GameName.Core.Dialogue
         // 마지막 줄의 Next가 원래 메인 줄기 라인을 가리키게 저작한다.
         public DialogueLineId? IncorrectNext { get; }
 
+        // 이 줄로 들어설 때 나츠의 안정 축을 움직이는 양(음수는 침체, 양수는
+        // 흥분 쪽). 유키의 피드백 대사가 나츠의 심리를 미는 것이 이 값이다 —
+        // 질문 줄은 0으로 둔다. 등급에 따라 델타가 달라지는 것(같은 피드백 줄도
+        // 완전적합으로 왔을 때와 오답으로 왔을 때 다르게)은 [10]에서 얹는다.
+        public int StabilityDelta { get; }
+
         public DialogueLineDefinition(
             DialogueLineId id,
             string speaker,
             string authoredText,
-            IReadOnlyList<ChoiceDefinition> choices)
+            IReadOnlyList<ChoiceDefinition> choices,
+            int stabilityDelta = 0)
         {
             Id = id;
             Speaker = speaker ?? throw new ArgumentNullException(nameof(speaker));
@@ -57,6 +64,7 @@ namespace GameName.Core.Dialogue
             Choices = choices ?? throw new ArgumentNullException(nameof(choices));
             PromptKind = DialoguePromptKind.TextChoice;
             RequiredTags = Array.Empty<ClueTag>();
+            StabilityDelta = stabilityDelta;
         }
 
         private DialogueLineDefinition(
@@ -65,7 +73,8 @@ namespace GameName.Core.Dialogue
             string authoredText,
             IReadOnlyList<ClueTag> requiredTags,
             DialogueLineId? correctNext,
-            DialogueLineId? incorrectNext)
+            DialogueLineId? incorrectNext,
+            int stabilityDelta)
         {
             Id = id;
             Speaker = speaker ?? throw new ArgumentNullException(nameof(speaker));
@@ -75,6 +84,7 @@ namespace GameName.Core.Dialogue
             RequiredTags = requiredTags ?? throw new ArgumentNullException(nameof(requiredTags));
             CorrectNext = correctNext;
             IncorrectNext = incorrectNext;
+            StabilityDelta = stabilityDelta;
         }
 
         // 분기를 nullable로 받는 이유: 저작 도구(SO)에서 종류만 ClueSelection으로
@@ -87,7 +97,9 @@ namespace GameName.Core.Dialogue
             string authoredText,
             IReadOnlyList<ClueTag> requiredTags,
             DialogueLineId? correctNext,
-            DialogueLineId? incorrectNext) =>
-            new DialogueLineDefinition(id, speaker, authoredText, requiredTags, correctNext, incorrectNext);
+            DialogueLineId? incorrectNext,
+            int stabilityDelta = 0) =>
+            new DialogueLineDefinition(
+                id, speaker, authoredText, requiredTags, correctNext, incorrectNext, stabilityDelta);
     }
 }

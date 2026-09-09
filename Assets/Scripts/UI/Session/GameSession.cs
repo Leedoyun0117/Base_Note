@@ -197,7 +197,7 @@ namespace GameName.UI.Session
 
             CensorUnlock = new CensorUnlockProcessor(memories, censorLog, censorKeyRequiredTags, EventBus);
             Dialogue = new DialogueProgressor(
-                run.Rooms, censorLog, clueState, trust, new TagMatchGrader(), EventBus);
+                run.Rooms, censorLog, clueState, trust, new TagMatchGrader(), stability, EventBus);
 
             // ── 방 진행 ────────────────────────────────────────────────────
             _ = new RoomCompletionArbiter(trust, EventBus);

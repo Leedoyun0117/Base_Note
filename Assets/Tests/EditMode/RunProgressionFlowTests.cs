@@ -9,6 +9,7 @@ using GameName.Core.Hiromi;
 using GameName.Core.Inventory;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
+using GameName.Core.Mind;
 using GameName.Core.Progression;
 using GameName.Core.Trust;
 using NUnit.Framework;
@@ -40,6 +41,7 @@ namespace GameName.Core.Tests.EditMode
         {
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly TrustGauge Trust;
+            public readonly StabilityAxis Stability;
             public readonly StepVisibilityPolicy Visibility = new StepVisibilityPolicy(VisibilityTable);
             public readonly CenteredClueAccessPolicy Access = new CenteredClueAccessPolicy();
             public readonly ExtractedMemoryStore Memories = new ExtractedMemoryStore();
@@ -63,6 +65,10 @@ namespace GameName.Core.Tests.EditMode
             public World(RunDefinition run, IReadOnlyList<CluePlacement> placements)
             {
                 Trust = new TrustGauge(run.StartingTrust, Bus);
+                Stability = new StabilityAxis(
+                    run.StartingStability, run.StabilityMin, run.StabilityMax, Bus);
+                _ = new StabilityTrustErosionListener(
+                    Stability, Trust, run.TrustErosionFreeBand, run.TrustErosionDivisor, Bus);
                 Hiromi = new HiromiWallet(run.StartingHiromi, Bus);
                 Chance = new ChanceTracker(run.StartingChance, Bus);
                 _ = new ChanceExhaustionListener(Bus);
@@ -78,7 +84,7 @@ namespace GameName.Core.Tests.EditMode
                 Extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
                 CensorUnlock = new CensorUnlockProcessor(Memories, CensorLog, requiredTags, Bus);
                 Dialogue = new DialogueProgressor(
-                    run.Rooms, CensorLog, ClueState, Trust, new TagMatchGrader(), Bus);
+                    run.Rooms, CensorLog, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
                 _ = new RoomCompletionArbiter(Trust, Bus);
                 Run = new RunProgressor(run.Rooms, Bus);
                 MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, Hiromi, Chance, Run);
@@ -282,6 +288,41 @@ namespace GameName.Core.Tests.EditMode
 
             Assert.IsEmpty(world.Inventory.Items, "대화에 답으로 낸 단서는 그 자리에서 손에서 나간다.");
             Assert.AreEqual(ClueState.UsedInDialogue, world.ClueState.GetState(new ClueId("r1-clue")));
+        }
+
+        // ── 시나리오: 피드백 대사가 안정 축을 밀고, 그게 다음 답변의 신뢰 침식으로 이어진다 ──
+
+        [Test]
+        public void 피드백_대사로_안정_축이_자유_폭을_넘으면_다음_답변부터_신뢰가_깎인다()
+        {
+            // q1을 넘기면 miss로 가고(안정 -25), q2를 넘길 땐 |위치| 25 > 자유 폭 20
+            // 이라 그 답변이 신뢰를 1 깎는다. q1을 넘길 때는 아직 위치가 0이라 안 깎였다.
+            var room1 = new RoomDefinition(
+                new MemoryRoomId("room-1"), Array.Empty<ClueDefinition>(), new DialogueLineId("q1"),
+                new[]
+                {
+                    DialogueLineDefinition.ClueSelection(
+                        new DialogueLineId("q1"), "화자", "?", new[] { new ClueTag("x") },
+                        null, new DialogueLineId("miss")),
+                    new DialogueLineDefinition(
+                        new DialogueLineId("miss"), "화자", "",
+                        new[] { Choice("go", false, next: "q2") }, stabilityDelta: -25),
+                    DialogueLineDefinition.ClueSelection(
+                        new DialogueLineId("q2"), "화자", "?", new[] { new ClueTag("x") }, null, null),
+                });
+            var run = new RunDefinition(
+                new[] { room1, Room("room-2"), Room("room-3") }, startingTrust: 3, startingHiromi: 3);
+            var world = new World(run, Array.Empty<CluePlacement>());
+            world.Run.Start();
+
+            world.Dialogue.SkipClueSelection();       // q1 → miss
+            Assert.AreEqual(-25, world.Stability.Position);
+            Assert.AreEqual(3, world.Trust.Current, "q1을 넘길 땐 안정 축이 0이라 침식이 없다.");
+
+            world.Dialogue.Select(new ChoiceId("go")); // miss → q2
+            world.Dialogue.SkipClueSelection();        // q2 답변 — 이제 |위치| 25 > 20
+
+            Assert.AreEqual(2, world.Trust.Current, "자유 폭을 넘긴 상태의 답변이 신뢰를 깎는다.");
         }
     }
 }
