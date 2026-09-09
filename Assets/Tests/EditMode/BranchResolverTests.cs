@@ -175,7 +175,9 @@ namespace GameName.Core.Tests.EditMode
                 var trust = new TrustGauge(resolvedRun.StartingTrust, Bus);
                 var clueState = new ClueStateStore(resolvedRun.Rooms, Bus);
                 Progressor = new DialogueProgressor(
-                    resolvedRun.Rooms, clueState, trust, new TagMatchGrader(),
+                    resolvedRun.Rooms, clueState, trust,
+                    new MemoryEffectResolver(new TagMatchGrader(), 20, 30),
+                    new PsychologyTracker(PsychologyState.Optimism, Bus),
                     new StabilityAxis(0, -100, 100, Bus), Bus);
                 _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(Bus), 0, Bus);
                 Bus.Publish(new RoomStartedEvent(resolvedRun.Rooms[0].Id, 0));

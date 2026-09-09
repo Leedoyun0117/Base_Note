@@ -183,8 +183,10 @@ namespace GameName.UI.Session
             _ = new RestorationBoardExtractionListener(restorationBoard, clueTracker, EventBus);
 
             // ── 대화 스택 ────────────────────────────────────────────────
+            var memoryEffect = new MemoryEffectResolver(
+                new TagMatchGrader(), run.MemoryDistortionFreeBand, run.MemoryDistortionStep);
             Dialogue = new DialogueProgressor(
-                run.Rooms, clueState, trust, new TagMatchGrader(), stability, EventBus);
+                run.Rooms, clueState, trust, memoryEffect, psychology, stability, EventBus);
 
             // 방 국면(조사 → 대화). 방이 시작되면 조사 국면으로 두고,
             // RoomInvestigationCounter가 방당 조사 횟수를 다 쓰면 대화로 넘긴다.

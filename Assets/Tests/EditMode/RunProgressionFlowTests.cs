@@ -76,7 +76,9 @@ namespace GameName.Core.Tests.EditMode
                 Extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
                 _ = new ExtractedMemoryConsumptionListener(Memories, Bus);
                 Dialogue = new DialogueProgressor(
-                    run.Rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
+                    run.Rooms, ClueState, Trust,
+                    new MemoryEffectResolver(new TagMatchGrader(), 20, 30),
+                    new PsychologyTracker(run.StartingPsychology, Bus), Stability, Bus);
                 // 조사 한도 0 = 방이 시작되면 곧장 대화 국면으로.
                 _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(Bus), 0, Bus);
                 _ = new RoomCompletionArbiter(Trust, Bus);

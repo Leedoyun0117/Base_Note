@@ -68,6 +68,13 @@ namespace GameName.Core.Authoring
         // 런 시작 시 나츠의 심리 상태. 기억 해석 방식을 결정한다.
         public PsychologyState StartingPsychology { get; }
 
+        // 답의 등급이 심리 × 안정 조합으로 왜곡되는 규칙의 두 수치.
+        // |안정 위치| 가 자유 폭 이내면 왜곡이 없고, 넘어설수록 칸 폭마다 한 칸씩
+        // (최대 두 칸) 등급이 밀리거나 뒤집힌다. 방향은 심리 상태가 정하고
+        // 계산은 MemoryEffectResolver가 한다.
+        public int MemoryDistortionFreeBand { get; }
+        public int MemoryDistortionStep { get; }
+
         public RunDefinition(
             IReadOnlyList<RoomDefinition> rooms,
             int startingTrust,
@@ -84,7 +91,9 @@ namespace GameName.Core.Authoring
             int dialogueHiromiBase = 3,
             int hiromiStabilityBonusBand = 20,
             int hiromiStabilityBonusDivisor = 4,
-            int investigationsPerRoom = 3)
+            int investigationsPerRoom = 3,
+            int memoryDistortionFreeBand = 20,
+            int memoryDistortionStep = 30)
         {
             Rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
             StartingTrust = startingTrust;
@@ -102,6 +111,8 @@ namespace GameName.Core.Authoring
             DialogueHiromiBase = dialogueHiromiBase;
             HiromiStabilityBonusBand = hiromiStabilityBonusBand;
             HiromiStabilityBonusDivisor = hiromiStabilityBonusDivisor;
+            MemoryDistortionFreeBand = memoryDistortionFreeBand;
+            MemoryDistortionStep = memoryDistortionStep;
         }
     }
 }

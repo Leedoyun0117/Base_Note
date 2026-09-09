@@ -35,6 +35,7 @@ namespace GameName.Core.Tests.EditMode
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly TrustGauge Trust;
             public readonly StabilityAxis Stability;
+            public readonly PsychologyTracker Psychology;
             public readonly ClueStateStore ClueState;
             public readonly DialogueProgressor Progressor;
             public readonly List<DialogueLineEnteredEvent> Entered = new List<DialogueLineEnteredEvent>();
@@ -50,9 +51,11 @@ namespace GameName.Core.Tests.EditMode
 
                 Trust = new TrustGauge(3, Bus);
                 Stability = new StabilityAxis(0, -100, 100, Bus);
+                Psychology = new PsychologyTracker(PsychologyState.Optimism, Bus);
                 ClueState = new ClueStateStore(rooms, Bus);
                 Progressor = new DialogueProgressor(
-                    rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
+                    rooms, ClueState, Trust,
+                    new MemoryEffectResolver(new TagMatchGrader(), 20, 30), Psychology, Stability, Bus);
                 // 조사 한도 0 = 방이 시작되면 곧장 대화 국면으로 — DialogueProgressor는
                 // 그 사건(DialoguePhaseStartedEvent)에서 방을 싣는다.
                 var phase = new RoomPhaseCoordinator(Bus);
@@ -96,7 +99,9 @@ namespace GameName.Core.Tests.EditMode
             };
             var progressor = new DialogueProgressor(
                 rooms, new ClueStateStore(rooms, bus), new TrustGauge(3, bus),
-                new TagMatchGrader(), new StabilityAxis(0, -100, 100, bus), bus);
+                new MemoryEffectResolver(new TagMatchGrader(), 20, 30),
+                new PsychologyTracker(PsychologyState.Optimism, bus),
+                new StabilityAxis(0, -100, 100, bus), bus);
 
             bus.Publish(new RoomStartedEvent(TheRoom, 0));
             Assert.IsNull(progressor.CurrentLine, "조사 국면에서는 아직 대사가 없다.");
@@ -304,6 +309,35 @@ namespace GameName.Core.Tests.EditMode
             Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId("clue-c")));
             CollectionAssert.AreEqual(
                 new[] { MatchGrade.None }, fx.ClueAnswered.ConvertAll(e => e.Grade));
+        }
+
+        [Test]
+        public void 광기_상태로_흔들린_채_답하면_완전적합_답도_오답_분기로_뒤집힌다()
+        {
+            var fx = ClueSelectionFixture();
+            fx.Psychology.SetState(PsychologyState.Mania);
+            fx.Stability.Shift(50); // 자유 폭(20) 밖
+
+            fx.Progressor.SelectClue(new ClueId("clue-a")); // 태그로는 완전적합
+
+            Assert.AreEqual(new DialogueLineId("wrong-1"), fx.Progressor.CurrentLineId,
+                "광기 + 불안정 → 완전적합이 무관으로 뒤집혀 오답 분기로 간다.");
+            CollectionAssert.AreEqual(
+                new[] { MatchGrade.None }, fx.ClueAnswered.ConvertAll(e => e.Grade));
+        }
+
+        [Test]
+        public void 안정_상태면_광기여도_등급이_그대로다()
+        {
+            var fx = ClueSelectionFixture();
+            fx.Psychology.SetState(PsychologyState.Mania);
+            // 안정 축은 0 그대로 — 왜곡 없음.
+
+            fx.Progressor.SelectClue(new ClueId("clue-a"));
+
+            Assert.AreEqual(new DialogueLineId("right"), fx.Progressor.CurrentLineId);
+            CollectionAssert.AreEqual(
+                new[] { MatchGrade.Exact }, fx.ClueAnswered.ConvertAll(e => e.Grade));
         }
 
         [Test]
@@ -518,7 +552,8 @@ namespace GameName.Core.Tests.EditMode
             var trust = new TrustGauge(3, bus);
             var clueState = new ClueStateStore(rooms, bus);
             var progressor = new DialogueProgressor(
-                rooms, clueState, trust, new TagMatchGrader(),
+                rooms, clueState, trust, new MemoryEffectResolver(new TagMatchGrader(), 20, 30),
+                new PsychologyTracker(PsychologyState.Optimism, bus),
                 new StabilityAxis(0, -100, 100, bus), bus);
             _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(bus), 0, bus);
 
@@ -557,7 +592,8 @@ namespace GameName.Core.Tests.EditMode
             var trust = new TrustGauge(3, bus);
             var clueState = new ClueStateStore(rooms, bus);
             var progressor = new DialogueProgressor(
-                rooms, clueState, trust, new TagMatchGrader(),
+                rooms, clueState, trust, new MemoryEffectResolver(new TagMatchGrader(), 20, 30),
+                new PsychologyTracker(PsychologyState.Optimism, bus),
                 new StabilityAxis(0, -100, 100, bus), bus);
             _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(bus), 0, bus);
 

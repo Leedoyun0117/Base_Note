@@ -27,7 +27,7 @@ namespace GameName.Core.Authoring
                 raw.StartingChance, raw.MoveHiromiCost, raw.StartingStability, raw.StabilityMin,
                 raw.StabilityMax, raw.TrustErosionFreeBand, raw.TrustErosionDivisor, raw.StartingPsychology,
                 raw.DialogueHiromiBase, raw.HiromiStabilityBonusBand, raw.HiromiStabilityBonusDivisor,
-                raw.InvestigationsPerRoom);
+                raw.InvestigationsPerRoom, raw.MemoryDistortionFreeBand, raw.MemoryDistortionStep);
         }
 
         private static RoomDefinition ResolveRoom(RoomDefinition room, int seed)

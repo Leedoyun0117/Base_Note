@@ -34,10 +34,12 @@ namespace GameName.Core.Dialogue
         private readonly IClueStateMutator _clueState;
         private readonly ITrustReader _trust;
 
-        // 답의 적합도를 5단계로 매긴다. 직접 태그를 대조하지 않고 주입받는
-        // 이유: 심리 × 안정 조합이 등급을 뒤집는 규칙([10])이 이 판정을 감싸게
-        // 되어 있다.
-        private readonly ITagMatchGrader _grader;
+        // 답이 실제로 어떤 등급으로 읽히는지 매긴다 — 태그 구조(raw 등급) 위에
+        // 심리 상태 × 안정 축을 얹어 유리하게·가라앉게·뒤집어 읽는다.
+        private readonly IMemoryEffectResolver _effect;
+
+        // 지금 심리 상태 — 등급 왜곡의 방향을 정한다. 읽기만 한다.
+        private readonly IPsychologyReader _psychology;
 
         // 피드백 대사가 나츠의 심리를 미는 경계. 줄에 들어설 때마다 그 줄의
         // StabilityDelta를 여기 밀어 넣는다 — 별도 리스너를 두지 않는 이유는
@@ -68,14 +70,16 @@ namespace GameName.Core.Dialogue
             IReadOnlyList<RoomDefinition> rooms,
             IClueStateMutator clueState,
             ITrustReader trust,
-            ITagMatchGrader grader,
+            IMemoryEffectResolver effect,
+            IPsychologyReader psychology,
             IStabilityAxis stability,
             IEventBus eventBus)
         {
             _rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
             _clueState = clueState ?? throw new ArgumentNullException(nameof(clueState));
             _trust = trust ?? throw new ArgumentNullException(nameof(trust));
-            _grader = grader ?? throw new ArgumentNullException(nameof(grader));
+            _effect = effect ?? throw new ArgumentNullException(nameof(effect));
+            _psychology = psychology ?? throw new ArgumentNullException(nameof(psychology));
             _stability = stability ?? throw new ArgumentNullException(nameof(stability));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
@@ -223,7 +227,10 @@ namespace GameName.Core.Dialogue
             // 내민 물건은 맞든 틀리든 손에서 나간다 — 가방이 그 사실을 이 사건으로 안다.
             _eventBus.Publish(new ClueUsedInDialogueEvent(clueId));
 
-            var grade = _grader.Grade(line.RequiredTags, clueDefinition.Tags);
+            // 태그가 맞는지 위에 심리 × 안정을 얹은 실제 등급. 흔들린 채로
+            // 답하면 raw 등급과 달라질 수 있고(역전), 그 값이 분기와 사건을 정한다.
+            var grade = _effect.Resolve(
+                _psychology.Current, _stability.Position, line.RequiredTags, clueDefinition.Tags);
             // 이 발행이 안정 축 이탈만큼 신뢰를 깎을 수 있고(동기), 신뢰 0이면
             // 그 자리에서 런이 끝난다.
             _eventBus.Publish(new ClueAnsweredEvent(grade));

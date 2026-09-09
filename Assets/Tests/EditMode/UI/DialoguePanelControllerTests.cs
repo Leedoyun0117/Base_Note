@@ -115,7 +115,9 @@ namespace GameName.UI.Tests.EditMode
                 _ = new ExtractedMemoryConsumptionListener(Memories, Bus);
 
                 Progressor = new DialogueProgressor(
-                    run.Rooms, ClueState, trust, new TagMatchGrader(),
+                    run.Rooms, ClueState, trust,
+                    new MemoryEffectResolver(new TagMatchGrader(), 20, 30),
+                    new PsychologyTracker(PsychologyState.Optimism, Bus),
                     new StabilityAxis(0, -100, 100, Bus), Bus);
                 _ = new RoomInvestigationCounter(new RoomPhaseCoordinator(Bus), 0, Bus);
 
