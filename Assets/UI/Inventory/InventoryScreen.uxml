@@ -47,11 +47,6 @@
                     <ui:Label name="clue-use-title" text="" class="clue-use-panel__title" />
 
                     <ui:VisualElement class="clue-use-panel__option">
-                        <ui:Button name="clue-use-extract-button" text="기억 추출" class="clue-use-panel__button" />
-                        <ui:Label name="clue-use-extract-reason" text="" class="clue-use-panel__reason" />
-                    </ui:VisualElement>
-
-                    <ui:VisualElement class="clue-use-panel__option">
                         <ui:Button name="clue-use-discard-button" text="버리기" class="clue-use-panel__button" />
                         <ui:Label name="clue-use-discard-reason" text="" class="clue-use-panel__reason" />
                     </ui:VisualElement>

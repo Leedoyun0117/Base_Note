@@ -67,6 +67,23 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
+        public void 추출한_단서는_아직_손에_있어_답으로_내거나_버릴_수_있다()
+        {
+            var (store, _) = Make(Room("room-1", "a", "b"));
+
+            store.SetState(new ClueId("a"), ClueState.Collected);
+            store.SetState(new ClueId("a"), ClueState.Extracted);
+            store.SetState(new ClueId("a"), ClueState.UsedInDialogue); // Extracted → UsedInDialogue
+
+            store.SetState(new ClueId("b"), ClueState.Collected);
+            store.SetState(new ClueId("b"), ClueState.Extracted);
+            store.SetState(new ClueId("b"), ClueState.Discarded); // Extracted → Discarded
+
+            Assert.AreEqual(ClueState.UsedInDialogue, store.GetState(new ClueId("a")));
+            Assert.AreEqual(ClueState.Discarded, store.GetState(new ClueId("b")));
+        }
+
+        [Test]
         public void 되돌아가거나_건너뛰는_전이는_예외다()
         {
             var (store, _) = Make(Room("room-1", "a"));
@@ -77,7 +94,7 @@ namespace GameName.Core.Tests.EditMode
             store.SetState(a, ClueState.Collected);
             store.SetState(a, ClueState.UsedInDialogue);
             Assert.Throws<InvalidOperationException>(() => store.SetState(a, ClueState.Extracted)); // UsedInDialogue→Extracted
-            Assert.Throws<InvalidOperationException>(() => store.SetState(a, ClueState.Available)); // Extracted 이후는 종착
+            Assert.Throws<InvalidOperationException>(() => store.SetState(a, ClueState.Available)); // UsedInDialogue 이후는 종착
         }
 
         [Test]

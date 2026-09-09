@@ -12,9 +12,11 @@ namespace GameName.Core.Clues
     // 투영이다.
     //
     // 이 타입 스스로 방 전환에 반응하지는 않는다 — 손에서 단서가 나가는 계기는
-    // 추출·버리기·대화에 답으로 쓰기 세 사건뿐이다. 다음 방으로 넘어갈 때 손에
-    // 남은 것을 비우는 것은 RoomEntryInventoryClear가 그 단서들을 버리기
-    // (ClueDiscardedEvent)로 돌리고, 여기서 그 사건을 듣고 슬롯을 비우는 식이다.
+    // 버리기·대화에 답으로 쓰기 두 사건뿐이다. 추출은 손에서 빼지 않는다 —
+    // 추출한 단서도 그 대화 줄에 답으로 낼 수 있어 손에 남아 있어야 한다.
+    // 다음 방으로 넘어갈 때 손에 남은 것을 비우는 것은 RoomEntryInventoryClear가
+    // 그 단서들을 버리기(ClueDiscardedEvent)로 돌리고, 여기서 그 사건을 듣고
+    // 슬롯을 비우는 식이다.
     //
     // "가방이 가득 찼는가"는 ClueCollectionProcessor가 전이 전에 이미 확인하므로,
     // 정상 플레이 경로에서 여기 TryStore가 실패할 일은 없다. 그래도 실패하면
@@ -33,7 +35,6 @@ namespace GameName.Core.Clues
             if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
 
             eventBus.Subscribe<ClueCollectedEvent>(e => Add(e.ClueId));
-            eventBus.Subscribe<ClueExtractedEvent>(e => Remove(e.ClueId));
             eventBus.Subscribe<ClueDiscardedEvent>(e => Remove(e.ClueId));
             eventBus.Subscribe<ClueUsedInDialogueEvent>(e => Remove(e.ClueId));
         }

@@ -5,6 +5,8 @@ using GameName.Core.Authoring;
 using GameName.Core.Clues;
 using GameName.Core.Dialogue;
 using GameName.Core.Events;
+using GameName.Core.Extraction;
+using GameName.Core.Hiromi;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
 using GameName.Core.Mind;
@@ -30,13 +32,14 @@ namespace GameName.UI.Tests.EditMode
         {
             public event Action<ChoiceId> ChoiceClicked;
             public event Action<ClueId> ClueAnswerClicked;
+            public event Action<ClueId> ExtractClueClicked;
             public event Action SkipClueAnswerClicked;
 
             public string LastSpeaker;
             public string LastAuthoredText;
             public IReadOnlyList<KeyValuePair<ChoiceId, string>> LastChoices =
                 Array.Empty<KeyValuePair<ChoiceId, string>>();
-            public IReadOnlyList<KeyValuePair<ClueId, string>> LastClueSelection;
+            public IReadOnlyList<SelectableClue> LastClueSelection;
             public string LastNotice;
 
             public void SetLine(string speaker, string authoredText)
@@ -51,7 +54,7 @@ namespace GameName.UI.Tests.EditMode
                 LastClueSelection = null;
             }
 
-            public void SetClueSelection(IReadOnlyList<KeyValuePair<ClueId, string>> clues)
+            public void SetClueSelection(IReadOnlyList<SelectableClue> clues)
             {
                 LastClueSelection = clues;
             }
@@ -60,6 +63,7 @@ namespace GameName.UI.Tests.EditMode
 
             public void RaiseChoiceClicked(ChoiceId id) => ChoiceClicked?.Invoke(id);
             public void RaiseClueAnswerClicked(ClueId id) => ClueAnswerClicked?.Invoke(id);
+            public void RaiseExtractClue(ClueId id) => ExtractClueClicked?.Invoke(id);
             public void RaiseSkipClueAnswer() => SkipClueAnswerClicked?.Invoke();
         }
 
@@ -81,6 +85,7 @@ namespace GameName.UI.Tests.EditMode
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly ExtractedMemoryStore Memories = new ExtractedMemoryStore();
             public readonly ClueStateStore ClueState;
+            public readonly HiromiWallet Hiromi;
             public readonly DialogueProgressor Progressor;
             public readonly DialoguePanelController Controller;
             public readonly FakeView View = new FakeView();
@@ -89,12 +94,23 @@ namespace GameName.UI.Tests.EditMode
             {
             }
 
-            public Fixture(RoomDefinition room)
+            public Fixture(RoomDefinition room) : this(room, startingHiromi: 30)
             {
-                var run = new RunDefinition(new[] { room }, startingTrust: 3, startingHiromi: 3);
+            }
+
+            public Fixture(RoomDefinition room, int startingHiromi)
+            {
+                var run = new RunDefinition(new[] { room }, startingTrust: 3, startingHiromi);
 
                 var trust = new TrustGauge(3, Bus);
                 ClueState = new ClueStateStore(run.Rooms, Bus);
+                Hiromi = new HiromiWallet(run.StartingHiromi, Bus);
+
+                var placements = new List<CluePlacement>();
+                foreach (var clue in room.Clues)
+                    placements.Add(new CluePlacement(room.Id, clue));
+                var tracker = new MemoryRoomClueTracker(placements);
+                var extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
 
                 Progressor = new DialogueProgressor(
                     run.Rooms, ClueState, trust, new TagMatchGrader(),
@@ -104,7 +120,8 @@ namespace GameName.UI.Tests.EditMode
                 // 코드와 같은 순서(세션 조립 후 화면 부착)다.
                 Bus.Publish(new RoomStartedEvent(room.Id, 0));
 
-                Controller = new DialoguePanelController(View, Progressor, Memories, room.Id, Bus);
+                Controller = new DialoguePanelController(
+                    View, Progressor, extraction, Memories, room.Id, Bus);
             }
 
             private static RoomDefinition DefaultRoom() =>
@@ -195,7 +212,7 @@ namespace GameName.UI.Tests.EditMode
             fx.Bus.Publish(new DialogueLineEnteredEvent(new DialogueLineId("q")));
 
             Assert.IsNotNull(fx.View.LastClueSelection);
-            var ids = fx.View.LastClueSelection.Select(p => p.Key.Value).ToList();
+            var ids = fx.View.LastClueSelection.Select(c => c.Id.Value).ToList();
             CollectionAssert.AreEqual(new[] { "clue-a" }, ids);
         }
 
@@ -221,6 +238,49 @@ namespace GameName.UI.Tests.EditMode
 
             Assert.AreEqual(new DialogueLineId("right"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId("clue-a")));
+        }
+
+        [Test]
+        public void ClueSelection_줄에서_단서를_추출하면_기억이_저장되고_손에_남아_추출됨으로_표시된다()
+        {
+            var fx = new Fixture(ClueSelectionRoom());
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
+            fx.Bus.Publish(new DialogueLineEnteredEvent(new DialogueLineId("q")));
+
+            fx.View.RaiseExtractClue(new ClueId("clue-a"));
+
+            Assert.IsTrue(fx.Memories.TryGet(new ClueId("clue-a"), out _), "추출한 기억이 저장돼야 한다.");
+            Assert.AreEqual(ClueState.Extracted, fx.ClueState.GetState(new ClueId("clue-a")));
+            var entry = fx.View.LastClueSelection.Single(c => c.Id.Value == "clue-a");
+            Assert.IsTrue(entry.MemoryExtracted, "추출 뒤 목록에서 추출됨으로 표시된다.");
+        }
+
+        [Test]
+        public void 추출한_단서도_그대로_답으로_낼_수_있다()
+        {
+            var fx = new Fixture(ClueSelectionRoom());
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
+            fx.Bus.Publish(new DialogueLineEnteredEvent(new DialogueLineId("q")));
+
+            fx.View.RaiseExtractClue(new ClueId("clue-a"));
+            fx.View.RaiseClueAnswerClicked(new ClueId("clue-a"));
+
+            Assert.AreEqual(new DialogueLineId("right"), fx.Progressor.CurrentLineId);
+            Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId("clue-a")));
+        }
+
+        [Test]
+        public void 히로민이_모자라_추출에_실패하면_아무것도_바꾸지_않고_이유만_안내한다()
+        {
+            var fx = new Fixture(ClueSelectionRoom(), startingHiromi: 0);
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
+            fx.Bus.Publish(new DialogueLineEnteredEvent(new DialogueLineId("q")));
+
+            fx.View.RaiseExtractClue(new ClueId("clue-a"));
+
+            Assert.AreEqual(ClueState.Collected, fx.ClueState.GetState(new ClueId("clue-a")));
+            Assert.IsFalse(fx.Memories.TryGet(new ClueId("clue-a"), out _));
+            Assert.IsFalse(string.IsNullOrEmpty(fx.View.LastNotice), "실패 이유 안내가 있어야 한다.");
         }
 
         [Test]

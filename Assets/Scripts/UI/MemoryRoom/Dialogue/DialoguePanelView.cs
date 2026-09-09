@@ -21,6 +21,7 @@ namespace GameName.UI.MemoryRoom.Dialogue
 
         public event Action<ChoiceId> ChoiceClicked;
         public event Action<ClueId> ClueAnswerClicked;
+        public event Action<ClueId> ExtractClueClicked;
         public event Action SkipClueAnswerClicked;
 
         public DialoguePanelView(VisualElement root)
@@ -59,7 +60,7 @@ namespace GameName.UI.MemoryRoom.Dialogue
             }
         }
 
-        public void SetClueSelection(IReadOnlyList<KeyValuePair<ClueId, string>> clues)
+        public void SetClueSelection(IReadOnlyList<SelectableClue> clues)
         {
             _choices.Clear();
 
@@ -76,14 +77,28 @@ namespace GameName.UI.MemoryRoom.Dialogue
 
             foreach (var clue in clues)
             {
-                var id = clue.Key;
-                var button = new Button(() => ClueAnswerClicked?.Invoke(id))
+                var id = clue.Id;
+                var name = string.IsNullOrEmpty(clue.DisplayName) ? id.Value : clue.DisplayName;
+
+                var row = new VisualElement();
+                row.AddToClassList("dialogue-clue-row");
+
+                var answer = new Button(() => ClueAnswerClicked?.Invoke(id)) { text = name };
+                answer.AddToClassList("dialogue-choice");
+                answer.AddToClassList("dialogue-choice--clue-answer");
+                row.Add(answer);
+
+                // 아직 추출하지 않은 단서에는 그 자리에서 기억을 추출하는 버튼을
+                // 붙인다 — 히로민을 쓰고, 성공하면 목록이 다시 그려지며 사라진다.
+                if (!clue.MemoryExtracted)
                 {
-                    text = string.IsNullOrEmpty(clue.Value) ? id.Value : clue.Value,
-                };
-                button.AddToClassList("dialogue-choice");
-                button.AddToClassList("dialogue-choice--clue-answer");
-                _choices.Add(button);
+                    var extract = new Button(() => ExtractClueClicked?.Invoke(id)) { text = "기억 추출" };
+                    extract.AddToClassList("dialogue-choice");
+                    extract.AddToClassList("dialogue-choice--extract");
+                    row.Add(extract);
+                }
+
+                _choices.Add(row);
             }
 
             // 하드 블록이 되지 않게, 단서로 답하지 않고 넘어가는 길을 항상 둔다.

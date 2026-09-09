@@ -25,7 +25,8 @@ namespace GameName.Core.Authoring
             return new RunDefinition(
                 rooms, raw.StartingTrust, raw.StartingHiromi, raw.Seed,
                 raw.StartingChance, raw.MoveHiromiCost, raw.StartingStability, raw.StabilityMin,
-                raw.StabilityMax, raw.TrustErosionFreeBand, raw.TrustErosionDivisor, raw.StartingPsychology);
+                raw.StabilityMax, raw.TrustErosionFreeBand, raw.TrustErosionDivisor, raw.StartingPsychology,
+                raw.DialogueHiromiBase, raw.HiromiStabilityBonusBand, raw.HiromiStabilityBonusDivisor);
         }
 
         private static RoomDefinition ResolveRoom(RoomDefinition room, int seed)

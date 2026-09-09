@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using GameName.Core.Clues;
 using GameName.Core.Dialogue;
 using GameName.Core.Events;
+using GameName.Core.Extraction;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
 
@@ -12,10 +14,13 @@ namespace GameName.UI.MemoryRoom.Dialogue
     //
     // ClueSelection 줄에서는 텍스트 선택지 대신 손에 든 단서 목록을 띄워 고르게
     // 한다. 실제로 얼마나 맞는지(태그 등급)는 DialogueProgressor가 판정한다.
+    // 이 줄에서 단서 하나를 골라 그 자리에서 기억을 추출할 수도 있다(히로민
+    // 소비) — 추출해도 손에 남아 그대로 답으로 낼 수 있다.
     public sealed class DialoguePanelController : IDisposable
     {
         private readonly IDialoguePanelView _view;
         private readonly DialogueProgressor _progressor;
+        private readonly ExtractionProcessor _extraction;
         private readonly IExtractedMemoryStore _memories;
         private readonly IEventBus _eventBus;
         private readonly IDisposable[] _subscriptions;
@@ -37,12 +42,14 @@ namespace GameName.UI.MemoryRoom.Dialogue
         public DialoguePanelController(
             IDialoguePanelView view,
             DialogueProgressor progressor,
+            ExtractionProcessor extraction,
             IExtractedMemoryStore memories,
             MemoryRoomId initialRoomId,
             IEventBus eventBus)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _progressor = progressor ?? throw new ArgumentNullException(nameof(progressor));
+            _extraction = extraction ?? throw new ArgumentNullException(nameof(extraction));
             _memories = memories ?? throw new ArgumentNullException(nameof(memories));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
@@ -52,6 +59,7 @@ namespace GameName.UI.MemoryRoom.Dialogue
 
             _view.ChoiceClicked += OnChoiceClicked;
             _view.ClueAnswerClicked += id => _progressor.SelectClue(id);
+            _view.ExtractClueClicked += OnExtractClue;
             _view.SkipClueAnswerClicked += () => _progressor.SkipClueSelection();
 
             _subscriptions = new[]
@@ -131,6 +139,29 @@ namespace GameName.UI.MemoryRoom.Dialogue
             }
 
             _progressor.Select(id);
+        }
+
+        // ClueSelection 줄에서 단서 하나의 기억을 그 자리에서 추출한다. 성공하면
+        // ClueExtractedEvent가 RerenderIfClueSelection을 불러 목록이 다시 그려지고
+        // (추출 버튼이 사라진다), 실패하면 이유만 안내한다.
+        private void OnExtractClue(ClueId clueId)
+        {
+            var result = _extraction.Extract(clueId);
+            if (!result.Succeeded)
+                _view.SetNotice(ExtractionFailureMessage(result.FailureReason));
+        }
+
+        private static string ExtractionFailureMessage(ExtractionFailureReason? reason)
+        {
+            switch (reason)
+            {
+                case ExtractionFailureReason.ResourceExhausted:
+                    return "히로민이 모자라 지금은 추출할 수 없습니다.";
+                case ExtractionFailureReason.AlreadyExtracted:
+                    return "이미 이 단서의 기억을 추출했습니다.";
+                default:
+                    return "이 단서는 지금 추출할 수 없습니다.";
+            }
         }
 
         // 단서 손 상태가 바뀌었을 때 — ClueSelection 줄에서만 다시 그린다.

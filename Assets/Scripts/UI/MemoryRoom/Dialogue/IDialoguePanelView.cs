@@ -18,6 +18,9 @@ namespace GameName.UI.MemoryRoom.Dialogue
         // ClueSelection 줄에서 단서 하나를 답으로 골랐다.
         event Action<ClueId> ClueAnswerClicked;
 
+        // ClueSelection 줄에서 단서 하나의 기억을 그 자리에서 추출한다(히로민 소비).
+        event Action<ClueId> ExtractClueClicked;
+
         // ClueSelection 줄에서 단서로 답하지 않고 넘어간다.
         event Action SkipClueAnswerClicked;
 
@@ -26,8 +29,8 @@ namespace GameName.UI.MemoryRoom.Dialogue
         // 텍스트 선택지.
         void SetChoices(IReadOnlyList<KeyValuePair<ChoiceId, string>> choices);
 
-        // ClueSelection 줄에서 답으로 낼 수 있는 단서 목록((식별자, 표시 이름)).
-        void SetClueSelection(IReadOnlyList<KeyValuePair<ClueId, string>> clues);
+        // ClueSelection 줄에서 답으로 낼 수 있는 단서 목록.
+        void SetClueSelection(IReadOnlyList<SelectableClue> clues);
 
         void SetNotice(string message);
     }

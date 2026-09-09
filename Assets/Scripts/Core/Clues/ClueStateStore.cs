@@ -82,8 +82,12 @@ namespace GameName.Core.Clues
                     return to == ClueState.Collected;
                 case ClueState.Collected:
                     return to == ClueState.UsedInDialogue || to == ClueState.Extracted || to == ClueState.Discarded;
+                case ClueState.Extracted:
+                    // 추출해도 손에는 남는다 — 답으로 내밀거나(대화), 방을 넘길
+                    // 때 버려진다.
+                    return to == ClueState.UsedInDialogue || to == ClueState.Discarded;
                 default:
-                    // UsedInDialogue, Extracted, Discarded는 종착점이다.
+                    // UsedInDialogue, Discarded는 종착점이다.
                     return false;
             }
         }

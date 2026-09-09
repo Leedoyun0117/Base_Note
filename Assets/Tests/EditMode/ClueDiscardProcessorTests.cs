@@ -81,11 +81,25 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 이미_추출한_단서는_버릴_수_없다()
+        public void 추출한_단서도_아직_손에_있어_버릴_수_있다()
         {
             var fx = new Fixture();
             fx.State.SetState(TheClue, ClueState.Collected);
             fx.State.SetState(TheClue, ClueState.Extracted);
+
+            var result = fx.Processor.Discard(TheClue);
+
+            Assert.IsTrue(result.Succeeded);
+            Assert.AreEqual(ClueState.Discarded, fx.State.GetState(TheClue));
+            Assert.AreEqual(1, fx.Discarded.Count);
+        }
+
+        [Test]
+        public void 대화에_답으로_쓴_단서는_버릴_수_없다()
+        {
+            var fx = new Fixture();
+            fx.State.SetState(TheClue, ClueState.Collected);
+            fx.State.SetState(TheClue, ClueState.UsedInDialogue);
 
             var result = fx.Processor.Discard(TheClue);
 

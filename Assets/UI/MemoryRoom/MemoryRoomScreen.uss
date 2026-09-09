@@ -243,7 +243,7 @@
     margin-bottom: var(--space-2);
 }
 
-/* ClueSelection 줄: "가진 단서로 답하세요" 안내 + 단서 버튼들. */
+/* ClueSelection 줄: "가진 단서로 답하세요" 안내 + 단서 행들. */
 .dialogue-clue-prompt {
     font-size: 11px;
     color: var(--text-dim);
@@ -251,9 +251,22 @@
     white-space: normal;
 }
 
+/* 단서 하나 = [답하기] + [기억 추출] 한 줄. */
+.dialogue-clue-row {
+    flex-direction: row;
+    align-items: center;
+}
+
 .dialogue-choice--clue-answer {
     background-color: var(--surface);
     border-color: var(--text-faint);
+}
+
+/* 그 자리에서 기억을 추출하는 버튼 — 히로민을 쓴다. */
+.dialogue-choice--extract {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-left: var(--space-2);
 }
 
 /* "잘 기억나지 않는다" — 단서로 답하지 않고 넘어가는 길. */

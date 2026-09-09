@@ -97,7 +97,8 @@ namespace GameName.UI.MemoryRoom
             // ── 하단 대화 패널 ──────────────────────────────────────────
             var dialogueView = new DialoguePanelView(root);
             var dialogueController = new DialoguePanelController(
-                dialogueView, session.Dialogue, session.Memories, session.CurrentRoomId, session.EventBus);
+                dialogueView, session.Dialogue, session.ExtractionProcessor, session.Memories,
+                session.CurrentRoomId, session.EventBus);
 
             // ── 오버레이: 단서 설명 창 ──────────────────────────────────
             var zoomView = new ClueZoomScreenView(_overlayPanels.RootOf(OverlayPanel.ClueZoom));
@@ -110,8 +111,7 @@ namespace GameName.UI.MemoryRoom
 
             var clueUseView = new ClueUsePanelView(inventoryRoot);
             var clueUseController = new ClueUsePanelController(
-                clueUseView, session.ExtractionProcessor, session.ClueDiscardProcessor, session.ClueState,
-                session.Hiromi, session.EventBus);
+                clueUseView, session.ClueDiscardProcessor, session.ClueState, session.EventBus);
 
             // "다음 기억으로" 레버 — 대화를 끝까지 보지 않고도 히로민을 써서
             // 스스로 방을 떠나는 유일한 조작. 확인 팝업(히로민 부족 시 강제

@@ -133,7 +133,7 @@ namespace GameName.Tests.PlayMode
                 var clues = _session.Dialogue.SelectableClues();
                 if (clues.Count == 0)
                     break;
-                _session.Dialogue.SelectClue(clues[0].Key);
+                _session.Dialogue.SelectClue(clues[0].Id);
                 yield return null;
             }
 

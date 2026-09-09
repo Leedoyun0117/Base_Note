@@ -16,10 +16,19 @@ namespace GameName.Core.Authoring
 
         public int StartingTrust { get; }
 
-        // 런 시작 시 손에 쥐고 시작하는 히로민. 대화 한 번(+3)마다 벌고, 추출
-        // 한 번(-9)과 다음 기억으로 이동(-15)에 쓰는 단일 자원의 시작값이다.
-        // 실제로 벌고 쓰는 것은 IHiromiMutator이고, 여기 있는 것은 그 시작값이다.
+        // 런 시작 시 손에 쥐고 시작하는 히로민. 대화 한 번마다 벌고(아래 회복
+        // 공식), 추출 한 번(-9)과 다음 기억으로 이동(-15)에 쓰는 단일 자원의
+        // 시작값이다. 실제로 벌고 쓰는 것은 IHiromiMutator이고, 여기 있는 것은
+        // 그 시작값이다.
         public int StartingHiromi { get; }
+
+        // 답변 한 번마다 회복하는 히로민: Base + round(max(0, BonusBand - |안정
+        // 위치|) / BonusDivisor). 안정(0)에 가까울수록 더 벌고, |위치|가 BonusBand를
+        // 넘어서면 Base만 회복한다. 계산은 HiromiDialogueEarningListener가 하고,
+        // 여기 있는 것은 그 세 수치뿐이다.
+        public int DialogueHiromiBase { get; }
+        public int HiromiStabilityBonusBand { get; }
+        public int HiromiStabilityBonusDivisor { get; }
 
         // 런당 총 기회. 히로민이 모자란 채로 다음 기억으로 강제 이동할 때마다
         // 하나씩 줄고, 0이 되면 런이 끝난다.
@@ -65,7 +74,10 @@ namespace GameName.Core.Authoring
             int stabilityMax = 100,
             int trustErosionFreeBand = 20,
             int trustErosionDivisor = 10,
-            PsychologyState startingPsychology = PsychologyState.Optimism)
+            PsychologyState startingPsychology = PsychologyState.Optimism,
+            int dialogueHiromiBase = 3,
+            int hiromiStabilityBonusBand = 20,
+            int hiromiStabilityBonusDivisor = 4)
         {
             Rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
             StartingTrust = startingTrust;
@@ -79,6 +91,9 @@ namespace GameName.Core.Authoring
             TrustErosionFreeBand = trustErosionFreeBand;
             TrustErosionDivisor = trustErosionDivisor;
             StartingPsychology = startingPsychology;
+            DialogueHiromiBase = dialogueHiromiBase;
+            HiromiStabilityBonusBand = hiromiStabilityBonusBand;
+            HiromiStabilityBonusDivisor = hiromiStabilityBonusDivisor;
         }
     }
 }

@@ -13,13 +13,10 @@ namespace GameName.UI.Inventory
     {
         private readonly VisualElement _panel;
         private readonly Label _title;
-        private readonly Button _extractButton;
-        private readonly Label _extractReason;
         private readonly Button _discardButton;
         private readonly Label _discardReason;
         private readonly Label _result;
 
-        public event Action Extract;
         public event Action Discard;
         public event Action Closed;
 
@@ -27,13 +24,10 @@ namespace GameName.UI.Inventory
         {
             _panel = inventoryRoot.Q<VisualElement>("clue-use-panel");
             _title = inventoryRoot.Q<Label>("clue-use-title");
-            _extractButton = inventoryRoot.Q<Button>("clue-use-extract-button");
-            _extractReason = inventoryRoot.Q<Label>("clue-use-extract-reason");
             _discardButton = inventoryRoot.Q<Button>("clue-use-discard-button");
             _discardReason = inventoryRoot.Q<Label>("clue-use-discard-reason");
             _result = inventoryRoot.Q<Label>("clue-use-result");
 
-            _extractButton.clicked += () => Extract?.Invoke();
             _discardButton.clicked += () => Discard?.Invoke();
             inventoryRoot.Q<Button>("clue-use-close-button").clicked += () => Closed?.Invoke();
 
@@ -50,12 +44,6 @@ namespace GameName.UI.Inventory
         }
 
         public void Close() => _panel.style.display = DisplayStyle.None;
-
-        public void SetActions(bool extractEnabled, string extractReason)
-        {
-            _extractButton.SetEnabled(extractEnabled);
-            SetReason(_extractReason, extractEnabled ? null : extractReason);
-        }
 
         public void SetDiscardAction(bool discardEnabled, string discardReason)
         {

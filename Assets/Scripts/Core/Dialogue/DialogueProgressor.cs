@@ -92,13 +92,14 @@ namespace GameName.Core.Dialogue
                 ? line
                 : null;
 
-        // ClueSelection 줄에서 답으로 낼 수 있는 단서 — 지금 들고 있는 것(Collected)만.
+        // ClueSelection 줄에서 답으로 낼 수 있는 단서 — 지금 손에 있는 것.
         // 방을 가리지 않는다 — 다른 방에서 집은 단서도 손에 있으면 답으로 낼 수
-        // 있다. 추출했거나 이미 대화에 쓰거나 버린 단서는 손에 없으므로 제외한다.
-        // 이름을 함께 실어 화면이 단서 정의를 다시 뒤지지 않게 한다.
-        public IReadOnlyList<KeyValuePair<ClueId, string>> SelectableClues()
+        // 있다. 이미 대화에 쓰거나 버린 단서는 손에 없으므로 제외한다. 추출한
+        // 단서는 손에 남으므로 포함하되(추출은 손에서 빼지 않는다) 이미 추출됐다는
+        // 표시를 함께 실어, 화면이 추출 버튼을 다시 띄우지 않게 한다.
+        public IReadOnlyList<SelectableClue> SelectableClues()
         {
-            var result = new List<KeyValuePair<ClueId, string>>();
+            var result = new List<SelectableClue>();
 
             var line = CurrentLine;
             if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection)
@@ -106,12 +107,17 @@ namespace GameName.Core.Dialogue
 
             foreach (var clue in _clueDefinitionsById.Values)
             {
-                if (_clueState.TryGetState(clue.Id, out var state) && state == ClueState.Collected)
-                    result.Add(new KeyValuePair<ClueId, string>(clue.Id, clue.DisplayName));
+                if (_clueState.TryGetState(clue.Id, out var state) && IsInHand(state))
+                    result.Add(new SelectableClue(
+                        clue.Id, clue.DisplayName, state == ClueState.Extracted));
             }
 
             return result;
         }
+
+        // 손에 있는가 — 답으로 낼 수 있는 두 단계.
+        private static bool IsInHand(ClueState state) =>
+            state == ClueState.Collected || state == ClueState.Extracted;
 
         // 현재 라인에서 지금 조건이 맞아 화면에 내보낼 수 있는 선택지들.
         public IReadOnlyList<ChoiceDefinition> VisibleChoices()
@@ -187,8 +193,9 @@ namespace GameName.Core.Dialogue
             if (line == null || line.PromptKind != DialoguePromptKind.ClueSelection)
                 return ChoiceSelectionResult.Rejected();
 
-            // 지금 들고 있는 단서만 답이 될 수 있다 — 어느 방에서 집었는지는 안 본다.
-            if (!_clueState.TryGetState(clueId, out var state) || state != ClueState.Collected
+            // 지금 손에 있는 단서만 답이 될 수 있다 — 어느 방에서 집었는지는 안
+            // 본다. 추출한 단서(Extracted)도 손에 남아 있어 답이 된다.
+            if (!_clueState.TryGetState(clueId, out var state) || !IsInHand(state)
                 || !_clueDefinitionsById.TryGetValue(clueId, out var clueDefinition))
             {
                 return ChoiceSelectionResult.Rejected();

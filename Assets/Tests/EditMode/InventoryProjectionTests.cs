@@ -48,7 +48,7 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 추출_사건이_오면_그_단서가_인벤토리에서_빠진다()
+        public void 추출_사건이_와도_그_단서는_인벤토리에_남는다()
         {
             var fx = new Fixture("clue-1", "clue-2");
             fx.Bus.Publish(new ClueCollectedEvent(new ClueId("clue-1"), TheRoom));
@@ -56,7 +56,7 @@ namespace GameName.Core.Tests.EditMode
 
             fx.Bus.Publish(new ClueExtractedEvent(new ClueId("clue-1")));
 
-            Assert.IsFalse(fx.Holds("clue-1"));
+            Assert.IsTrue(fx.Holds("clue-1"), "추출은 손에서 빼지 않는다 — 그 자리에서 답으로 낼 수 있어야 한다.");
             Assert.IsTrue(fx.Holds("clue-2"));
         }
 

@@ -220,18 +220,33 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void ClueSelection_줄은_텍스트_선택지_대신_들고_있는_단서만_노출한다()
+        public void ClueSelection_줄은_텍스트_선택지_대신_손에_든_단서만_노출한다()
         {
             var fx = ClueSelectionFixture();
-            fx.ClueState.SetState(new ClueId("clue-c"), ClueState.Extracted); // 손에서 사라짐
+            fx.ClueState.SetState(new ClueId("clue-c"), ClueState.UsedInDialogue); // 이미 대화에 써 손에서 나감
 
             CollectionAssert.IsEmpty(fx.Progressor.VisibleChoices());
 
             var ids = new List<string>();
-            foreach (var pair in fx.Progressor.SelectableClues())
-                ids.Add(pair.Key.Value);
+            foreach (var clue in fx.Progressor.SelectableClues())
+                ids.Add(clue.Id.Value);
 
             CollectionAssert.AreEquivalent(new[] { "clue-a", "clue-b" }, ids); // clue-c는 제외
+        }
+
+        [Test]
+        public void 추출한_단서도_손에_남아_답_목록에_추출됨_표시로_나온다()
+        {
+            var fx = ClueSelectionFixture();
+            fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Extracted);
+
+            var byId = new Dictionary<string, bool>();
+            foreach (var clue in fx.Progressor.SelectableClues())
+                byId[clue.Id.Value] = clue.MemoryExtracted;
+
+            CollectionAssert.AreEquivalent(new[] { "clue-a", "clue-b", "clue-c" }, byId.Keys);
+            Assert.IsTrue(byId["clue-a"], "추출한 단서는 추출됨으로 표시된다.");
+            Assert.IsFalse(byId["clue-b"]);
         }
 
         [Test]
@@ -442,8 +457,8 @@ namespace GameName.Core.Tests.EditMode
             bus.Publish(new RoomStartedEvent(currentRoom.Id, 1));
 
             var ids = new List<string>();
-            foreach (var pair in progressor.SelectableClues())
-                ids.Add(pair.Key.Value);
+            foreach (var clue in progressor.SelectableClues())
+                ids.Add(clue.Id.Value);
 
             CollectionAssert.Contains(ids, "clue-other");
         }

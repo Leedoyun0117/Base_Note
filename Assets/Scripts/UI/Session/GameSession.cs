@@ -129,11 +129,15 @@ namespace GameName.UI.Session
             var chance = new ChanceTracker(run.StartingChance, EventBus);
             Chance = chance;
             _ = new ChanceExhaustionListener(EventBus);
-            _ = new HiromiDialogueEarningListener(hiromi, EventBus);
 
             var stability = new StabilityAxis(
                 run.StartingStability, run.StabilityMin, run.StabilityMax, EventBus);
             Stability = stability;
+
+            // 답변 한 번마다 히로민을 회복한다 — 안정에 가까울수록 더 번다.
+            _ = new HiromiDialogueEarningListener(
+                hiromi, stability, run.DialogueHiromiBase, run.HiromiStabilityBonusBand,
+                run.HiromiStabilityBonusDivisor, EventBus);
 
             var psychology = new PsychologyTracker(run.StartingPsychology, EventBus);
             Psychology = psychology;

@@ -68,20 +68,23 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void ClueSelection_줄은_단서_버튼과_넘어가기_버튼을_그린다()
+        public void ClueSelection_줄은_단서마다_답하기_추출_버튼과_넘어가기_버튼을_그린다()
         {
             var fx = new Fixture();
 
             fx.View.SetClueSelection(new[]
             {
-                new KeyValuePair<ClueId, string>(new ClueId("clue-1"), "교복 리본"),
-                new KeyValuePair<ClueId, string>(new ClueId("clue-2"), "부치지 못한 편지"),
+                new SelectableClue(new ClueId("clue-1"), "교복 리본", memoryExtracted: false),
+                new SelectableClue(new ClueId("clue-2"), "부치지 못한 편지", memoryExtracted: true),
             });
 
-            var buttons = fx.Choices.Children().OfType<Button>().Select(b => b.text).ToArray();
+            var buttons = fx.Choices.Query<Button>().ToList().Select(b => b.text).ToList();
             CollectionAssert.Contains(buttons, "교복 리본");
             CollectionAssert.Contains(buttons, "부치지 못한 편지");
-            Assert.AreEqual(3, buttons.Length, "단서 둘 + 넘어가기 하나여야 한다.");
+            CollectionAssert.Contains(buttons, "잘 기억나지 않는다");
+
+            // clue-1은 아직 안 추출 → 추출 버튼 있음, clue-2는 추출됨 → 없음.
+            Assert.AreEqual(1, buttons.Count(t => t == "기억 추출"));
         }
 
         [Test]
