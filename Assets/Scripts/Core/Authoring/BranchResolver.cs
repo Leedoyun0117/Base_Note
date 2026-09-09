@@ -23,7 +23,7 @@ namespace GameName.Core.Authoring
                 rooms.Add(ResolveRoom(room, seed));
 
             return new RunDefinition(
-                rooms, raw.StartingTrust, raw.StartingHiromi, raw.Seed, raw.CensorKeyTagRequirements,
+                rooms, raw.StartingTrust, raw.StartingHiromi, raw.Seed,
                 raw.StartingChance, raw.MoveHiromiCost, raw.StartingStability, raw.StabilityMin,
                 raw.StabilityMax, raw.TrustErosionFreeBand, raw.TrustErosionDivisor, raw.StartingPsychology);
         }

@@ -37,11 +37,6 @@ namespace GameName.Core.Authoring
         // 주입할 수 있게 데이터로 들고 있으며, 분기 풀이 없으면 아무 데도 안 쓰인다.
         public int Seed { get; }
 
-        // 검열 키 하나를 풀려면 제시할 기억이 어느 태그를 가져야 하는지의 목록.
-        // 방 하나에 매인 데이터가 아니라 런 전체 목록인 이유는 CensorKeyTagRequirement
-        // 주석과 같다 — 같은 키가 여러 방의 대사에 걸쳐 쓰일 수 있다.
-        public IReadOnlyList<CensorKeyTagRequirement> CensorKeyTagRequirements { get; }
-
         // 런 시작 시 나츠의 안정 축 위치와 그 축의 침체·흥분 양 끝.
         // -100..0..+100은 지금의 저작값일 뿐이라 상수가 아니라 데이터로 둔다.
         public int StartingStability { get; }
@@ -63,7 +58,6 @@ namespace GameName.Core.Authoring
             int startingTrust,
             int startingHiromi,
             int seed = 0,
-            IReadOnlyList<CensorKeyTagRequirement> censorKeyTagRequirements = null,
             int startingChance = 2,
             int moveHiromiCost = 15,
             int startingStability = 0,
@@ -77,7 +71,6 @@ namespace GameName.Core.Authoring
             StartingTrust = startingTrust;
             StartingHiromi = startingHiromi;
             Seed = seed;
-            CensorKeyTagRequirements = censorKeyTagRequirements ?? Array.Empty<CensorKeyTagRequirement>();
             StartingChance = startingChance;
             MoveHiromiCost = moveHiromiCost;
             StartingStability = startingStability;

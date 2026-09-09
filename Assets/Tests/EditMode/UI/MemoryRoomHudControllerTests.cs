@@ -1,5 +1,4 @@
 using GameName.Core.Clues;
-using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.Hiromi;
 using GameName.Core.Memories;
@@ -128,20 +127,6 @@ namespace GameName.UI.Tests.EditMode
 
             Assert.IsTrue(fx.Held("b"), "파랑 기억을 들었으면 파랑 점이 켜진다.");
             Assert.IsFalse(fx.Held("r"), "빨강 기억은 없으므로 빨강 점은 꺼져 있다.");
-        }
-
-        [Test]
-        public void 그_색_기억이_전부_나가면_해당_색_점이_꺼진다()
-        {
-            var fx = new Fixture();
-            fx.Memories.Add(new ExtractedMemory(new ClueId("c"), MemoryColor.Green, System.Array.Empty<ClueTag>()));
-            fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Green, new ClueId("c")));
-            Assert.IsTrue(fx.Held("g"));
-
-            fx.Memories.Remove(new ClueId("c"));
-            fx.Bus.Publish(new CensorKeyUnlockedEvent(new CensorKey("k"), MemoryColor.Green));
-
-            Assert.IsFalse(fx.Held("g"), "그 색 기억이 다 나가면 점이 꺼진다.");
         }
 
         [Test]

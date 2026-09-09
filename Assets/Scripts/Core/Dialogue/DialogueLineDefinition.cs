@@ -24,7 +24,7 @@ namespace GameName.Core.Dialogue
         public DialogueLineId Id { get; }
         public string Speaker { get; }
 
-        // 검열 토큰이 섞인 원문. 파싱은 이 타입의 일이 아니다.
+        // 화면에 그대로 나가는 대사 원문.
         public string AuthoredText { get; }
 
         public DialoguePromptKind PromptKind { get; }

@@ -48,8 +48,6 @@ namespace GameName.UI.Authoring
 
             [Header("표시 조건")]
             [SerializeField] private ChoiceConditionKind _conditionKind = ChoiceConditionKind.None;
-            // 대사 원문의 토큰에 적은 키를 그대로 적는다.
-            [SerializeField] private string _requiredCensorKey;
             [SerializeField] private string _requiredClueId;
 
             public ChoiceDefinition ToDefinition() =>
@@ -64,8 +62,6 @@ namespace GameName.UI.Authoring
             {
                 switch (_conditionKind)
                 {
-                    case ChoiceConditionKind.CensorKeyRevealed:
-                        return ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey(_requiredCensorKey));
                     case ChoiceConditionKind.ClueUsed:
                         return ChoiceCondition.ClueUsed(new ClueId(_requiredClueId));
                     default:
@@ -77,11 +73,7 @@ namespace GameName.UI.Authoring
         [SerializeField] private string _lineId;
         [SerializeField] private string _speaker;
 
-        // 검열 토큰이 섞인 원문. 토큰은 [[색:키:가려진 말]] 순서다.
-        // 예: 우리가 [[B:beach-house:해변의 작은 집]]에서 보냈던 시절이 그리워.
-        //
-        // 키는 "무엇이 가려져 있는가"라서, 같은 사실을 가리키는 구간은 다른 대사에
-        // 있어도 같은 키를 적어야 함께 풀린다.
+        // 화면에 그대로 나가는 대사 원문.
         [TextArea(3, 10)]
         [SerializeField] private string _authoredText;
 

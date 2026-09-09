@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using GameName.Core.Clues;
 using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.Memories;
@@ -11,29 +10,19 @@ namespace GameName.UI.MemoryRoom.Dialogue
     // 대화 패널의 Core 연동. 화면 컨트롤러 패턴 그대로 — Core 처리기를 직접
     // 조작하지 않고, 눌림을 처리기 호출로 옮기고 이벤트를 듣고 다시 그린다.
     //
-    // 마스크 구간 클릭은 대화를 막지 않는다. 추출한 기억이 하나도 없으면 안내
-    // 한 줄만 띄우고 끝이다 — 기억 제시는 필수 열쇠가 아니라 문맥 추론을 돕는
-    // 보조이기 때문이다. 손에 든 기억이 있으면 그 목록을 팝업에 띄워 고르게
-    // 하고, 실제로 맞는지(태그가 겹치는지)는 CensorUnlockProcessor가 판정한다 —
-    // 여기서는 색을 힌트 문구로만 보여 준다.
+    // ClueSelection 줄에서는 텍스트 선택지 대신 손에 든 단서 목록을 띄워 고르게
+    // 한다. 실제로 얼마나 맞는지(태그 등급)는 DialogueProgressor가 판정한다.
     public sealed class DialoguePanelController : IDisposable
     {
         private readonly IDialoguePanelView _view;
         private readonly DialogueProgressor _progressor;
-        private readonly CensorUnlockProcessor _censorUnlock;
         private readonly IExtractedMemoryStore _memories;
-        private readonly IMemoryRoomClueTracker _clueTracker;
-        private readonly ICensorKeyColorMap _keyColors;
-        private readonly Func<MemoryColor, string> _colorDisplayName;
         private readonly IEventBus _eventBus;
         private readonly IDisposable[] _subscriptions;
 
         // 대화가 끝난 방을 떠나는 "다음으로" 버튼의 식별자. 저작 데이터에는 없는
         // 예약 값이라 실제 선택지와 겹치지 않는다. 나중에 이 자리는 레버가 된다.
         private static readonly ChoiceId AdvanceChoiceId = new ChoiceId("__room-advance__");
-
-        // 제시 팝업이 떠 있는 동안 어느 키를 풀지 붙들어 둔다.
-        private CensorKey? _pendingKey;
 
         // 런이 끝났다. 이 뒤로는 어떤 이벤트가 와도 패널을 다시 그리지 않는다.
         private bool _runEnded;
@@ -48,33 +37,22 @@ namespace GameName.UI.MemoryRoom.Dialogue
         public DialoguePanelController(
             IDialoguePanelView view,
             DialogueProgressor progressor,
-            CensorUnlockProcessor censorUnlock,
             IExtractedMemoryStore memories,
-            IMemoryRoomClueTracker clueTracker,
-            ICensorKeyColorMap keyColors,
-            Func<MemoryColor, string> colorDisplayName,
             MemoryRoomId initialRoomId,
             IEventBus eventBus)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _progressor = progressor ?? throw new ArgumentNullException(nameof(progressor));
-            _censorUnlock = censorUnlock ?? throw new ArgumentNullException(nameof(censorUnlock));
             _memories = memories ?? throw new ArgumentNullException(nameof(memories));
-            _clueTracker = clueTracker ?? throw new ArgumentNullException(nameof(clueTracker));
-            _keyColors = keyColors ?? throw new ArgumentNullException(nameof(keyColors));
-            _colorDisplayName = colorDisplayName ?? throw new ArgumentNullException(nameof(colorDisplayName));
             _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
 
             // 첫 RoomStartedEvent는 이 패널이 만들어지기 전(세션 조립 중)에
             // 지나갔으므로, 지금 진행 중인 방을 인자로 받아 둔다.
             _currentRoomId = initialRoomId;
 
-            _view.MaskClicked += OnMaskClicked;
             _view.ChoiceClicked += OnChoiceClicked;
             _view.ClueAnswerClicked += id => _progressor.SelectClue(id);
             _view.SkipClueAnswerClicked += () => _progressor.SkipClueSelection();
-            _view.MemoryPresented += OnMemoryPresented;
-            _view.UnlockCancelled += OnUnlockCancelled;
 
             _subscriptions = new[]
             {
@@ -84,8 +62,6 @@ namespace GameName.UI.MemoryRoom.Dialogue
                 // 대화가 끝나면 패널에 "다음으로" 버튼만 남긴다 — 방을 떠나는 것은
                 // 자동이 아니라 플레이어가 그 버튼을 눌러야 한다.
                 eventBus.Subscribe<DialogueEndedEvent>(_ => OnDialogueEnded()),
-                // 검열이 풀리면 이 줄에 있든 다른 줄에 있든 원문으로 돌아와야 한다.
-                eventBus.Subscribe<CensorKeyUnlockedEvent>(_ => Rerender()),
                 // ClueSelection 줄에 머무는 동안 방에서 단서를 집거나(손에 들어옴)
                 // 추출하면(손에서 나감) 답 목록이 바뀐다 — 그때 다시 그린다.
                 eventBus.Subscribe<ClueCollectedEvent>(_ => RerenderIfClueSelection()),
@@ -104,8 +80,6 @@ namespace GameName.UI.MemoryRoom.Dialogue
         {
             _runEnded = true;
             _awaitingAdvance = false;
-            _pendingKey = null;
-            _view.HideUnlockPrompt();
             _view.SetNotice(null);
 
             var red = 0;
@@ -160,7 +134,7 @@ namespace GameName.UI.MemoryRoom.Dialogue
         }
 
         // 단서 손 상태가 바뀌었을 때 — ClueSelection 줄에서만 다시 그린다.
-        // 텍스트 선택지 줄에서는 안내 문구·제시 팝업을 괜히 지우지 않는다.
+        // 텍스트 선택지 줄에서는 안내 문구를 괜히 지우지 않는다.
         private void RerenderIfClueSelection()
         {
             if (!_runEnded && _progressor.CurrentLine != null
@@ -175,8 +149,6 @@ namespace GameName.UI.MemoryRoom.Dialogue
             if (_runEnded)
                 return;
 
-            _pendingKey = null;
-            _view.HideUnlockPrompt();
             _view.SetNotice(null);
 
             var line = _progressor.CurrentLine;
@@ -206,66 +178,6 @@ namespace GameName.UI.MemoryRoom.Dialogue
                 choices.Add(new KeyValuePair<ChoiceId, string>(choice.Id, choice.AuthoredText));
 
             _view.SetChoices(choices);
-        }
-
-        private void OnMaskClicked(CensorKey key)
-        {
-            var options = BuildMemoryOptions();
-            if (options.Count == 0)
-            {
-                _view.SetNotice("제시할 추출한 기억이 없습니다. (문맥으로도 진행할 수 있습니다)");
-                return;
-            }
-
-            _pendingKey = key;
-
-            // 색은 힌트일 뿐이다 — 맞는 색을 골라도 태그가 다르면 해금은 실패한다.
-            var message = _keyColors.TryGetColor(key, out var color)
-                ? $"제시할 기억을 고르세요. (힌트: {_colorDisplayName(color)} 계열)"
-                : "제시할 기억을 고르세요.";
-            _view.ShowUnlockPrompt(message, options);
-        }
-
-        private List<KeyValuePair<ClueId, string>> BuildMemoryOptions()
-        {
-            var options = new List<KeyValuePair<ClueId, string>>();
-            foreach (var memory in _memories.All)
-            {
-                var hasName = _clueTracker.TryGetDefinition(memory.SourceClueId, out var definition)
-                    && !string.IsNullOrEmpty(definition.DisplayName);
-                var name = hasName ? definition.DisplayName : memory.SourceClueId.Value;
-                var label = $"{name} ({_colorDisplayName(memory.Color)})";
-                options.Add(new KeyValuePair<ClueId, string>(memory.SourceClueId, label));
-            }
-
-            return options;
-        }
-
-        private void OnMemoryPresented(ClueId presentedClueId)
-        {
-            if (!_pendingKey.HasValue)
-                return;
-
-            var result = _censorUnlock.Unlock(_pendingKey.Value, presentedClueId);
-            _pendingKey = null;
-
-            if (!result.Succeeded)
-            {
-                _view.HideUnlockPrompt();
-                _view.SetNotice("해금에 실패했습니다 — 이 기억은 이 질문과 맞지 않는 것 같습니다.");
-                return;
-            }
-
-            // 성공(실제 소모 또는 멱등)이면 렌더가 원문을 드러낸다. 실제 소모였다면
-            // CensorKeyUnlockedEvent가 이미 Rerender를 불렀겠지만, 멱등 성공까지
-            // 덮도록 여기서 한 번 더 그린다.
-            Rerender();
-        }
-
-        private void OnUnlockCancelled()
-        {
-            _pendingKey = null;
-            _view.HideUnlockPrompt();
         }
 
         public void Dispose()

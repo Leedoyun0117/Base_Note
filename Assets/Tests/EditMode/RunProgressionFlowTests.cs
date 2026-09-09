@@ -32,11 +32,6 @@ namespace GameName.Core.Tests.EditMode
         private static DialogueLineDefinition Line(string id, string text, params ChoiceDefinition[] choices) =>
             new DialogueLineDefinition(new DialogueLineId(id), "화자", text, choices);
 
-        private sealed class FakeMask : ICensorMaskFormatter
-        {
-            public string FormatMask(MemoryColor color) => $"<{color}>";
-        }
-
         private sealed class World
         {
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
@@ -48,14 +43,12 @@ namespace GameName.Core.Tests.EditMode
             public readonly PlayerInventory Inventory =
                 new PlayerInventory(new InventorySettings(16), new SharedSlotInventoryPolicy());
             public readonly HiromiWallet Hiromi;
-            public readonly CensorUnlockLog CensorLog = new CensorUnlockLog();
             public readonly ChanceTracker Chance;
             public readonly ClueStateStore ClueState;
             public readonly ClueCollectionProcessor Collection;
             public readonly ClueDiscardProcessor Discard;
             public readonly ExtractionProcessor Extraction;
             public readonly MemoryMoveProcessor MemoryMove;
-            public readonly CensorUnlockProcessor CensorUnlock;
             public readonly DialogueProgressor Dialogue;
             public readonly RunProgressor Run;
             public readonly List<RoomFailedEvent> Failed = new List<RoomFailedEvent>();
@@ -74,7 +67,6 @@ namespace GameName.Core.Tests.EditMode
                 _ = new ChanceExhaustionListener(Bus);
                 ClueState = new ClueStateStore(run.Rooms, Bus);
                 var tracker = new MemoryRoomClueTracker(placements);
-                var requiredTags = new CensorKeyRequiredTagMap(run);
 
                 Collection = new ClueCollectionProcessor(
                     ClueState, Access, Trust, Visibility, tracker, Inventory, Bus);
@@ -82,9 +74,8 @@ namespace GameName.Core.Tests.EditMode
                 _ = new InventoryProjection(Inventory, tracker, Bus);
                 _ = new RoomEntryInventoryClear(Inventory, Discard, Bus);
                 Extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
-                CensorUnlock = new CensorUnlockProcessor(Memories, CensorLog, requiredTags, Bus);
                 Dialogue = new DialogueProgressor(
-                    run.Rooms, CensorLog, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
+                    run.Rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
                 _ = new RoomCompletionArbiter(Trust, Bus);
                 Run = new RunProgressor(run.Rooms, Bus);
                 MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, Hiromi, Chance, Run);
@@ -130,10 +121,10 @@ namespace GameName.Core.Tests.EditMode
                 new MemoryRoomId(id), Array.Empty<ClueDefinition>(), null,
                 Array.Empty<DialogueLineDefinition>());
 
-        // ── 시나리오 2: 방을 클리어해 넘어가면 런 자원(신뢰 포함)이 전부 유지된다 ──
+        // ── 시나리오 2: 방을 클리어해 넘어가면 런 자원(신뢰·기억 포함)이 전부 유지된다 ──
 
         [Test]
-        public void 방을_클리어해_넘어가면_추출된_기억_자원_검열해금_신뢰가_전부_유지된다()
+        public void 방을_클리어해_넘어가면_추출된_기억_자원_신뢰가_전부_유지된다()
         {
             var r1Clue = new ClueDefinition(
                 new ClueId("r1-blue"), ClueKind.Poster, "r1 단서", new CluePositionRatio(0.5f), MemoryColor.Blue,
@@ -151,14 +142,10 @@ namespace GameName.Core.Tests.EditMode
                 });
             var room2 = new RoomDefinition(
                 new MemoryRoomId("room-2"), new[] { r2Clue }, new DialogueLineId("r2-line"),
-                new[] { Line("r2-line", "우리가 [[B:k1:해변의 집]]에서.", Choice("done", true)) });
+                new[] { Line("r2-line", "우리가 그 해변의 집에서.", Choice("done", true)) });
 
             var run = new RunDefinition(
-                new[] { room1, room2, Room("room-3") }, startingTrust: 3, startingHiromi: 30,
-                censorKeyTagRequirements: new[]
-                {
-                    new CensorKeyTagRequirement(new CensorKey("k1"), new[] { new ClueTag("beachHouse") }),
-                });
+                new[] { room1, room2, Room("room-3") }, startingTrust: 3, startingHiromi: 30);
             var world = new World(run, new[]
             {
                 new CluePlacement(new MemoryRoomId("room-1"), r1Clue),
@@ -172,11 +159,6 @@ namespace GameName.Core.Tests.EditMode
             Assert.IsTrue(world.Memories.TryGet(new ClueId("r1-blue"), out _));
             Assert.AreEqual(21, world.Hiromi.Remaining);
 
-            // 그 기억을 제시해 room-2 대사의 검열 k1을 미리 푼다.
-            Assert.IsTrue(world.CensorUnlock.Unlock(new CensorKey("k1"), new ClueId("r1-blue")).Succeeded);
-            Assert.IsFalse(world.Memories.TryGet(new ClueId("r1-blue"), out _), "제시한 기억은 소모된다.");
-            Assert.IsTrue(world.CensorLog.IsRevealed(new CensorKey("k1")));
-
             // room-1 대화를 완주한다 — 이제 방은 자동으로 닫히지 않는다.
             world.Dialogue.Select(new ChoiceId("done"));
             Assert.IsNull(world.Dialogue.CurrentLine, "대화는 끝났다.");
@@ -189,12 +171,12 @@ namespace GameName.Core.Tests.EditMode
             CollectionAssert.IsEmpty(world.Completed, "아직 마지막 방이 아니다.");
 
             // room-2로 넘어왔다. 신뢰는 런 스코프라 그대로 3, 히로민은 이동
-            // 비용만큼 빠지고(21 → 6), 해금 기록도 그대로.
+            // 비용만큼 빠지고(21 → 6), 추출한 기억도 그대로.
             Assert.AreEqual(new DialogueLineId("r2-line"), world.Dialogue.CurrentLineId);
             Assert.AreEqual(3, world.Trust.Current);
             Assert.AreEqual(6, world.Hiromi.Remaining);
             Assert.AreEqual(2, world.Chance.Remaining, "히로민이 넉넉하면 기회는 안 줄어든다.");
-            Assert.IsTrue(world.CensorLog.IsRevealed(new CensorKey("k1")));
+            Assert.IsTrue(world.Memories.TryGet(new ClueId("r1-blue"), out _), "추출한 기억은 런 전체에 걸쳐 남는다.");
             Assert.AreEqual(ClueState.Available, world.ClueState.GetState(new ClueId("r2-clue")));
 
             // 아직 못 얻은 빨간 단서의 기억은 그대로 없다.

@@ -95,11 +95,9 @@ namespace GameName.UI.MemoryRoom
                 cameraShake, session.Trust, session.EventBus, _continuousShakeAtOrBelowTrust);
 
             // ── 하단 대화 패널 ──────────────────────────────────────────
-            var dialogueView = new DialoguePanelView(
-                root, session.CensoredTextParser, session.CensorResolver, _memoryColorLabels);
+            var dialogueView = new DialoguePanelView(root);
             var dialogueController = new DialoguePanelController(
-                dialogueView, session.Dialogue, session.CensorUnlock, session.Memories, session.ClueTracker,
-                session.CensorKeyColors, _memoryColorLabels.DisplayName, session.CurrentRoomId, session.EventBus);
+                dialogueView, session.Dialogue, session.Memories, session.CurrentRoomId, session.EventBus);
 
             // ── 오버레이: 단서 설명 창 ──────────────────────────────────
             var zoomView = new ClueZoomScreenView(_overlayPanels.RootOf(OverlayPanel.ClueZoom));

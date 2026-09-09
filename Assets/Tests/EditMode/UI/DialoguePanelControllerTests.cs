@@ -16,11 +16,9 @@ namespace GameName.UI.Tests.EditMode
 {
     // 대화 패널 컨트롤러의 규칙:
     //   · 라인이 바뀌면 그 라인의 화자·원문을 View에 넘긴다.
-    //   · 마스크 구간 클릭 → 제시할 수 있는 추출된 기억이 있으면 목록 팝업을 띄우고,
-    //     하나를 고르면 CensorUnlockProcessor를 태운다(태그가 안 맞으면 실패 안내만).
-    //     기억이 하나도 없으면 안내만 하고 대화는 막지 않는다.
     //   · 그려진 선택지 목록은 DialogueProgressor가 필터링한 목록과 일치한다.
-    //   · 다음 대사가 없는 선택 후에는 종료 상태(빈 라인·빈 선택지)를 반영한다.
+    //   · ClueSelection 줄에서는 텍스트 선택지 대신 손에 든 단서 목록을 그린다.
+    //   · 다음 대사가 없는 선택 후에는 종료 상태(빈 라인·"다음으로" 버튼)를 반영한다.
     //
     // View는 인터페이스(IDialoguePanelView)로 대체한다 — 클릭·이벤트가 많아
     // UIDocument를 세우는 것보다 페이크가 규칙을 더 또렷하게 드러낸다.
@@ -30,22 +28,16 @@ namespace GameName.UI.Tests.EditMode
 
         private sealed class FakeView : IDialoguePanelView
         {
-            public event Action<CensorKey> MaskClicked;
             public event Action<ChoiceId> ChoiceClicked;
             public event Action<ClueId> ClueAnswerClicked;
             public event Action SkipClueAnswerClicked;
-            public event Action<ClueId> MemoryPresented;
-            public event Action UnlockCancelled;
 
             public string LastSpeaker;
             public string LastAuthoredText;
             public IReadOnlyList<KeyValuePair<ChoiceId, string>> LastChoices =
                 Array.Empty<KeyValuePair<ChoiceId, string>>();
             public IReadOnlyList<KeyValuePair<ClueId, string>> LastClueSelection;
-            public IReadOnlyList<KeyValuePair<ClueId, string>> LastMemoryOptions;
             public string LastNotice;
-            public bool PromptVisible;
-            public int PromptShownCount;
 
             public void SetLine(string speaker, string authoredText)
             {
@@ -66,21 +58,9 @@ namespace GameName.UI.Tests.EditMode
 
             public void SetNotice(string message) => LastNotice = message;
 
-            public void ShowUnlockPrompt(string message, IReadOnlyList<KeyValuePair<ClueId, string>> memoryOptions)
-            {
-                LastMemoryOptions = memoryOptions;
-                PromptVisible = true;
-                PromptShownCount++;
-            }
-
-            public void HideUnlockPrompt() => PromptVisible = false;
-
-            public void RaiseMaskClicked(CensorKey key) => MaskClicked?.Invoke(key);
             public void RaiseChoiceClicked(ChoiceId id) => ChoiceClicked?.Invoke(id);
             public void RaiseClueAnswerClicked(ClueId id) => ClueAnswerClicked?.Invoke(id);
             public void RaiseSkipClueAnswer() => SkipClueAnswerClicked?.Invoke();
-            public void RaiseMemoryPresented(ClueId id) => MemoryPresented?.Invoke(id);
-            public void RaiseUnlockCancelled() => UnlockCancelled?.Invoke();
         }
 
         private static ChoiceDefinition Choice(string id, bool correct, string next = null) =>
@@ -96,13 +76,10 @@ namespace GameName.UI.Tests.EditMode
                 new CluePositionRatio(0.5f), MemoryColor.Red,
                 Array.ConvertAll(tags, t => new ClueTag(t)));
 
-        private static string ColorName(MemoryColor color) => color.ToString();
-
         private sealed class Fixture
         {
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly ExtractedMemoryStore Memories = new ExtractedMemoryStore();
-            public readonly CensorUnlockLog CensorLog = new CensorUnlockLog();
             public readonly ClueStateStore ClueState;
             public readonly DialogueProgressor Progressor;
             public readonly DialoguePanelController Controller;
@@ -114,46 +91,27 @@ namespace GameName.UI.Tests.EditMode
 
             public Fixture(RoomDefinition room)
             {
-                var run = new RunDefinition(
-                    new[] { room }, startingTrust: 3, startingHiromi: 3,
-                    censorKeyTagRequirements: new[]
-                    {
-                        new CensorKeyTagRequirement(new CensorKey("k1"), new[] { new ClueTag("beachHouse") }),
-                    });
+                var run = new RunDefinition(new[] { room }, startingTrust: 3, startingHiromi: 3);
 
                 var trust = new TrustGauge(3, Bus);
                 ClueState = new ClueStateStore(run.Rooms, Bus);
-                var colorMap = new CensorTokenIndexColorMap(
-                    new CensorTokenIndexSource(new CensoredTextParser()), run);
-                var requiredTags = new CensorKeyRequiredTagMap(run);
-                var censorUnlock = new CensorUnlockProcessor(Memories, CensorLog, requiredTags, Bus);
-                var tracker = new MemoryRoomClueTracker(BuildPlacements(room));
 
                 Progressor = new DialogueProgressor(
-                    run.Rooms, CensorLog, ClueState, trust, new TagMatchGrader(),
+                    run.Rooms, ClueState, trust, new TagMatchGrader(),
                     new StabilityAxis(0, -100, 100, Bus), Bus);
 
                 // 방이 시작되어 시작 라인으로 들어간 뒤에 패널을 만든다 — 생산
                 // 코드와 같은 순서(세션 조립 후 화면 부착)다.
                 Bus.Publish(new RoomStartedEvent(room.Id, 0));
 
-                Controller = new DialoguePanelController(
-                    View, Progressor, censorUnlock, Memories, tracker, colorMap, ColorName, room.Id, Bus);
-            }
-
-            private static IReadOnlyList<CluePlacement> BuildPlacements(RoomDefinition room)
-            {
-                var list = new List<CluePlacement>();
-                foreach (var clue in room.Clues)
-                    list.Add(new CluePlacement(room.Id, clue));
-                return list;
+                Controller = new DialoguePanelController(View, Progressor, Memories, room.Id, Bus);
             }
 
             private static RoomDefinition DefaultRoom() =>
                 new RoomDefinition(TheRoom, Array.Empty<ClueDefinition>(), new DialogueLineId("line-1"),
                     new[]
                     {
-                        Line("line-1", "우리가 [[B:k1:해변의 집]]에서 보냈지.", Choice("go", true, "line-2")),
+                        Line("line-1", "우리가 그 해변의 집에서 보냈지.", Choice("go", true, "line-2")),
                         Line("line-2", "", Choice("end", true, null)),
                     });
         }
@@ -178,7 +136,7 @@ namespace GameName.UI.Tests.EditMode
             var fx = new Fixture();
 
             Assert.AreEqual("화자", fx.View.LastSpeaker);
-            Assert.AreEqual("우리가 [[B:k1:해변의 집]]에서 보냈지.", fx.View.LastAuthoredText);
+            Assert.AreEqual("우리가 그 해변의 집에서 보냈지.", fx.View.LastAuthoredText);
         }
 
         [Test]
@@ -196,60 +154,6 @@ namespace GameName.UI.Tests.EditMode
 
             CollectionAssert.AreEqual(expected, actual);
             CollectionAssert.AreEqual(new[] { "go" }, actual);
-        }
-
-        [Test]
-        public void 마스크_클릭_제시할_기억이_있으면_팝업이_뜨고_알맞은_기억_제시로_해금된다()
-        {
-            var fx = new Fixture();
-            var memoryClue = new ClueId("mem-1");
-            fx.Memories.Add(new ExtractedMemory(memoryClue, MemoryColor.Blue, new[] { new ClueTag("beachHouse") }));
-
-            fx.View.RaiseMaskClicked(new CensorKey("k1"));
-            Assert.IsTrue(fx.View.PromptVisible, "제시할 기억이 있으면 팝업이 떠야 한다.");
-            Assert.IsNotNull(fx.View.LastMemoryOptions);
-            CollectionAssert.Contains(fx.View.LastMemoryOptions.Select(o => o.Key), memoryClue);
-            Assert.IsFalse(fx.CensorLog.IsRevealed(new CensorKey("k1")), "고르기 전에는 풀리면 안 된다.");
-
-            fx.View.RaiseMemoryPresented(memoryClue);
-
-            Assert.IsTrue(fx.CensorLog.IsRevealed(new CensorKey("k1")));
-            Assert.IsFalse(fx.Memories.TryGet(memoryClue, out _), "제시한 기억은 소모되어야 한다.");
-            Assert.IsFalse(fx.View.PromptVisible, "해금 후 팝업은 닫혀야 한다.");
-            // 렌더는 여전히 원문 토큰을 넘긴다 — 실제 원문화는 View의 몫이다.
-            Assert.AreEqual("우리가 [[B:k1:해변의 집]]에서 보냈지.", fx.View.LastAuthoredText);
-        }
-
-        [Test]
-        public void 마스크_클릭_태그가_다른_기억을_제시하면_풀리지_않고_실패_안내만_한다()
-        {
-            var fx = new Fixture();
-            var memoryClue = new ClueId("mem-1");
-            // 색은 힌트와 같은 Blue지만 태그가 k1의 요구 태그와 다르다.
-            fx.Memories.Add(new ExtractedMemory(memoryClue, MemoryColor.Blue, new[] { new ClueTag("somethingElse") }));
-
-            fx.View.RaiseMaskClicked(new CensorKey("k1"));
-            fx.View.RaiseMemoryPresented(memoryClue);
-
-            Assert.IsFalse(fx.CensorLog.IsRevealed(new CensorKey("k1")));
-            Assert.IsTrue(fx.Memories.TryGet(memoryClue, out _), "실패한 제시는 기억을 소모하지 않는다.");
-            Assert.IsFalse(string.IsNullOrEmpty(fx.View.LastNotice), "실패 안내 문구가 있어야 한다.");
-        }
-
-        [Test]
-        public void 마스크_클릭_제시할_기억이_없으면_해금하지_않고_안내만_하며_대화는_막히지_않는다()
-        {
-            var fx = new Fixture(); // 손에 든 기억 없음
-
-            fx.View.RaiseMaskClicked(new CensorKey("k1"));
-
-            Assert.AreEqual(0, fx.View.PromptShownCount, "제시할 기억이 없으면 팝업이 뜨면 안 된다.");
-            Assert.IsFalse(fx.CensorLog.IsRevealed(new CensorKey("k1")));
-            Assert.IsFalse(string.IsNullOrEmpty(fx.View.LastNotice), "안내 문구가 있어야 한다.");
-
-            // 대화는 그대로 진행 가능해야 한다.
-            fx.View.RaiseChoiceClicked(new ChoiceId("go"));
-            Assert.AreEqual(new DialogueLineId("line-2"), fx.Progressor.CurrentLineId);
         }
 
         [Test]

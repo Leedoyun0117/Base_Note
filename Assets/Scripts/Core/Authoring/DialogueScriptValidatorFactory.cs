@@ -13,19 +13,12 @@ namespace GameName.Core.Authoring
     {
         public static DialogueScriptValidator Create(int expectedRoomCount, float minimumClueSeparation)
         {
-            // 검열을 보는 규칙들이 토큰 목록 하나를 나눠 쓴다. 규칙마다 따로
-            // 주면 같은 원문을 규칙 수만큼 다시 파싱한다.
-            var tokens = new CensorTokenIndexSource(new CensoredTextParser());
-
             return new DialogueScriptValidator(new IDialogueScriptRule[]
             {
                 new RoomCountRule(expectedRoomCount),
                 new NextLineExistsRule(),
                 new CorrectChoiceExistsRule(),
                 new BranchPoolIntegrityRule(),
-                new CensorKeyTagRequirementRule(tokens),
-                new CensorKeyColorConsistencyRule(tokens),
-                new ChoiceConditionCensorKeyExistsRule(tokens),
                 new CluePositionOverlapRule(minimumClueSeparation),
                 new ClueDisplayNameExistsRule(),
                 new ClueSelectionLineRule(),

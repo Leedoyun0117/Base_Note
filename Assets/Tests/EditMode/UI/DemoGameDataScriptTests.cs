@@ -42,29 +42,5 @@ namespace GameName.UI.Tests.EditMode
 
             Assert.IsEmpty(warnings, "검증 경고:\n- " + string.Join("\n- ", warnings));
         }
-
-        // 방3이 방1·2의 검열 키를 재사용하지 않는지(사건을 반복하지 않는다는 원칙).
-        [Test]
-        public void 방3은_앞_방의_검열_키를_다시_쓰지_않는다()
-        {
-            var run = DemoGameData.CreateWorldData().Run;
-            var tokens = new CensorTokenIndexSource(new GameName.Core.Dialogue.CensoredTextParser());
-
-            var room3 = new GameName.Core.MemoryRooms.MemoryRoomId("room-3");
-            var earlierKeys = tokens.For(run).Uses
-                .Where(u => !u.RoomId.Equals(room3))
-                .Select(u => u.Key)
-                .ToHashSet();
-
-            var room3Keys = tokens.For(run).Uses
-                .Where(u => u.RoomId.Equals(room3))
-                .Select(u => u.Key)
-                .ToArray();
-
-            Assert.IsNotEmpty(room3Keys, "방3에 검열 토큰이 하나도 없다.");
-            CollectionAssert.IsEmpty(
-                room3Keys.Where(earlierKeys.Contains).ToArray(),
-                "방3이 방1·2에서 이미 쓴 검열 키를 재사용한다.");
-        }
     }
 }

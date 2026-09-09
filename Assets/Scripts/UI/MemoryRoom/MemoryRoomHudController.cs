@@ -52,9 +52,8 @@ namespace GameName.UI.MemoryRoom
                 eventBus.Subscribe<TrustChangedEvent>(_ => _view.SetTrust(_trust.Current)),
                 eventBus.Subscribe<HiromiChangedEvent>(_ => RenderHiromi()),
                 eventBus.Subscribe<ChanceChangedEvent>(_ => _view.SetChance(_chance.Remaining)),
-                // 손에 든 기억이 바뀌는 두 계기: 추출로 하나가 들어오고, 검열 해금으로 하나가 나간다.
+                // 손에 든 기억이 바뀌는 계기: 추출로 하나가 들어온다.
                 eventBus.Subscribe<MemoryColorRevealedEvent>(_ => RenderMemories()),
-                eventBus.Subscribe<CensorKeyUnlockedEvent>(_ => RenderMemories()),
             };
 
             RenderAll();

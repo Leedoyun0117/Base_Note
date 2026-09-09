@@ -3,10 +3,6 @@ using System;
 namespace GameName.Core.Dialogue
 {
     // 선택지 하나의 저작 데이터.
-    //
-    // AuthoredText는 대사 원문과 똑같이 검열 토큰이 섞인 채로 들어온다 —
-    // 선택지 문구도 가려질 수 있어야 하기 때문이다. 그래서 이 문자열 역시
-    // 화면에 나가기 전에 파서와 렌더러를 거친다.
     public sealed class ChoiceDefinition
     {
         public ChoiceId Id { get; }

@@ -15,13 +15,11 @@ namespace GameName.UI.Session
     //
     // ── 서사 뼈대 ──────────────────────────────────────────────────────
     // 화자 POV는 나츠. 상대는 소꿉친구 유키(대사의 Speaker는 대부분 유키다).
-    //   방1(B, 유년기)  — 그 여름밤 옥상, 낡은 모포.        검열 키: rooftop-blanket
-    //   방2(G, 청소년기) — 유키가 전학 가던 날의 작별.       검열 키: rooftop-goodbye
-    //   방3(R, 트라우마) — 사고, 전하지 못한 마지막 말.      검열 키: missed-words
+    //   방1(B, 유년기)  — 그 여름밤 옥상, 낡은 모포.
+    //   방2(G, 청소년기) — 유키가 전학 가던 날의 작별.
+    //   방3(R, 트라우마) — 사고, 전하지 못한 마지막 말.
     // 색의 관성: B·G는 같은 장소(옥상)로, G·R은 유키와의 마지막 순간으로 이어진다.
     // 방3은 방1·2의 사건을 다시 언급하지 않는다 — 쌓인 정서적 맥락만으로 추론한다.
-    //
-    // 검열 토큰 포맷은 파서 그대로: [[색:키:실제텍스트]] (색은 R/G/B).
     internal static class DemoGameData
     {
         public static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
@@ -70,19 +68,6 @@ namespace GameName.UI.Session
             { 0, 1.0f },
         };
 
-        // 검열 키 하나를 풀려면 제시할 기억이 어느 태그를 가져야 하는지.
-        // 색과 달리 대사 원문에서 저절로 나오지 않아 따로 적는다 — 각 키를
-        // 실제로 푸는 핵심 단서에 매겨 둔 태그와 짝을 맞춘다.
-        private static readonly CensorKeyTagRequirement[] CensorKeyTagRequirements =
-        {
-            new CensorKeyTagRequirement(
-                new CensorKey("rooftop-blanket"), new[] { new ClueTag("room1.blanket") }),
-            new CensorKeyTagRequirement(
-                new CensorKey("rooftop-goodbye"), new[] { new ClueTag("room2.goodbye") }),
-            new CensorKeyTagRequirement(
-                new CensorKey("missed-words"), new[] { new ClueTag("room3.missedWords") }),
-        };
-
         // 단서가 놓이는 가로 자리(비율). 종류별로 나눠 두어 겹침 경고를 피한다.
         private static readonly float[] FloorSlots = { 0.18f, 0.50f, 0.82f };
         private static readonly float[] PosterSlots = { 0.30f, 0.70f };
@@ -107,11 +92,9 @@ namespace GameName.UI.Session
             foreach (var room in rooms)
                 AddPlacements(cluePlacements, room);
 
-            // 검열 키별 요구 태그는 목록 그대로 넘긴다 — 살아 있는 방이 쓰지 않는
-            // 키의 항목은 검증기도 런타임도 참조하지 않아 무해하다.
             var run = new RunDefinition(
                 rooms.ToArray(), StartingTrust, StartingHiromi, RunSeed,
-                CensorKeyTagRequirements, StartingChance, MoveHiromiCost,
+                StartingChance, MoveHiromiCost,
                 StartingStability, StabilityMin, StabilityMax,
                 TrustErosionFreeBand, TrustErosionDivisor, StartingPsychology);
 
@@ -130,15 +113,13 @@ namespace GameName.UI.Session
         // 그 답으로 방의 대화가 끝난다.
         //
         // 단서마다 태그를 하나씩 매겨 "어느 물건이 어느 질문의 답인지"를 정한다.
-        // 검열 토큰([[색:키:원문]])은 그대로 둔다 — 추출한 기억을 제시해 푸는
-        // 별개 상호작용이고, 답하기와 함께 걸려도 무해하다.
 
         // ── 방1 — B, 유년기, 옥상·모포 ─────────────────────────────────────
         private static RoomDefinition BuildRoom1()
         {
             var clues = new[]
             {
-                // 핵심 단서 — rooftop-blanket 검열을 여는 것도 room1.blanket 태그다.
+                // 핵심 단서 — 방1 첫 질문의 정답 태그다.
                 Clue("clue-r1-blanket", "낡은 모포", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Blue,
                     "room1.blanket"),
                 Clue("clue-r1-picturebook", "표지가 닳은 그림책", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Red,
@@ -154,7 +135,7 @@ namespace GameName.UI.Session
             var lines = new[]
             {
                 ClueLine("r1-a", Yuki,
-                    "우리, [[B:rooftop-blanket:그 여름밤 옥상]]에서 있었던 일 말이야. 네가 뭘 하나 들고 올라왔었잖아. ...그게 뭐였어?",
+                    "우리, 그 여름밤 옥상에서 있었던 일 말이야. 네가 뭘 하나 들고 올라왔었잖아. ...그게 뭐였어?",
                     "room1.blanket", correctNext: "r1-b", incorrectNext: "r1-a-miss"),
                 ClueLine("r1-a-miss", Yuki,
                     "아니. 그건 아니었어. ...춥다길래 네가 덮어 준 거.",
@@ -184,7 +165,7 @@ namespace GameName.UI.Session
         {
             var clues = new[]
             {
-                // 핵심 단서 — rooftop-goodbye 검열을 여는 것도 room2.goodbye 태그다.
+                // 핵심 단서 — 방2 첫 질문의 정답 태그다.
                 Clue("clue-r2-photo", "빛바랜 사진 한 장", ClueKind.Poster, PosterSlots[0], MemoryColor.Green,
                     "room2.goodbye"),
                 // 리본과 편지 둘 다 "그때 손에 쥐고 있던 것"이라 같은 태그를 갖는다.
@@ -201,7 +182,7 @@ namespace GameName.UI.Session
             var lines = new[]
             {
                 ClueLine("r2-a", Yuki,
-                    "나 전학 가던 날, [[G:rooftop-goodbye:그날의 작별]] 말이야. 그때 우리가 뭘 두고 얘기했는지 기억나?",
+                    "나 전학 가던 날, 그날의 작별 말이야. 그때 우리가 뭘 두고 얘기했는지 기억나?",
                     "room2.goodbye", correctNext: "r2-b", incorrectNext: "r2-a-miss"),
                 ClueLine("r2-a-miss", Yuki,
                     "아니. ...그 사진. 둘이 찍은 거. 결국 나만 갖고 갔지.",
@@ -231,7 +212,7 @@ namespace GameName.UI.Session
         {
             var clues = new[]
             {
-                // 핵심 단서 — missed-words 검열을 여는 것도 room3.missedWords 태그다.
+                // 핵심 단서 — 방3 질문들의 정답 태그다.
                 Clue("clue-r3-watch", "깨진 손목시계", ClueKind.FloorObject, FloorSlots[0], MemoryColor.Red,
                     "room3.missedWords"),
                 Clue("clue-r3-keychain", "낡은 열쇠고리", ClueKind.FloorObject, FloorSlots[1], MemoryColor.Blue,
@@ -247,14 +228,14 @@ namespace GameName.UI.Session
             var lines = new[]
             {
                 ClueLine("r3-a", Yuki,
-                    "결국 [[R:missed-words:그때 하지 못한 말]]은 못 들었네. ...그날, 뭐가 네 손에 있었지?",
+                    "결국 그때 하지 못한 말은 못 들었네. ...그날, 뭐가 네 손에 있었지?",
                     "room3.missedWords", correctNext: "r3-b", incorrectNext: "r3-a-miss"),
                 ClueLine("r3-a-miss", Yuki,
                     "아니야. ...그 시계. 멈춘 채로 네가 계속 쥐고 있었어.",
                     "room3.missedWords", correctNext: "r3-b", incorrectNext: "r3-b", stabilityDelta: -10),
 
                 ClueLine("r3-b", Yuki,
-                    "[[R:missed-words:그 말]], 아직도 안에 담아두고 있지. 얼굴에 다 쓰여 있어.",
+                    "그 말, 아직도 안에 담아두고 있지. 얼굴에 다 쓰여 있어.",
                     "room3.missedWords", correctNext: "r3-close-warm", incorrectNext: "r3-close-plain",
                     stabilityDelta: -8),
 

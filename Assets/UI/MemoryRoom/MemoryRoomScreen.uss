@@ -227,15 +227,6 @@
     white-space: normal;
 }
 
-/* 아직 풀리지 않은 마스크 구간 — 무엇을 찾아야 하는지 그 색으로 알린다. */
-.dialogue-segment--mask {
-    -unity-font-style: bold;
-}
-
-.dialogue-segment--mask-r { color: var(--memory-red); }
-.dialogue-segment--mask-g { color: var(--memory-green); }
-.dialogue-segment--mask-b { color: var(--memory-blue); }
-
 .dialogue-panel__choices {
     flex-direction: column;
     align-items: flex-start;
@@ -276,34 +267,4 @@
     color: var(--text-faint);
     margin-top: var(--space-2);
     white-space: normal;
-}
-
-/* ── 마스크 해금 확인 팝업 ─────────────────────────────────────── */
-.dialogue-unlock-prompt {
-    display: none;
-    margin-top: var(--space-3);
-    padding: var(--space-3);
-    background-color: var(--surface);
-    border-width: 1px;
-    border-color: var(--border);
-    border-radius: var(--radius);
-}
-
-.dialogue-unlock-prompt__text {
-    font-size: 12px;
-    color: var(--text);
-    white-space: normal;
-    margin-bottom: var(--space-2);
-}
-
-.dialogue-unlock-prompt__actions {
-    flex-direction: row;
-    align-items: center;
-}
-
-.dialogue-unlock-prompt__confirm,
-.dialogue-unlock-prompt__cancel {
-    font-size: 12px;
-    padding: var(--space-1);
-    margin-right: var(--space-2);
 }

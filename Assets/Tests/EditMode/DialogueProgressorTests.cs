@@ -34,7 +34,6 @@ namespace GameName.Core.Tests.EditMode
             public readonly EventBus Bus = new EventBus(new NoOpEventExceptionHandler());
             public readonly TrustGauge Trust;
             public readonly StabilityAxis Stability;
-            public readonly CensorUnlockLog Censor = new CensorUnlockLog();
             public readonly ClueStateStore ClueState;
             public readonly DialogueProgressor Progressor;
             public readonly List<DialogueLineEnteredEvent> Entered = new List<DialogueLineEnteredEvent>();
@@ -52,7 +51,7 @@ namespace GameName.Core.Tests.EditMode
                 Stability = new StabilityAxis(0, -100, 100, Bus);
                 ClueState = new ClueStateStore(rooms, Bus);
                 Progressor = new DialogueProgressor(
-                    rooms, Censor, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
+                    rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
 
                 Bus.Subscribe<DialogueLineEnteredEvent>(Entered.Add);
                 Bus.Subscribe<ChoiceSelectedEvent>(Selected.Add);
@@ -78,23 +77,6 @@ namespace GameName.Core.Tests.EditMode
 
             Assert.AreEqual(new DialogueLineId("line-1"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(1, fx.Entered.Count);
-        }
-
-        [Test]
-        public void 검열_조건_선택지는_해금_전엔_안_보이고_해금_후엔_보인다()
-        {
-            var fx = new Fixture("line-1", new[]
-            {
-                Line("line-1",
-                    Choice("plain", true),
-                    Choice("gated", true, condition: ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey("beach-house")))),
-            });
-
-            CollectionAssert.AreEquivalent(new[] { "plain" }, fx.VisibleChoiceIds());
-
-            fx.Censor.Record(new CensorKey("beach-house"));
-
-            CollectionAssert.AreEquivalent(new[] { "plain", "gated" }, fx.VisibleChoiceIds());
         }
 
         [Test]
@@ -182,7 +164,7 @@ namespace GameName.Core.Tests.EditMode
             {
                 Line("line-1",
                     Choice("plain", true),
-                    Choice("gated", true, condition: ChoiceCondition.RequiresCensorKeyRevealed(new CensorKey("k")))),
+                    Choice("gated", true, condition: ChoiceCondition.ClueUsed(new ClueId("unused")))),
             });
 
             Assert.AreEqual(ChoiceSelectionOutcome.Rejected, fx.Progressor.Select(new ChoiceId("gated")).Outcome);
@@ -447,10 +429,9 @@ namespace GameName.Core.Tests.EditMode
             var rooms = new[] { otherRoom, currentRoom };
             var bus = new EventBus(new NoOpEventExceptionHandler());
             var trust = new TrustGauge(3, bus);
-            var censor = new CensorUnlockLog();
             var clueState = new ClueStateStore(rooms, bus);
             var progressor = new DialogueProgressor(
-                rooms, censor, clueState, trust, new TagMatchGrader(),
+                rooms, clueState, trust, new TagMatchGrader(),
                 new StabilityAxis(0, -100, 100, bus), bus);
 
             // room-0을 먼저 방문해 단서를 손에 넣는다.
@@ -486,10 +467,9 @@ namespace GameName.Core.Tests.EditMode
             var rooms = new[] { otherRoom, currentRoom };
             var bus = new EventBus(new NoOpEventExceptionHandler());
             var trust = new TrustGauge(3, bus);
-            var censor = new CensorUnlockLog();
             var clueState = new ClueStateStore(rooms, bus);
             var progressor = new DialogueProgressor(
-                rooms, censor, clueState, trust, new TagMatchGrader(),
+                rooms, clueState, trust, new TagMatchGrader(),
                 new StabilityAxis(0, -100, 100, bus), bus);
 
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));

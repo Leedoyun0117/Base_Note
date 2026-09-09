@@ -12,10 +12,8 @@ namespace GameName.Core.Dialogue
     // 방의 대화를 굴리는 처리기 — 현재 라인을 들고, 표시 가능한 선택지를
     // 걸러 내고, 선택을 처리한다.
     //
-    // 조건 판정을 직접 구현하지 않는다. 검열 조건은 ICensorResolver.IsRevealed에,
-    // 단서 사용 조건은 IClueStateReader 조회에 그대로 위임한다 — 대사 속 검열과
-    // 선택지 조건이 같은 판정을 써야 "대사에서는 드러난 사실인데 선택지만 잠겨
-    // 있는" 어긋남이 생기지 않기 때문이다.
+    // 조건 판정을 직접 구현하지 않는다. 단서 사용 조건은 IClueStateReader 조회에
+    // 그대로 위임한다.
     //
     // 신뢰도는 이제 이 처리기가 깎지 않는다 — 답이 맞았는지와 무관하게, 나츠의
     // 안정 축 위치에 따라 답변마다 깎이는 것이라 StabilityTrustErosionListener의
@@ -28,7 +26,6 @@ namespace GameName.Core.Dialogue
     public sealed class DialogueProgressor
     {
         private readonly IReadOnlyList<RoomDefinition> _rooms;
-        private readonly ICensorResolver _censorResolver;
 
         // 읽기가 아니라 쓰기 경계인 이유: ClueSelection 줄에서 고른 단서를 곧바로
         // UsedInDialogue로 전이시켜야 한다. 별도 처리기를 두지 않고 여기서 하는
@@ -64,7 +61,6 @@ namespace GameName.Core.Dialogue
 
         public DialogueProgressor(
             IReadOnlyList<RoomDefinition> rooms,
-            ICensorResolver censorResolver,
             IClueStateMutator clueState,
             ITrustReader trust,
             ITagMatchGrader grader,
@@ -72,7 +68,6 @@ namespace GameName.Core.Dialogue
             IEventBus eventBus)
         {
             _rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
-            _censorResolver = censorResolver ?? throw new ArgumentNullException(nameof(censorResolver));
             _clueState = clueState ?? throw new ArgumentNullException(nameof(clueState));
             _trust = trust ?? throw new ArgumentNullException(nameof(trust));
             _grader = grader ?? throw new ArgumentNullException(nameof(grader));
@@ -300,10 +295,6 @@ namespace GameName.Core.Dialogue
             {
                 case ChoiceConditionKind.None:
                     return true;
-
-                case ChoiceConditionKind.CensorKeyRevealed:
-                    return choice.Condition.RequiredCensorKey.HasValue
-                        && _censorResolver.IsRevealed(choice.Condition.RequiredCensorKey.Value);
 
                 case ChoiceConditionKind.ClueUsed:
                     return choice.Condition.RequiredClue.HasValue

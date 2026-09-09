@@ -58,25 +58,12 @@
 
              배경·화자·본문 컨테이너는 picking-mode를 Ignore로 꺼 둔다 — 그래야
              패널의 빈 공간을 눌러도 클릭이 뒤의 방까지 내려가 바닥 단서를 집을
-             수 있다. 실제로 클릭을 받는 것은 선택지 버튼과, 아직 풀리지 않은
-             마스크 구간(코드에서 개별 Label만 picking을 켠다)뿐이다. -->
+             수 있다. 실제로 클릭을 받는 것은 선택지 버튼뿐이다. -->
         <ui:VisualElement name="dialogue-panel" class="dialogue-panel" picking-mode="Ignore">
             <ui:Label name="dialogue-speaker" text="" class="dialogue-panel__speaker" picking-mode="Ignore" />
             <ui:VisualElement name="dialogue-body" class="dialogue-panel__body" picking-mode="Ignore" />
             <ui:VisualElement name="dialogue-choices" class="dialogue-panel__choices" picking-mode="Ignore" />
             <ui:Label name="dialogue-notice" text="" class="dialogue-panel__notice" picking-mode="Ignore" />
-
-            <!-- 마스크 구간을 눌렀을 때 뜨는 기억 제시 팝업. 평소에는 숨겨져
-                 있다. 제시할 수 있는 추출된 기억마다 버튼이 하나씩 코드에서
-                 채워진다(dialogue-unlock-options). 버튼은 클릭을 받아야
-                 하므로 컨테이너만 Ignore로 둔다. -->
-            <ui:VisualElement name="dialogue-unlock-prompt" class="dialogue-unlock-prompt" picking-mode="Ignore">
-                <ui:Label name="dialogue-unlock-text" text="" class="dialogue-unlock-prompt__text" picking-mode="Ignore" />
-                <ui:VisualElement name="dialogue-unlock-options" class="dialogue-unlock-prompt__options" picking-mode="Ignore" />
-                <ui:VisualElement class="dialogue-unlock-prompt__actions" picking-mode="Ignore">
-                    <ui:Button name="dialogue-unlock-cancel" text="취소" class="dialogue-unlock-prompt__cancel" />
-                </ui:VisualElement>
-            </ui:VisualElement>
         </ui:VisualElement>
 
     </ui:VisualElement>

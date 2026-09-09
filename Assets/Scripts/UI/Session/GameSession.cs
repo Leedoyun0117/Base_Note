@@ -77,17 +77,9 @@ namespace GameName.UI.Session
         public IVisibilityPolicy Visibility { get; }
         public IClueAccessPolicy ClueAccess { get; }
 
-        // ── 대화·검열 스택 ────────────────────────────────────────────────
-        // 대화 진행과 검열 해금. 화면은 이 표면만 구독/호출한다.
+        // ── 대화 스택 ────────────────────────────────────────────────────
+        // 대화 진행. 화면은 이 표면만 구독/호출한다.
         public DialogueProgressor Dialogue { get; }
-        public CensorUnlockProcessor CensorUnlock { get; }
-
-        // 대화 패널이 원문을 조각으로 잘라 그릴 때, 그리고 조각이 지금 풀렸는지
-        // 물을 때 쓴다. 검열 키 → 색 대응은 마스크 구간을 눌렀을 때 어느 색이
-        // 필요한지 판단하는 데 쓴다.
-        public ICensoredTextParser CensoredTextParser { get; }
-        public ICensorResolver CensorResolver { get; }
-        public ICensorKeyColorMap CensorKeyColors { get; }
 
         // 색별 추리 지원 마인드맵(복원도). 추출로 색이 드러날 때마다 뿌리와 단서
         // 노드가 자동으로 채워지고, 플레이어가 그 위에 자유 노드·연결을 얹는다.
@@ -182,22 +174,9 @@ namespace GameName.UI.Session
             RestorationBoardEditor = restorationBoard;
             _ = new RestorationBoardExtractionListener(restorationBoard, clueTracker, EventBus);
 
-            // ── 대화·검열 스택 ────────────────────────────────────────────
-            // 검열 키 → 색 대응은 저작 원문을 한 번 훑어 만든다(방마다 다시 하지 않음).
-            var censorLog = new CensorUnlockLog();
-            CensorResolver = censorLog;
-
-            var parser = new CensoredTextParser();
-            CensoredTextParser = parser;
-
-            var censorKeyColors = new CensorTokenIndexColorMap(new CensorTokenIndexSource(parser), run);
-            CensorKeyColors = censorKeyColors;
-
-            var censorKeyRequiredTags = new CensorKeyRequiredTagMap(run);
-
-            CensorUnlock = new CensorUnlockProcessor(memories, censorLog, censorKeyRequiredTags, EventBus);
+            // ── 대화 스택 ────────────────────────────────────────────────
             Dialogue = new DialogueProgressor(
-                run.Rooms, censorLog, clueState, trust, new TagMatchGrader(), stability, EventBus);
+                run.Rooms, clueState, trust, new TagMatchGrader(), stability, EventBus);
 
             // ── 방 진행 ────────────────────────────────────────────────────
             _ = new RoomCompletionArbiter(trust, EventBus);

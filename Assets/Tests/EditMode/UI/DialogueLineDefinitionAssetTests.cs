@@ -28,11 +28,11 @@ namespace GameName.UI.Tests.EditMode
             var asset = FromJson(@"{
                 ""_lineId"": ""line-1"",
                 ""_speaker"": ""유키"",
-                ""_authoredText"": ""우리 [[B:k:그 시절]] 기억나?"",
+                ""_authoredText"": ""우리 그 시절 기억나?"",
                 ""_lineKind"": 0,
                 ""_choices"": [
                     { ""_choiceId"": ""c-yes"", ""_authoredText"": ""응"", ""_isCorrect"": true, ""_nextLineId"": ""line-2"", ""_conditionKind"": 0 },
-                    { ""_choiceId"": ""c-gated"", ""_authoredText"": ""..."", ""_isCorrect"": false, ""_nextLineId"": """", ""_conditionKind"": 1, ""_requiredCensorKey"": ""k"" }
+                    { ""_choiceId"": ""c-gated"", ""_authoredText"": ""..."", ""_isCorrect"": false, ""_nextLineId"": """", ""_conditionKind"": 1, ""_requiredClueId"": ""ribbon"" }
                 ]
             }");
 
@@ -41,7 +41,7 @@ namespace GameName.UI.Tests.EditMode
             Assert.AreEqual(DialoguePromptKind.TextChoice, line.PromptKind);
             Assert.AreEqual(new DialogueLineId("line-1"), line.Id);
             Assert.AreEqual("유키", line.Speaker);
-            Assert.AreEqual("우리 [[B:k:그 시절]] 기억나?", line.AuthoredText);
+            Assert.AreEqual("우리 그 시절 기억나?", line.AuthoredText);
 
             Assert.AreEqual(2, line.Choices.Count);
             Assert.AreEqual(new ChoiceId("c-yes"), line.Choices[0].Id);
@@ -50,8 +50,8 @@ namespace GameName.UI.Tests.EditMode
             Assert.AreEqual(ChoiceConditionKind.None, line.Choices[0].Condition.Kind);
 
             Assert.IsFalse(line.Choices[1].Next.HasValue, "빈 nextLineId는 null이어야 한다.");
-            Assert.AreEqual(ChoiceConditionKind.CensorKeyRevealed, line.Choices[1].Condition.Kind);
-            Assert.AreEqual(new CensorKey("k"), line.Choices[1].Condition.RequiredCensorKey.Value);
+            Assert.AreEqual(ChoiceConditionKind.ClueUsed, line.Choices[1].Condition.Kind);
+            Assert.AreEqual(new ClueId("ribbon"), line.Choices[1].Condition.RequiredClue.Value);
 
             CollectionAssert.IsEmpty(line.RequiredTags);
         }

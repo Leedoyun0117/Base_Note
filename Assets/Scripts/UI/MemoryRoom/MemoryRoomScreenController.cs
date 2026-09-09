@@ -15,7 +15,7 @@ namespace GameName.UI.MemoryRoom
     //   · 2D 씬(MemoryRoomSpaceController) — 방 공간과 단서 오브젝트
     //   · 마스크(MemoryRoomMaskController) — 신뢰에 따라 방을 좌우에서 닫는다
     //   · 상단 바(MemoryRoomHudController) — 신뢰·추출 자원·기억제 보유 수
-    //   · 하단 대화 패널(DialoguePanelController) — 검열 렌더링된 대사와 선택지
+    //   · 하단 대화 패널(DialoguePanelController) — 대사와 선택지
     //   · 필요할 때만 뜨는 오버레이 — 가방(인벤토리)·단서 설명 창
     //   · 가방 안의 사물 용도 선택(ClueUsePanelController)
     //   · 가방 안의 "다음 기억으로" 레버(MemoryMoveLeverController)
