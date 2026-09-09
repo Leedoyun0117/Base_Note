@@ -7,6 +7,7 @@ using GameName.Core.Dialogue;
 using GameName.Core.Events;
 using GameName.Core.MemoryRooms;
 using GameName.Core.Mind;
+using GameName.Core.Progression;
 using GameName.Core.Trust;
 using NUnit.Framework;
 
@@ -176,6 +177,7 @@ namespace GameName.Core.Tests.EditMode
                 Progressor = new DialogueProgressor(
                     resolvedRun.Rooms, clueState, trust, new TagMatchGrader(),
                     new StabilityAxis(0, -100, 100, Bus), Bus);
+                _ = new RoomPhaseCoordinator(Bus);
                 Bus.Publish(new RoomStartedEvent(resolvedRun.Rooms[0].Id, 0));
             }
         }

@@ -78,7 +78,9 @@ namespace GameName.Core.Dialogue
             foreach (var clue in room.Clues)
                 _clueDefinitionsById[clue.Id] = clue;
 
-            _eventBus.Subscribe<RoomStartedEvent>(e => LoadRoom(e.RoomIndex));
+            // 방이 열리자마자가 아니라 조사 국면이 끝나 대화 국면이 시작될 때
+            // 그 방의 대사를 싣는다.
+            _eventBus.Subscribe<DialoguePhaseStartedEvent>(e => LoadRoom(e.RoomIndex));
         }
 
         public DialogueLineId? CurrentLineId => _currentLineId;

@@ -76,6 +76,8 @@ namespace GameName.Core.Tests.EditMode
                 Extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
                 Dialogue = new DialogueProgressor(
                     run.Rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
+                // 방이 시작되면 즉시 대화 국면으로 — DialogueProgressor는 그 사건에서 방을 싣는다.
+                _ = new RoomPhaseCoordinator(Bus);
                 _ = new RoomCompletionArbiter(Trust, Bus);
                 Run = new RunProgressor(run.Rooms, Bus);
                 MemoryMove = new MemoryMoveProcessor(run.MoveHiromiCost, Hiromi, Chance, Run);

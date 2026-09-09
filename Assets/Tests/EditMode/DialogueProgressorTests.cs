@@ -7,6 +7,7 @@ using GameName.Core.Events;
 using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
 using GameName.Core.Mind;
+using GameName.Core.Progression;
 using GameName.Core.Trust;
 using NUnit.Framework;
 
@@ -52,6 +53,9 @@ namespace GameName.Core.Tests.EditMode
                 ClueState = new ClueStateStore(rooms, Bus);
                 Progressor = new DialogueProgressor(
                     rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
+                // 방이 시작되면 대화 국면으로 자동 전환된다 — DialogueProgressor는
+                // 그 사건(DialoguePhaseStartedEvent)에서 방을 싣는다.
+                _ = new RoomPhaseCoordinator(Bus);
 
                 Bus.Subscribe<DialogueLineEnteredEvent>(Entered.Add);
                 Bus.Subscribe<ChoiceSelectedEvent>(Selected.Add);
@@ -77,6 +81,27 @@ namespace GameName.Core.Tests.EditMode
 
             Assert.AreEqual(new DialogueLineId("line-1"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(1, fx.Entered.Count);
+        }
+
+        [Test]
+        public void 대사를_싣는_것은_RoomStartedEvent가_아니라_대화_국면_시작_사건이다()
+        {
+            var bus = new EventBus(new NoOpEventExceptionHandler());
+            var rooms = new[]
+            {
+                new RoomDefinition(
+                    TheRoom, Array.Empty<ClueDefinition>(), new DialogueLineId("l"),
+                    new[] { Line("l", Choice("c", true)) }),
+            };
+            var progressor = new DialogueProgressor(
+                rooms, new ClueStateStore(rooms, bus), new TrustGauge(3, bus),
+                new TagMatchGrader(), new StabilityAxis(0, -100, 100, bus), bus);
+
+            bus.Publish(new RoomStartedEvent(TheRoom, 0));
+            Assert.IsNull(progressor.CurrentLine, "조사 국면에서는 아직 대사가 없다.");
+
+            bus.Publish(new DialoguePhaseStartedEvent(TheRoom, 0));
+            Assert.AreEqual(new DialogueLineId("l"), progressor.CurrentLineId);
         }
 
         [Test]
@@ -448,6 +473,7 @@ namespace GameName.Core.Tests.EditMode
             var progressor = new DialogueProgressor(
                 rooms, clueState, trust, new TagMatchGrader(),
                 new StabilityAxis(0, -100, 100, bus), bus);
+            _ = new RoomPhaseCoordinator(bus);
 
             // room-0을 먼저 방문해 단서를 손에 넣는다.
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
@@ -486,6 +512,7 @@ namespace GameName.Core.Tests.EditMode
             var progressor = new DialogueProgressor(
                 rooms, clueState, trust, new TagMatchGrader(),
                 new StabilityAxis(0, -100, 100, bus), bus);
+            _ = new RoomPhaseCoordinator(bus);
 
             bus.Publish(new RoomStartedEvent(otherRoom.Id, 0));
             clueState.SetState(new ClueId("clue-other"), ClueState.Collected);

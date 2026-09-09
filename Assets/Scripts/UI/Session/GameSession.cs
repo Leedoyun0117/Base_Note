@@ -52,6 +52,7 @@ namespace GameName.UI.Session
         // 피드백 대사가 안정 축을 움직이고, 그 위치가 유키의 인내심(Trust)을 깎는다.
         public IStabilityReader Stability { get; }
         public IPsychologyReader Psychology { get; }
+        public IRoomPhaseReader RoomPhase { get; }
 
         // 지금 손에 든 추출된 기억 — 검열 해금에 제시할 후보들. 옛
         // IMemoryColorWallet(색→개수) 자리를 대신한다.
@@ -181,6 +182,11 @@ namespace GameName.UI.Session
             // ── 대화 스택 ────────────────────────────────────────────────
             Dialogue = new DialogueProgressor(
                 run.Rooms, clueState, trust, new TagMatchGrader(), stability, EventBus);
+
+            // 방 국면(조사 → 대화). 지금은 방이 시작되는 즉시 대화 국면으로
+            // 넘긴다 — 조사 횟수 제한이 이 자동 전환을 대체하는 것은 다음 단계다.
+            var roomPhase = new RoomPhaseCoordinator(EventBus);
+            RoomPhase = roomPhase;
 
             // ── 방 진행 ────────────────────────────────────────────────────
             _ = new RoomCompletionArbiter(trust, EventBus);
