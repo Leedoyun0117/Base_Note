@@ -130,6 +130,20 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
+        public void 그_색_기억을_대화에_써_전부_소모하면_해당_색_점이_꺼진다()
+        {
+            var fx = new Fixture();
+            fx.Memories.Add(new ExtractedMemory(new ClueId("c"), MemoryColor.Green, System.Array.Empty<ClueTag>()));
+            fx.Bus.Publish(new MemoryColorRevealedEvent(MemoryColor.Green, new ClueId("c")));
+            Assert.IsTrue(fx.Held("g"));
+
+            fx.Memories.Remove(new ClueId("c"));
+            fx.Bus.Publish(new ExtractedMemoryConsumedEvent(new ClueId("c"), MemoryColor.Green));
+
+            Assert.IsFalse(fx.Held("g"), "그 색 기억이 다 나가면 점이 꺼진다.");
+        }
+
+        [Test]
         public void 방이_바뀌어도_신뢰_표시는_유지된다()
         {
             var fx = new Fixture(startingTrust: 3);

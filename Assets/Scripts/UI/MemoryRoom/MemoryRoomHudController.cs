@@ -52,8 +52,10 @@ namespace GameName.UI.MemoryRoom
                 eventBus.Subscribe<TrustChangedEvent>(_ => _view.SetTrust(_trust.Current)),
                 eventBus.Subscribe<HiromiChangedEvent>(_ => RenderHiromi()),
                 eventBus.Subscribe<ChanceChangedEvent>(_ => _view.SetChance(_chance.Remaining)),
-                // 손에 든 기억이 바뀌는 계기: 추출로 하나가 들어온다.
+                // 손에 든 기억이 바뀌는 두 계기: 추출로 하나가 들어오고, 대화에
+                // 답으로 내밀어 하나가 소모된다.
                 eventBus.Subscribe<MemoryColorRevealedEvent>(_ => RenderMemories()),
+                eventBus.Subscribe<ExtractedMemoryConsumedEvent>(_ => RenderMemories()),
             };
 
             RenderAll();

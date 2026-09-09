@@ -164,6 +164,9 @@ namespace GameName.UI.Session
             ExtractionProcessor = new ExtractionProcessor(hiromi, clueState, memories, clueTracker, EventBus);
             ClueDiscardProcessor = new ClueDiscardProcessor(clueState, EventBus);
 
+            // 대화의 답으로 내민 단서에 딸린 추출 기억은 그 자리에서 소모된다.
+            _ = new ExtractedMemoryConsumptionListener(memories, EventBus);
+
             // 인벤토리는 ClueState의 투영 — 수집/추출/버리기 사건을 듣고 스스로 갱신한다.
             _ = new InventoryProjection(Inventory, clueTracker, EventBus);
 

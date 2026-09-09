@@ -74,6 +74,7 @@ namespace GameName.Core.Tests.EditMode
                 _ = new InventoryProjection(Inventory, tracker, Bus);
                 _ = new RoomEntryInventoryClear(Inventory, Discard, Bus);
                 Extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
+                _ = new ExtractedMemoryConsumptionListener(Memories, Bus);
                 Dialogue = new DialogueProgressor(
                     run.Rooms, ClueState, Trust, new TagMatchGrader(), Stability, Bus);
                 // 방이 시작되면 즉시 대화 국면으로 — DialogueProgressor는 그 사건에서 방을 싣는다.

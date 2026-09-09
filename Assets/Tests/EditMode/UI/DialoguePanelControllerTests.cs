@@ -112,6 +112,7 @@ namespace GameName.UI.Tests.EditMode
                     placements.Add(new CluePlacement(room.Id, clue));
                 var tracker = new MemoryRoomClueTracker(placements);
                 var extraction = new ExtractionProcessor(Hiromi, ClueState, Memories, tracker, Bus);
+                _ = new ExtractedMemoryConsumptionListener(Memories, Bus);
 
                 Progressor = new DialogueProgressor(
                     run.Rooms, ClueState, trust, new TagMatchGrader(),
@@ -258,17 +259,20 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 추출한_단서도_그대로_답으로_낼_수_있다()
+        public void 추출한_단서를_답으로_내면_그_기억이_소모된다()
         {
             var fx = new Fixture(ClueSelectionRoom());
             fx.ClueState.SetState(new ClueId("clue-a"), ClueState.Collected);
             fx.Bus.Publish(new DialogueLineEnteredEvent(new DialogueLineId("q")));
 
             fx.View.RaiseExtractClue(new ClueId("clue-a"));
+            Assert.IsTrue(fx.Memories.TryGet(new ClueId("clue-a"), out _));
+
             fx.View.RaiseClueAnswerClicked(new ClueId("clue-a"));
 
             Assert.AreEqual(new DialogueLineId("right"), fx.Progressor.CurrentLineId);
             Assert.AreEqual(ClueState.UsedInDialogue, fx.ClueState.GetState(new ClueId("clue-a")));
+            Assert.IsFalse(fx.Memories.TryGet(new ClueId("clue-a"), out _), "답으로 낸 기억은 소모된다.");
         }
 
         [Test]
