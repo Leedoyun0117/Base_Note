@@ -16,11 +16,17 @@ namespace GameName.UI.Editor.SceneSetup
     // 방 1 구성·마스크 셰이더(DotTexture)는 하나도 건드리지 않는다.
     //
     // ── 무엇을 만드나 ──────────────────────────────────────────────────
-    //  · RoomArt_room2(스위처가 방 전환에 맞춰 껐다 켜는 컨테이너) 아래에
-    //    BG·SideBuilding·MainTower·MainTowerLight·Clock·(Hour·Min)·
-    //    BackIronBar·LeftPeople·RightPeople·FrontIronBar 레이어를 깐다.
-    //  · 시계면 자식으로 따뜻한 Point 주광 + 느린 맥동(Light2DFlicker),
-    //    RoomArt_room2 자식으로 아주 낮은 푸른 밤 Global.
+    //  · 배경 고정 / 콘텐츠 흔들림 분리 (그린룸 방 1 패턴 그대로):
+    //    - RoomArt_room2 (스위처가 껐다 켜는 고정 컨테이너, CameraShake 밖):
+    //      BG + 아주 낮은 푸른 밤 Global.
+    //    - RoomArt_room2_Motion (Space 자식 = CameraShake 대상):
+    //      SideBuilding·MainTower·MainTowerLight·Clock·(Hour·Min)·
+    //      BackIronBar·LeftPeople·RightPeople·FrontIronBar·Fly.
+    //    두 컨테이너 모두 카메라 세로 뷰에 맞춰 같은 scale·위치로 정규화하므로
+    //    reparent 후에도 배경과 콘텐츠가 정확히 겹친다. 스위처 room-2 항목에
+    //    두 컨테이너를 모두 등록해 방 전환에 함께 켜지고 꺼진다.
+    //  · 시계면 자식으로 따뜻한 Point 주광 + 느린 맥동(Light2DFlicker) — Clock이
+    //    흔들림 컨테이너 안에 있으므로 빛·그림자도 콘텐츠와 함께 흔들린다.
     //  · 인물·난간에 ShadowCaster2D(trimEdge=0), 시계면·발광·바늘은 Unlit.
     //  · 시침·분침은 ClockHands로 6도 스냅 회전, 빛 주위엔 FlyWander로 벌레.
     //
@@ -35,6 +41,8 @@ namespace GameName.UI.Editor.SceneSetup
         private const string UndoGroupName = "시계탑 방 구성";
 
         private const string RoomArtName = "RoomArt_room2";
+        // 흔들리는 콘텐츠 레이어를 담는 컨테이너 — Space 자식이라 CameraShake가 민다.
+        private const string MotionArtName = "RoomArt_room2_Motion";
 
         // 광원 자신·발광 레이어가 어두워지면 안 되므로 갈아탈 머티리얼(Sprite-Unlit-Default).
         private const string UnlitMaterialGuid = "9dfc825aed78fcd4ba02077103263b40";
@@ -69,19 +77,21 @@ namespace GameName.UI.Editor.SceneSetup
             public string Guid;
             public int Order;
             public bool Unlit;
+            // true면 Space 자식(흔들리는 콘텐츠), false면 RoomArt_room2 직속(고정 배경).
+            public bool Motion;
         }
 
         private static readonly Layer[] Layers =
         {
             new Layer { Name = "BG",             Guid = "30c4884bb0a4cc244b79e1d9374e9a91", Order = -100 },
-            new Layer { Name = "SideBuilding",   Guid = "41ec90c47ab7efb4095849d76954ad3c", Order = -95 },
-            new Layer { Name = "MainTower",      Guid = "1ff135b245bca304eb580f55153564bf", Order = -90 },
-            new Layer { Name = "MainTowerLight", Guid = "cfed19e4bfb0293489ab7f499f14cf69", Order = -85, Unlit = true },
-            new Layer { Name = "Clock",          Guid = "0653399b5b4a75444928b4a5beb4c6fa", Order = -80, Unlit = true },
-            new Layer { Name = "BackIronBar",    Guid = "46c2d6c5d09b8e846bd6a796d5b09bc8", Order = -70 },
-            new Layer { Name = "LeftPeople",     Guid = "b853ceedca137674f882def072d517ad", Order = -60 },
-            new Layer { Name = "RightPeople",    Guid = "dfa038f80b9569249a99a6c94439cee4", Order = -60 },
-            new Layer { Name = "FrontIronBar",   Guid = "9d057e0f587b0eb4485a8723ee3867cc", Order = -50 },
+            new Layer { Name = "SideBuilding",   Guid = "41ec90c47ab7efb4095849d76954ad3c", Order = -95, Motion = true },
+            new Layer { Name = "MainTower",      Guid = "1ff135b245bca304eb580f55153564bf", Order = -90, Motion = true },
+            new Layer { Name = "MainTowerLight", Guid = "cfed19e4bfb0293489ab7f499f14cf69", Order = -85, Unlit = true, Motion = true },
+            new Layer { Name = "Clock",          Guid = "0653399b5b4a75444928b4a5beb4c6fa", Order = -80, Unlit = true, Motion = true },
+            new Layer { Name = "BackIronBar",    Guid = "46c2d6c5d09b8e846bd6a796d5b09bc8", Order = -70, Motion = true },
+            new Layer { Name = "LeftPeople",     Guid = "b853ceedca137674f882def072d517ad", Order = -60, Motion = true },
+            new Layer { Name = "RightPeople",    Guid = "dfa038f80b9569249a99a6c94439cee4", Order = -60, Motion = true },
+            new Layer { Name = "FrontIronBar",   Guid = "9d057e0f587b0eb4485a8723ee3867cc", Order = -50, Motion = true },
         };
 
         private const string HourGuid = "b569a8740b88c2843abe4e4787b32f60";
@@ -140,6 +150,7 @@ namespace GameName.UI.Editor.SceneSetup
 
             // RoomArt_room2는 씬마다 부모가 다르다 — GameScene2에선 MemoryRoomScreen 밑,
             // LDY_GameScene에선 OverlayPanels 밑(RoomArtSwitcher와 같은 오브젝트). 씬 전체에서 이름으로 찾는다.
+            // 이 컨테이너는 CameraShake 밖이라 고정 배경(BG·밤 Global)만 담는다.
             var roomArt = FindInScene(RoomArtName);
             if (roomArt == null)
             {
@@ -148,18 +159,35 @@ namespace GameName.UI.Editor.SceneSetup
                 return;
             }
 
+            // 흔들리는 콘텐츠 레이어는 Space(=CameraShake._shakeTarget) 자식으로 간다.
+            // Space가 없으면 기억 방 씬 구성이 아직 안 끝난 것.
+            var spaceView = Object.FindFirstObjectByType<MemoryRoomSpaceView>(FindObjectsInactive.Include);
+            if (spaceView == null)
+            {
+                report.Problem("MemoryRoomSpaceView(Space)를 찾지 못했습니다. 먼저 GameName ▸ 기억 방 씬 구성을 실행하세요.");
+                Present(scene.name, report);
+                return;
+            }
+            var motion = EnsureMotionContainer(spaceView.transform, report);
+
             var unlit = LoadUnlitMaterial(report);
 
-            Step("컨테이너 정규화", () => NormalizeContainer(roomArt, report), report);
+            // 두 컨테이너를 같은 카메라-핏 트랜스폼으로 정규화 — 배경과 콘텐츠가 정확히 겹치게.
+            Step("컨테이너 정규화 (고정)", () => NormalizeContainer(roomArt, report), report);
+            Step("컨테이너 정규화 (흔들림)", () => NormalizeContainer(motion, report), report);
             Step("절차적 구조 숨김", () => HideStructureRenderers(report), report);
 
             Transform clock = null;
             foreach (var layer in Layers)
             {
                 var captured = layer;
+                var target = captured.Motion ? motion : roomArt;
+                var other = captured.Motion ? roomArt : motion;
                 Step($"레이어 {captured.Name}", () =>
                 {
-                    var t = BuildLayer(roomArt, captured, unlit, report);
+                    // 이전 빌드가 다른 컨테이너에 깔아 뒀으면 옮긴다(멱등).
+                    MigrateChild(other, target, captured.Name, report);
+                    var t = BuildLayer(target, captured, unlit, report);
                     if (captured.Name == "Clock") clock = t;
                 }, report);
             }
@@ -171,11 +199,16 @@ namespace GameName.UI.Editor.SceneSetup
             foreach (var caster in ShadowCasters)
             {
                 var captured = caster;
-                Step($"{captured} ShadowCaster", () => ApplyShadowCaster(roomArt, captured, report), report);
+                Step($"{captured} ShadowCaster", () => ApplyShadowCaster(motion, captured, report), report);
             }
 
-            Step("벌레 (FlyWander)", () => BuildFlies(roomArt, unlit, report), report);
-            Step("다른 Global Light 토글 배선", () => WireRoom1GlobalToggle(roomArt, report), report);
+            Step("벌레 (FlyWander)", () =>
+            {
+                MigrateChild(roomArt, motion, "Fly", report);
+                BuildFlies(motion, unlit, report);
+            }, report);
+            Step("다른 Global Light 토글 배선", () => WireRoom1GlobalToggle(roomArt, motion, report), report);
+            Step("스위처 room-2 항목에 두 컨테이너 등록", () => WireRoom2Toggle(roomArt, motion, report), report);
 
             EditorSceneManager.MarkSceneDirty(scene);
             Undo.CollapseUndoOperations(undoGroup);
@@ -208,7 +241,7 @@ namespace GameName.UI.Editor.SceneSetup
             var cam = Camera.main != null ? Camera.main : Object.FindFirstObjectByType<Camera>();
             if (cam == null || !cam.orthographic)
             {
-                report.Problem($"직교 카메라를 찾지 못해 {RoomArtName} 프레이밍을 건드리지 않았습니다. 스케일을 손으로 맞추세요.");
+                report.Problem($"직교 카메라를 찾지 못해 {roomArt.name} 프레이밍을 건드리지 않았습니다. 스케일을 손으로 맞추세요.");
                 return;
             }
 
@@ -218,12 +251,12 @@ namespace GameName.UI.Editor.SceneSetup
             var z = Mathf.Approximately(roomArt.localScale.z, 0f) ? 1f : roomArt.localScale.z;
             roomArt.localScale = new Vector3(fit, fit, z);
 
-            // 카메라 정면에 중앙 정렬(월드 위치로 직접 — RectTransform 앵커에 안 휘둘리게).
+            // 카메라 정면에 중앙 정렬(월드 위치로 직접 — RectTransform 앵커·부모 흔들림에 안 휘둘리게).
             var c = cam.transform.position;
             roomArt.position = new Vector3(c.x, c.y, roomArt.position.z);
             EditorUtility.SetDirty(roomArt);
 
-            report.Linked($"{RoomArtName} 카메라 뷰에 맞춤 (scale {fit:0.###}, 중앙 ({c.x:0.##}, {c.y:0.##})) — 프레이밍 재조정");
+            report.Linked($"{roomArt.name} 카메라 뷰에 맞춤 (scale {fit:0.###}, 중앙 ({c.x:0.##}, {c.y:0.##})) — 프레이밍 재조정");
         }
 
         // ── 절차적 방 구조(벽·바닥·포스터)가 픽셀아트 뒤로 비치지 않게 ──────────
@@ -517,7 +550,7 @@ namespace GameName.UI.Editor.SceneSetup
         // 모든 Global Light를 스위처의 room-1 항목에 넣어 방 2로 넘어갈 때 꺼지게
         // 한다(그린룸 씬에서 검증된 패턴 — Global Light가 Room-1 Objects 멤버). 방 1
         // 아트·라이트 값은 안 건드리고, 스위처 토글 목록에 등록만 한다.
-        private static void WireRoom1GlobalToggle(Transform roomArt, SceneSetupReport report)
+        private static void WireRoom1GlobalToggle(Transform roomArt, Transform motion, SceneSetupReport report)
         {
             var switcher = Object.FindFirstObjectByType<RoomArtSwitcher>(FindObjectsInactive.Include);
             if (switcher == null)
@@ -526,9 +559,12 @@ namespace GameName.UI.Editor.SceneSetup
                 return;
             }
 
-            // RoomArt_room2 서브트리 '밖'에 있는 Global Light 전부 (밤 Global은 자연히 제외됨).
+            // 방 2 컨테이너(고정·흔들림) 서브트리 '밖'에 있는 Global Light 전부
+            // (밤 Global은 RoomArt_room2 자식이라 자연히 제외됨).
             var others = Object.FindObjectsByType<Light2D>(FindObjectsInactive.Include, FindObjectsSortMode.None)
-                .Where(l => l.lightType == Light2D.LightType.Global && !l.transform.IsChildOf(roomArt))
+                .Where(l => l.lightType == Light2D.LightType.Global
+                            && !l.transform.IsChildOf(roomArt)
+                            && !l.transform.IsChildOf(motion))
                 .Select(l => l.gameObject)
                 .ToList();
             if (others.Count == 0)
@@ -592,6 +628,107 @@ namespace GameName.UI.Editor.SceneSetup
             {
                 report.Linked("바깥 Global Light가 이미 RoomArtSwitcher room-1에 등록돼 있습니다.");
             }
+        }
+
+        // ── 스위처 room-2 항목에 고정·흔들림 컨테이너 둘 다 등록 ────────────────
+        // 예전엔 RoomArt_room2 하나만 껐다 켰다. 콘텐츠가 Space 밑 별도 컨테이너로
+        // 빠졌으니, 방 전환 때 둘이 함께 켜지고 꺼져야 한다.
+        private static void WireRoom2Toggle(Transform roomArt, Transform motion, SceneSetupReport report)
+        {
+            var switcher = Object.FindFirstObjectByType<RoomArtSwitcher>(FindObjectsInactive.Include);
+            if (switcher == null)
+            {
+                report.Problem("RoomArtSwitcher를 찾지 못했습니다.");
+                return;
+            }
+
+            var so = new SerializedObject(switcher);
+            var rooms = so.FindProperty("_rooms");
+            if (rooms == null || !rooms.isArray)
+            {
+                report.Problem("RoomArtSwitcher._rooms를 찾지 못했습니다.");
+                return;
+            }
+
+            SerializedProperty entry = null;
+            for (var i = 0; i < rooms.arraySize; i++)
+            {
+                var id = (rooms.GetArrayElementAtIndex(i).FindPropertyRelative("RoomId").stringValue ?? "")
+                    .Trim().ToLowerInvariant();
+                if (id == "room-2")
+                {
+                    entry = rooms.GetArrayElementAtIndex(i);
+                    break;
+                }
+            }
+
+            var createdEntry = entry == null;
+            if (createdEntry)
+            {
+                rooms.arraySize++;
+                entry = rooms.GetArrayElementAtIndex(rooms.arraySize - 1);
+                entry.FindPropertyRelative("RoomId").stringValue = "room-2";
+                entry.FindPropertyRelative("Objects").arraySize = 0;
+            }
+
+            var objs = entry.FindPropertyRelative("Objects");
+            var want = new[] { roomArt.gameObject, motion.gameObject };
+            var added = 0;
+            foreach (var go in want)
+            {
+                var present = false;
+                for (var k = 0; k < objs.arraySize; k++)
+                    if (objs.GetArrayElementAtIndex(k).objectReferenceValue == go) { present = true; break; }
+                if (present)
+                    continue;
+
+                objs.arraySize++;
+                objs.GetArrayElementAtIndex(objs.arraySize - 1).objectReferenceValue = go;
+                added++;
+            }
+
+            if (createdEntry || added > 0)
+            {
+                so.ApplyModifiedProperties();
+                EditorUtility.SetDirty(switcher);
+                report.Linked($"RoomArtSwitcher room-2 항목{(createdEntry ? " 생성" : "")}에 컨테이너 {added}개 등록 " +
+                    $"({RoomArtName}, {MotionArtName})");
+            }
+            else
+            {
+                report.Linked($"RoomArtSwitcher room-2에 두 컨테이너가 이미 등록돼 있습니다.");
+            }
+        }
+
+        // ── 흔들리는 콘텐츠 컨테이너 (Space 자식) ──────────────────────────────
+        private static Transform EnsureMotionContainer(Transform space, SceneSetupReport report)
+        {
+            var existing = FindImmediateChild(space, MotionArtName);
+            if (existing != null)
+                return existing;
+
+            var go = new GameObject(MotionArtName);
+            Undo.RegisterCreatedObjectUndo(go, UndoGroupName);
+            go.transform.SetParent(space, worldPositionStays: false);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localRotation = Quaternion.identity;
+            go.transform.localScale = Vector3.one;
+            report.Created($"{space.name}/{MotionArtName} (흔들리는 시계탑 콘텐츠 컨테이너)");
+            return go.transform;
+        }
+
+        // 레이어가 예전 컨테이너에 있으면 새 컨테이너로 옮긴다(월드 위치 보존 —
+        // 두 컨테이너는 같은 트랜스폼으로 정규화돼 있어 로컬 오프셋도 그대로다).
+        private static void MigrateChild(Transform fromParent, Transform toParent, string name, SceneSetupReport report)
+        {
+            if (fromParent == null || toParent == null)
+                return;
+            var child = FindImmediateChild(fromParent, name);
+            if (child == null)
+                return;
+
+            Undo.SetTransformParent(child, toParent, $"{UndoGroupName} — {name} 이동");
+            report.Linked($"{name}: {fromParent.name} → {toParent.name} 로 이동");
         }
 
         // ── 공통 ────────────────────────────────────────────────────────
