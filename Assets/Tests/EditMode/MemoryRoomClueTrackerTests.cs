@@ -1,23 +1,22 @@
 using System.Linq;
 using GameName.Core.Clues;
-using GameName.Core.Memories;
 using GameName.Core.MemoryRooms;
 using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // 카탈로그로서의 추적기: 어떤 단서가 어느 방에 놓여 있고 그 정의가 무엇인가.
-    // "집었는가"는 여기서 답하지 않는다 — 그건 ClueState의 몫이다.
+    // 카탈로그로서의 추적기: 어떤 단서가 어느 라운드에 놓여 있고 그 정의가
+    // 무엇인가. "읽었는가"는 여기서 답하지 않는다 — 그건 ClueState의 몫이다.
     public class MemoryRoomClueTrackerTests
     {
         private static ClueDefinition MakeClueDefinition(string id, ClueKind kind = ClueKind.FloorObject) =>
-            new ClueDefinition(new ClueId(id), kind, id, new CluePositionRatio(0.5f), MemoryColor.Red);
+            new ClueDefinition(new ClueId(id), kind, id, new CluePositionRatio(0.5f), story: $"{id} 서사");
 
         private static CluePlacement Place(MemoryRoomId roomId, string id, ClueKind kind = ClueKind.FloorObject) =>
             new CluePlacement(roomId, MakeClueDefinition(id, kind));
 
         [Test]
-        public void 방별_조회는_그_방의_단서만_ClueInfo로_반환한다()
+        public void 라운드별_조회는_그_라운드의_단서만_ClueInfo로_반환한다()
         {
             var roomA = new MemoryRoomId("room-a");
             var roomB = new MemoryRoomId("room-b");
@@ -35,27 +34,12 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 방별_조회는_집힘_여부로_거르지_않는다()
-        {
-            // 집힌 단서를 방에서 지우는 것은 ClueState를 보는 화면의 몫이다 —
-            // 카탈로그는 배치된 단서를 항상 그대로 내어준다.
-            var roomId = new MemoryRoomId("room-a");
-            var tracker = new MemoryRoomClueTracker(new[]
-            {
-                Place(roomId, "clue-1"),
-                Place(roomId, "clue-2"),
-            });
-
-            Assert.AreEqual(2, tracker.GetCluesInRoom(roomId).Count);
-        }
-
-        [Test]
-        public void 정의는_습득_여부와_무관하게_조회된다()
+        public void 정의는_읽힘_여부와_무관하게_조회되고_서사를_담는다()
         {
             var tracker = new MemoryRoomClueTracker(new[] { Place(new MemoryRoomId("room-a"), "clue-1") });
 
             Assert.IsTrue(tracker.TryGetDefinition(new ClueId("clue-1"), out var def));
-            Assert.AreEqual(MemoryColor.Red, def.HiddenColor);
+            Assert.AreEqual("clue-1 서사", def.Story);
             Assert.IsFalse(tracker.TryGetDefinition(new ClueId("clue-없음"), out _));
         }
 
@@ -73,7 +57,7 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
-        public void 방별_조회_순서는_등록_순서를_유지한다()
+        public void 라운드별_조회_순서는_등록_순서를_유지한다()
         {
             var roomId = new MemoryRoomId("room-a");
             var tracker = new MemoryRoomClueTracker(new[]

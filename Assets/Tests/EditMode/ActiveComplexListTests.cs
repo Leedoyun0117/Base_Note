@@ -1,6 +1,10 @@
+using System;
 using System.Collections.Generic;
+using GameName.Core.Authoring;
+using GameName.Core.Clues;
 using GameName.Core.Complexes;
 using GameName.Core.Events;
+using GameName.Core.MemoryRooms;
 using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
@@ -10,6 +14,18 @@ namespace GameName.Core.Tests.EditMode
     public class ActiveComplexListTests
     {
         private static EventBus Bus() => new EventBus(new NoOpEventExceptionHandler());
+
+        // 턴을 밀어 줄 코디네이터. RoomStartedEvent를 먼저 내 라운드를 세팅한다.
+        private static TurnCoordinator Turns(EventBus bus)
+        {
+            var rounds = new List<RoomDefinition>
+            {
+                new RoomDefinition(new MemoryRoomId("round-1"), Array.Empty<ClueDefinition>(), turnsToSurvive: 99),
+            };
+            var coordinator = new TurnCoordinator(rounds, bus);
+            bus.Publish(new RoomStartedEvent(new MemoryRoomId("round-1"), 0));
+            return coordinator;
+        }
 
         private static ComplexDefinition Complex(string id, int priority, int duration) =>
             new ComplexDefinition(
@@ -72,7 +88,7 @@ namespace GameName.Core.Tests.EditMode
             var expired = new List<ComplexExpiredEvent>();
             bus.Subscribe<ComplexExpiredEvent>(expired.Add);
             var list = new ActiveComplexList(4, bus);
-            var coordinator = new TurnCoordinator(turnsToSurvive: 10, bus);
+            var coordinator = Turns(bus);
 
             list.TryActivate(Complex("a", 0, 2));
 

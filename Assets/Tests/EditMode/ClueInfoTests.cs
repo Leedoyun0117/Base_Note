@@ -1,15 +1,13 @@
 using System.Linq;
 using System.Reflection;
 using GameName.Core.Clues;
-using GameName.Core.Memories;
 using NUnit.Framework;
 
 namespace GameName.Core.Tests.EditMode
 {
-    // UI/인벤토리가 실제로 받는 타입(ClueInfo)의 공개 표면이 저작 데이터
-    // 전체가 아니라 "공개해도 되는 것"만으로 이뤄져 있다는 것을 타입 수준에서
-    // 고정하는 테스트. 나중에 ClueDefinition에 감춰야 할 값이 추가되었을 때
-    // 그것이 ClueInfo로 새어 나오면 이 테스트가 즉시 깨진다.
+    // UI가 실제로 받는 타입(ClueInfo)의 공개 표면이 저작 데이터 전체가 아니라
+    // "공개해도 되는 것"만으로 이뤄져 있다는 것을 타입 수준에서 고정한다.
+    // ClueDefinition에 감춰야 할 값(서사·태그)이 ClueInfo로 새어 나오면 즉시 깨진다.
     public class ClueInfoTests
     {
         [Test]
@@ -27,16 +25,16 @@ namespace GameName.Core.Tests.EditMode
                     nameof(ClueInfo.Kind),
                     nameof(ClueInfo.DisplayName),
                     nameof(ClueInfo.AuthoredPosition),
-                    nameof(ClueInfo.Category),
                 },
                 publicPropertyNames);
         }
 
         [Test]
-        public void ClueDefinition에서_변환한_ClueInfo는_같은_값을_그대로_담는다()
+        public void ClueDefinition에서_변환한_ClueInfo는_같은_값을_그대로_담고_서사는_빼놓는다()
         {
             var definition = new ClueDefinition(
-                new ClueId("clue-1"), ClueKind.Poster, "낡은 모포", new CluePositionRatio(0.25f), MemoryColor.Blue);
+                new ClueId("clue-1"), ClueKind.Poster, "낡은 모포", new CluePositionRatio(0.25f),
+                story: "그 여름밤, 옥상.");
 
             var info = definition.ToInfo();
 

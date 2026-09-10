@@ -1,118 +1,39 @@
 using System;
 using System.Collections.Generic;
-using GameName.Core.Mind;
 
 namespace GameName.Core.Authoring
 {
     // 한 판 전체의 저작 데이터.
     //
-    // 방 개수를 생성자에서 막지 않는 이유: 방이 몇 개여야 하는가는 기획 규칙이지
-    // 이 타입이 성립하기 위한 조건이 아니다. 그런 규칙은 전부 검증기의 규칙
-    // 하나(RoomCountRule)로 모아 두어야, 방 개수가 바뀌는 날 이 타입을 건드리지
-    // 않고 검증기 조립만 고치면 된다.
+    // 3차 개편에서 크게 줄었다: 히로민·기회·신뢰·심리 상태·왜곡 수치가 전부
+    // 빠졌다. 남은 것은 라운드 목록과, 안정 축의 시작·범위, 결정적 난수 시드다.
+    // 컴플렉스 발생 확률표·감정 이동표 같은 밸런싱 딕셔너리는 GameSessionData가
+    // 든다(그릇 모양이 Core 타입이 아니라서).
     public sealed class RunDefinition
     {
+        // 진행 순서대로의 라운드들.
         public IReadOnlyList<RoomDefinition> Rooms { get; }
 
-        public int StartingTrust { get; }
-
-        // 런 시작 시 손에 쥐고 시작하는 히로민. 대화 한 번마다 벌고(아래 회복
-        // 공식), 추출 한 번(-9)과 다음 기억으로 이동(-15)에 쓰는 단일 자원의
-        // 시작값이다. 실제로 벌고 쓰는 것은 IHiromiMutator이고, 여기 있는 것은
-        // 그 시작값이다.
-        public int StartingHiromi { get; }
-
-        // 답변 한 번마다 회복하는 히로민: Base + round(max(0, BonusBand - |안정
-        // 위치|) / BonusDivisor). 안정(0)에 가까울수록 더 벌고, |위치|가 BonusBand를
-        // 넘어서면 Base만 회복한다. 계산은 HiromiDialogueEarningListener가 하고,
-        // 여기 있는 것은 그 세 수치뿐이다.
-        public int DialogueHiromiBase { get; }
-        public int HiromiStabilityBonusBand { get; }
-        public int HiromiStabilityBonusDivisor { get; }
-
-        // 런당 총 기회. 히로민이 모자란 채로 다음 기억으로 강제 이동할 때마다
-        // 하나씩 줄고, 0이 되면 런이 끝난다.
-        public int StartingChance { get; }
-
-        // 한 방의 조사 국면에서 단서를 몇 개까지 집을 수 있는가. 그 수만큼 집으면
-        // 조사가 끝나고 대화 국면이 시작된다. 지금은 가방 칸 수와 같은 값이라
-        // "가방을 채우면 대화로 넘어간다"로 읽히지만, 더 조인 방을 만들려면
-        // 칸 수보다 작게 저작할 수 있어 데이터로 둔다. 0이면 조사 없이 곧장 대화.
-        public int InvestigationsPerRoom { get; }
-
-        // 다음 기억으로 이동하는 데 드는 히로민이자, "지금 그냥 이동해도 되는가"를
-        // 가르는 문턱이기도 하다(MemoryMoveProcessor는 이 값을 그대로 소모액으로
-        // 쓴다). 상수로 박지 않는 이유: 밸런싱 값이고, 화면(HUD 게이지의 문턱
-        // 표시, 가방 레버가 확인 팝업을 띄울지 판단하는 기준)도 같은 값을 알아야
-        // 하는데 코드에 흩어져 박히면 저작이 바뀔 때 어딘가는 빠뜨리게 된다.
-        public int MoveHiromiCost { get; }
-
-        // 랜덤 분기 풀을 확정할 때 쓰는 시드. 런 시작 시 BranchResolver가 이
-        // 값으로 각 풀의 후보를 결정적으로 고른다. 테스트에서 고정하려고 밖에서
-        // 주입할 수 있게 데이터로 들고 있으며, 분기 풀이 없으면 아무 데도 안 쓰인다.
+        // 결정적 난수 시드. 컴플렉스 발생 굴림·뽑기가 이 값으로 재현된다.
         public int Seed { get; }
 
         // 런 시작 시 나츠의 안정 축 위치와 그 축의 침체·흥분 양 끝.
-        // -100..0..+100은 지금의 저작값일 뿐이라 상수가 아니라 데이터로 둔다.
         public int StartingStability { get; }
         public int StabilityMin { get; }
         public int StabilityMax { get; }
 
-        // 신뢰(유키의 인내심)가 안정 축 이탈로 깎이는 규칙의 두 수치.
-        // |안정 위치| 가 자유 폭(FreeBand) 이내면 깎이지 않고, 넘어서면 매 답변마다
-        // round((|위치| - FreeBand) / Divisor) 만큼 깎인다. 계산은
-        // StabilityTrustErosionListener가 하고, 여기 있는 것은 그 두 수치뿐이다.
-        public int TrustErosionFreeBand { get; }
-        public int TrustErosionDivisor { get; }
-
-        // 런 시작 시 나츠의 심리 상태. 기억 해석 방식을 결정한다.
-        public PsychologyState StartingPsychology { get; }
-
-        // 답의 등급이 심리 × 안정 조합으로 왜곡되는 규칙의 두 수치.
-        // |안정 위치| 가 자유 폭 이내면 왜곡이 없고, 넘어설수록 칸 폭마다 한 칸씩
-        // (최대 두 칸) 등급이 밀리거나 뒤집힌다. 방향은 심리 상태가 정하고
-        // 계산은 MemoryEffectResolver가 한다.
-        public int MemoryDistortionFreeBand { get; }
-        public int MemoryDistortionStep { get; }
-
         public RunDefinition(
             IReadOnlyList<RoomDefinition> rooms,
-            int startingTrust,
-            int startingHiromi,
             int seed = 0,
-            int startingChance = 2,
-            int moveHiromiCost = 15,
             int startingStability = 0,
             int stabilityMin = -100,
-            int stabilityMax = 100,
-            int trustErosionFreeBand = 20,
-            int trustErosionDivisor = 10,
-            PsychologyState startingPsychology = PsychologyState.Optimism,
-            int dialogueHiromiBase = 3,
-            int hiromiStabilityBonusBand = 20,
-            int hiromiStabilityBonusDivisor = 4,
-            int investigationsPerRoom = 3,
-            int memoryDistortionFreeBand = 20,
-            int memoryDistortionStep = 30)
+            int stabilityMax = 100)
         {
             Rooms = rooms ?? throw new ArgumentNullException(nameof(rooms));
-            StartingTrust = startingTrust;
-            StartingHiromi = startingHiromi;
             Seed = seed;
-            StartingChance = startingChance;
-            InvestigationsPerRoom = investigationsPerRoom;
-            MoveHiromiCost = moveHiromiCost;
             StartingStability = startingStability;
             StabilityMin = stabilityMin;
             StabilityMax = stabilityMax;
-            TrustErosionFreeBand = trustErosionFreeBand;
-            TrustErosionDivisor = trustErosionDivisor;
-            StartingPsychology = startingPsychology;
-            DialogueHiromiBase = dialogueHiromiBase;
-            HiromiStabilityBonusBand = hiromiStabilityBonusBand;
-            HiromiStabilityBonusDivisor = hiromiStabilityBonusDivisor;
-            MemoryDistortionFreeBand = memoryDistortionFreeBand;
-            MemoryDistortionStep = memoryDistortionStep;
         }
     }
 }

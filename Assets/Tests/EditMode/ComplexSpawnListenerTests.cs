@@ -1,6 +1,10 @@
+using System;
 using System.Collections.Generic;
+using GameName.Core.Authoring;
+using GameName.Core.Clues;
 using GameName.Core.Complexes;
 using GameName.Core.Events;
+using GameName.Core.MemoryRooms;
 using GameName.Core.Mind;
 using NUnit.Framework;
 
@@ -11,6 +15,17 @@ namespace GameName.Core.Tests.EditMode
     public class ComplexSpawnListenerTests
     {
         private static EventBus Bus() => new EventBus(new NoOpEventExceptionHandler());
+
+        private static TurnCoordinator Turns(EventBus bus)
+        {
+            var rounds = new List<RoomDefinition>
+            {
+                new RoomDefinition(new MemoryRoomId("round-1"), Array.Empty<ClueDefinition>(), turnsToSurvive: 99),
+            };
+            var coordinator = new TurnCoordinator(rounds, bus);
+            bus.Publish(new RoomStartedEvent(new MemoryRoomId("round-1"), 0));
+            return coordinator;
+        }
 
         private sealed class FixedPolicy : IComplexSpawnPolicy
         {
@@ -51,7 +66,7 @@ namespace GameName.Core.Tests.EditMode
             var active = new ActiveComplexList(4, bus);
             _ = new ComplexSpawnListener(
                 new FixedPolicy(0f), stability, active, new QueueDrawSource(Complex("a")), seed: 1, bus);
-            var coordinator = new TurnCoordinator(turnsToSurvive: 20, bus);
+            var coordinator = Turns(bus);
 
             for (var i = 0; i < 10; i++)
                 coordinator.AdvanceTurn();
@@ -68,7 +83,7 @@ namespace GameName.Core.Tests.EditMode
             _ = new ComplexSpawnListener(
                 new FixedPolicy(1f), stability, active,
                 new QueueDrawSource(Complex("a"), Complex("b")), seed: 1, bus);
-            var coordinator = new TurnCoordinator(turnsToSurvive: 20, bus);
+            var coordinator = Turns(bus);
 
             coordinator.AdvanceTurn();
             Assert.AreEqual(1, active.Count);
@@ -85,7 +100,7 @@ namespace GameName.Core.Tests.EditMode
             var active = new ActiveComplexList(4, bus);
             _ = new ComplexSpawnListener(
                 new FixedPolicy(1f), stability, active, new QueueDrawSource(), seed: 1, bus);
-            var coordinator = new TurnCoordinator(turnsToSurvive: 20, bus);
+            var coordinator = Turns(bus);
 
             Assert.DoesNotThrow(() => coordinator.AdvanceTurn());
             Assert.AreEqual(0, active.Count);
