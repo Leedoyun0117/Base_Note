@@ -180,8 +180,12 @@
 }
 
 /* ══ 다음 기억으로 레버 ═══════════════════════════════════════════ */
+/* 데모에서는 대화를 끝까지 봐야만 다음 방으로 넘어간다 — 히로민을 써서
+   건너뛰는 레버를 화면에서 뺀다. 배선(MemoryMoveLeverController)은 그대로
+   두어 요소 조회가 null이 되지 않게 하고, 여기서 통째로 숨긴다. */
 .memory-move-lever {
     margin-top: 12px;
+    display: none;
 }
 
 .memory-move-lever__button {
