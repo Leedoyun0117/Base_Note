@@ -33,10 +33,12 @@ namespace GameName.UI.Tests.EditMode
         private static RoomDefinition Round(string id, int turnsToSurvive) =>
             new RoomDefinition(new MemoryRoomId(id), Array.Empty<ClueDefinition>(), turnsToSurvive);
 
-        private static ComplexDefinition Complex(string id, int priority = 0, int durationTurns = 3) =>
+        private static ComplexDefinition Complex(
+            string id, int priority = 0, int durationTurns = 3,
+            string displayName = null, string description = null) =>
             new ComplexDefinition(
                 new ComplexId(id), priority, durationTurns, ComplexKind.Transform,
-                new List<TagTransformRule>());
+                new List<TagTransformRule>(), displayName, description);
 
         private sealed class Fixture
         {
@@ -98,14 +100,18 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 컴플렉스가_활성화되면_이름과_남은_턴이_뜬다()
+        public void 컴플렉스가_활성화되면_이름_남은_턴_설명이_다_뜬다()
         {
             var fx = new Fixture();
 
-            fx.ActiveComplexes.TryActivate(Complex("가라앉다", durationTurns: 3));
+            fx.ActiveComplexes.TryActivate(Complex(
+                "complex-sink", durationTurns: 3,
+                displayName: "가라앉다", description: "결국 후회로 가라앉는 경향이 있습니다."));
 
-            StringAssert.Contains("가라앉다", fx.Text("hud-chance"));
-            StringAssert.Contains("3", fx.Text("hud-chance"));
+            var text = fx.Text("hud-chance");
+            StringAssert.Contains("가라앉다", text);
+            StringAssert.Contains("3", text);
+            StringAssert.Contains("후회로 가라앉는", text);
         }
 
         [Test]

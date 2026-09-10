@@ -162,23 +162,33 @@ namespace GameName.UI.Session
         private static IReadOnlyList<ComplexDefinition> BuildComplexes() => new[]
         {
             // 가라앉다: 어떤 감정이든 후회로 끌어내린다.
-            Complex("complex-sink", "가라앉다", priority: 10, durationTurns: 3, ComplexKind.Transform,
+            Complex("complex-sink", "가라앉다",
+                "떠올린 감정이 무엇이든 결국 후회로 가라앉는 경향이 있습니다.",
+                priority: 10, durationTurns: 3, ComplexKind.Transform,
                 TagTransformRule.Transform(TagPattern.AnyOf(StoryTagAxis.Emotion), E("후회"))),
 
             // 천사: 후회를 그리움으로 미화한다.
-            Complex("complex-idealize", "천사", priority: 10, durationTurns: 3, ComplexKind.Transform,
+            Complex("complex-idealize", "천사",
+                "괴로웠던 기억을 그리운 한때로 미화하는 경향이 있습니다.",
+                priority: 10, durationTurns: 3, ComplexKind.Transform,
                 TagTransformRule.Transform(new TagPattern(StoryTagAxis.Emotion, "후회"), E("그리움"))),
 
             // 증폭: 감정이 있으면 격정을 함께 얹는다.
-            Complex("complex-amplify", "증폭", priority: 20, durationTurns: 2, ComplexKind.Amplify,
+            Complex("complex-amplify", "증폭",
+                "한번 인 감정이 실제보다 격하게 부풀어 오릅니다.",
+                priority: 20, durationTurns: 2, ComplexKind.Amplify,
                 TagTransformRule.Amplify(TagPattern.AnyOf(StoryTagAxis.Emotion), E("격정"))),
 
             // 삭제: 시간 감각을 지운다.
-            Complex("complex-erase", "삭제", priority: 5, durationTurns: 2, ComplexKind.Remove,
+            Complex("complex-erase", "삭제",
+                "그 일이 언제였는지에 대한 감각이 흐려집니다.",
+                priority: 5, durationTurns: 2, ComplexKind.Remove,
                 TagTransformRule.Remove(TagPattern.AnyOf(StoryTagAxis.Time))),
 
             // 거부: 분노를 지우고, 그 뒤 체인이 다시 만들어도 막는다.
-            Complex("complex-deny", "거부", priority: 1, durationTurns: 4, ComplexKind.Reject,
+            Complex("complex-deny", "거부",
+                "분노만은 좀처럼 받아들이지 못하고 밀어냅니다.",
+                priority: 1, durationTurns: 4, ComplexKind.Reject,
                 TagTransformRule.Reject(new TagPattern(StoryTagAxis.Emotion, "분노"))),
         };
 
@@ -196,8 +206,10 @@ namespace GameName.UI.Session
                 new ClueId(id), kind, displayName, new CluePositionRatio(ratio), story, tags);
 
         private static ComplexDefinition Complex(
-            string id, string displayName, int priority, int durationTurns, ComplexKind kind,
+            string id, string displayName, string description,
+            int priority, int durationTurns, ComplexKind kind,
             params TagTransformRule[] rules) =>
-            new ComplexDefinition(new ComplexId(id), priority, durationTurns, kind, rules, displayName);
+            new ComplexDefinition(
+                new ComplexId(id), priority, durationTurns, kind, rules, displayName, description);
     }
 }

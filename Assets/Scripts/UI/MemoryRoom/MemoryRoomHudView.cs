@@ -53,7 +53,8 @@ namespace GameName.UI.MemoryRoom
             _stabilityLabel.text = $"안정 {sign}{position}";
         }
 
-        // 활성 컴플렉스를 이름 + 남은 턴으로 죽 늘어놓는다. 폴리싱 없이 한 줄이다.
+        // 활성 컴플렉스를 "이름 (남은 턴) — 설명" 한 줄씩 늘어놓는다.
+        // 폴리싱 없이 라벨 하나에 개행으로만 쌓는다.
         public void SetComplexes(IReadOnlyList<ActiveComplex> active)
         {
             if (_complexLabel == null) return;
@@ -64,12 +65,15 @@ namespace GameName.UI.MemoryRoom
                 return;
             }
 
-            var sb = new StringBuilder("컴플렉스: ");
-            for (var i = 0; i < active.Count; i++)
+            var sb = new StringBuilder("컴플렉스");
+            foreach (var entry in active)
             {
-                if (i > 0) sb.Append(", ");
-                sb.Append(active[i].Definition.DisplayName)
-                  .Append('(').Append(active[i].RemainingTurns).Append("턴)");
+                sb.Append("\n· ").Append(entry.Definition.DisplayName)
+                  .Append(" (").Append(entry.RemainingTurns).Append("턴)");
+
+                var description = entry.Definition.Description;
+                if (!string.IsNullOrEmpty(description))
+                    sb.Append(" — ").Append(description);
             }
 
             _complexLabel.text = sb.ToString();
