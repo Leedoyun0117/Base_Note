@@ -107,3 +107,7 @@ InitTestScene*.unity*
 
 # Batch-mode test runner results dropped at the project root
 /TestResults*.xml
+
+# Local recovery scratch — never commit
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta
