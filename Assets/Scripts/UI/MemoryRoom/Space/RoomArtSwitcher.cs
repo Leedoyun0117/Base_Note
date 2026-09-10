@@ -86,29 +86,46 @@ namespace GameName.UI.MemoryRoom.Space
             if (rooms == null)
                 return;
 
+            // 끄기를 먼저 전부 끝낸 뒤 켠다. 한 방에 배경용 Global Light 2D가 들어
+            // 있으면, 새 방을 켜는 순간 이전 방 것이 아직 살아 있어 "레이어에 Global
+            // Light가 둘"이라는 URP 에러가 한 프레임 번쩍인다. 순서를 갈라 그 겹침을
+            // 없앤다. 활성 방·비활성 방 목록에 같은 오브젝트가 있으면 활성이 이긴다.
             foreach (var room in rooms)
             {
-                if (room.Objects == null)
+                if (room.Objects == null || IsActive(room, activeRoomId))
                     continue;
-
-                // 대소문자·앞뒤 공백 무시 — 인스펙터 오타에 안 걸리게.
-                var on = string.Equals(
-                    (room.RoomId ?? string.Empty).Trim(),
-                    (activeRoomId ?? string.Empty).Trim(),
-                    StringComparison.OrdinalIgnoreCase);
-                var names = log ? new System.Text.StringBuilder() : null;
-                foreach (var go in room.Objects)
-                {
-                    if (go == null)
-                        continue;
-                    go.SetActive(on);
-                    names?.Append(names.Length == 0 ? "" : ", ").Append(go.name);
-                }
-
-                if (log)
-                    Debug.Log($"[RoomArtSwitcher]   '{room.RoomId}' (활성 방 '{activeRoomId}') → " +
-                              $"{(on ? "ON" : "OFF")}  [{names}]");
+                Toggle(room, false, activeRoomId, log);
             }
+
+            foreach (var room in rooms)
+            {
+                if (room.Objects == null || !IsActive(room, activeRoomId))
+                    continue;
+                Toggle(room, true, activeRoomId, log);
+            }
+        }
+
+        // 대소문자·앞뒤 공백 무시 — 인스펙터 오타에 안 걸리게.
+        private static bool IsActive(RoomArt room, string activeRoomId) =>
+            string.Equals(
+                (room.RoomId ?? string.Empty).Trim(),
+                (activeRoomId ?? string.Empty).Trim(),
+                StringComparison.OrdinalIgnoreCase);
+
+        private static void Toggle(RoomArt room, bool on, string activeRoomId, bool log)
+        {
+            var names = log ? new System.Text.StringBuilder() : null;
+            foreach (var go in room.Objects)
+            {
+                if (go == null)
+                    continue;
+                go.SetActive(on);
+                names?.Append(names.Length == 0 ? "" : ", ").Append(go.name);
+            }
+
+            if (log)
+                Debug.Log($"[RoomArtSwitcher]   '{room.RoomId}' (활성 방 '{activeRoomId}') → " +
+                          $"{(on ? "ON" : "OFF")}  [{names}]");
         }
     }
 }

@@ -66,6 +66,29 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
+        public void 두_방_목록에_함께_든_오브젝트는_활성_방이_이긴다()
+        {
+            // 배경용 Global Light처럼 방마다 값이 다르지만 오브젝트 하나로
+            // 공유되는 경우 — 활성 방 목록에 있으면 켜진 채로 끝나야 한다
+            // (끄기 먼저 / 켜기 나중 순서).
+            var shared = Obj("shared", false);
+            var r2only = Obj("r2only", false);
+            var rooms = new[]
+            {
+                Entry("room-1", shared),
+                Entry("room-2", shared, r2only),
+            };
+
+            RoomArtSwitcher.Show(rooms, "room-2");
+            Assert.IsTrue(shared.activeSelf, "활성 방(room-2) 목록에 있는데 꺼졌다.");
+            Assert.IsTrue(r2only.activeSelf);
+
+            RoomArtSwitcher.Show(rooms, "room-1");
+            Assert.IsTrue(shared.activeSelf, "활성 방(room-1) 목록에 있는데 꺼졌다.");
+            Assert.IsFalse(r2only.activeSelf);
+        }
+
+        [Test]
         public void 비어_있거나_null이어도_던지지_않는다()
         {
             Assert.DoesNotThrow(() => RoomArtSwitcher.Show(null, "room-1"));
