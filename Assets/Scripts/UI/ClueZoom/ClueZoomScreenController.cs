@@ -1,97 +1,110 @@
 using System;
 using GameName.Core.Clues;
+using GameName.Core.Complexes;
+using GameName.Core.Events;
 
 namespace GameName.UI.ClueZoom
 {
-    // 단서 설명 창의 Core 연동.
+    // 스토리 패널의 Core 연동.
     //
-    // 습득은 반드시 Core의 ClueCollectionProcessor를 거친다 — 인벤토리에 직접
-    // 넣지 않는다. 그래야 "이 방의 단서인가", "이미 집은 것은 아닌가", "신뢰도가
-    // 낮아 손이 닿지 않는 자리는 아닌가" 같은 규칙이 이 화면에서만 빠지는 일이
-    // 생기지 않는다. 인벤토리에 실제로 담는 것은 그 처리기가 낸 ClueCollectedEvent를
-    // 듣는 InventoryProjection의 몫이고, 이 화면은 성패만 본다.
+    // 방에서 단서를 누르면 Read()가 불려 ClueUseProcessor.Use()를 거친다 —
+    // 인벤토리에 직접 담거나 상태를 직접 바꾸지 않는다. 성공하면 Core가 낸
+    // 사건(ClueUsedEvent = 서사, ClueInterpretedEvent = 태그 체인)을 듣고
+    // 패널을 채운다. 실패하면 이유만 안내한다.
     public sealed class ClueZoomScreenController : IDisposable
     {
         private readonly ClueZoomScreenView _view;
-        private readonly ClueCollectionProcessor _collectionProcessor;
+        private readonly ClueUseProcessor _clueUse;
+        private readonly IDisposable[] _subscriptions;
 
-        private ClueInfo _openClue;
+        // 지금 이 컨트롤러가 연 읽기인지 — 다른 경로로 난 사건에 반응하지 않게 한다.
+        private ClueId? _pending;
 
-        // 이 화면을 닫아 달라는 요청(그만두기 버튼, 빈 공간 클릭, 수집 성공).
+        // 단서를 실제로 읽었다 — 방 화면이 그 단서를 지워야 한다.
+        public event Action ClueRead;
+
+        // 이 화면을 닫아 달라는 요청.
         public event Action CloseRequested;
 
-        // 단서를 실제로 습득했다 — 방에서 그 단서를 지우고 인벤토리 화면을
-        // 새로 그려야 한다.
-        public event Action ClueStored;
-
-        public ClueZoomScreenController(ClueZoomScreenView view, ClueCollectionProcessor collectionProcessor)
+        public ClueZoomScreenController(
+            ClueZoomScreenView view, ClueUseProcessor clueUse, IEventBus eventBus)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
-            _collectionProcessor = collectionProcessor ?? throw new ArgumentNullException(nameof(collectionProcessor));
+            _clueUse = clueUse ?? throw new ArgumentNullException(nameof(clueUse));
+            if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
 
             _view.ExitRequested += OnExitRequested;
-            _view.CollectRequested += TryCollectOpenClue;
-        }
 
-        public void Open(ClueInfo clue)
-        {
-            _openClue = clue ?? throw new ArgumentNullException(nameof(clue));
-            _view.SetClue(clue);
-            _view.SetMessage(null);
-        }
-
-        // 이 화면이 아닌 다른 이유로 닫혔을 때 상태를 정리한다.
-        public void OnHidden()
-        {
-            _openClue = null;
-            _view.SetMessage(null);
+            _subscriptions = new[]
+            {
+                eventBus.Subscribe<ClueUsedEvent>(OnClueUsed),
+                eventBus.Subscribe<ClueInterpretedEvent>(OnClueInterpreted),
+            };
         }
 
         // [수집]을 눌렀다. 화면 없이 규칙을 확인할 수 있도록 공개 메서드로도 열어 둔다.
-        public void TryCollectOpenClue()
+        public void Read(ClueInfo clue)
         {
-            if (_openClue == null)
-                return;
+            if (clue == null) throw new ArgumentNullException(nameof(clue));
 
-            var result = _collectionProcessor.Collect(_openClue.Id);
+            _pending = clue.Id;
+            _view.BeginRead(clue.DisplayName);
+
+            var result = _clueUse.Use(clue.Id);
             if (!result.Succeeded)
             {
-                _view.SetMessage(DescribeFailure(result.FailureReason.Value));
-                return;
+                _pending = null;
+                _view.SetMessage(DescribeFailure(result.FailureReason));
             }
+        }
 
-            _openClue = null;
+        public void OnHidden()
+        {
+            _pending = null;
             _view.SetMessage(null);
+        }
 
-            ClueStored?.Invoke();
-            CloseRequested?.Invoke();
+        private void OnClueUsed(ClueUsedEvent e)
+        {
+            if (_pending == null || !_pending.Value.Equals(e.ClueId))
+                return;
+
+            _view.SetStory(e.Story);
+            ClueRead?.Invoke();
+        }
+
+        private void OnClueInterpreted(ClueInterpretedEvent e)
+        {
+            // ClueUseProcessor는 해석 → 사용 순서로 발행한다. _pending은 여기서
+            // 지우지 않는다 — 뒤이어 올 ClueUsedEvent가 서사를 채워야 하므로.
+            if (_pending == null)
+                return;
+
+            _view.SetInterpretation(e.SourceTags, e.Steps, e.FinalTags);
         }
 
         private void OnExitRequested()
         {
-            _openClue = null;
+            _pending = null;
             CloseRequested?.Invoke();
         }
 
-        private static string DescribeFailure(ClueCollectionFailureReason reason)
+        private static string DescribeFailure(ClueUseFailureReason? reason)
         {
             switch (reason)
             {
-                case ClueCollectionFailureReason.NotAvailable:
-                    return "이미 습득했거나 이 방의 단서가 아닙니다.";
-                case ClueCollectionFailureReason.OutOfView:
-                    return "신뢰도가 낮아 방이 좁게 보입니다 — 이 단서에는 손이 닿지 않습니다.";
-                case ClueCollectionFailureReason.InventoryFull:
-                    return "가방이 가득 찼습니다 — 다른 단서를 추출하거나 정리한 뒤에 집을 수 있습니다.";
+                case ClueUseFailureReason.NotAvailable:
+                    return "이미 읽었거나 이 라운드의 단서가 아닙니다.";
                 default:
-                    return "습득에 실패했습니다.";
+                    return "이 단서는 지금 읽을 수 없습니다.";
             }
         }
 
         public void Dispose()
         {
             _view.ExitRequested -= OnExitRequested;
-            _view.CollectRequested -= TryCollectOpenClue;
+            foreach (var subscription in _subscriptions)
+                subscription.Dispose();
         }
     }
 }

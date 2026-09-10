@@ -84,8 +84,6 @@ namespace GameName.UI.Diagnostics
             line.Append($" | Core가 말하는 이 방의 단서: {kinds.Describe()}");
             line.Append($" | 파괴된 이전 오브젝트 {destroyed}개");
 
-            line.Append($" | 인벤토리: {_context.InventoryText()}");
-
             ClueDebugLog.Write(line.ToString());
 
             if (vanishedButAlive.Count > 0)

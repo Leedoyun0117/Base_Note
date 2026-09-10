@@ -42,14 +42,13 @@ namespace GameName.UI.Editor.SceneSetup
             RemoveMissingScripts(report);
 
             var layoutAsset = MemoryRoomLayoutAssetLocator.FindOrCreate(report);
-            var labelAsset = MemoryColorLabelAssetLocator.FindOrCreate(report);
             var overlayHost = OverlayPanelSceneBuilder.Build(report);
 
             var gameSession = Object.FindFirstObjectByType<GameSessionBootstrap>(FindObjectsInactive.Include);
             if (gameSession == null)
                 report.Problem("GameSessionBootstrap을 찾지 못했습니다. 화면들이 같은 세션을 공유하지 못합니다.");
 
-            SetUpMemoryRoomScreen(gameSession, overlayHost, layoutAsset, labelAsset, report);
+            SetUpMemoryRoomScreen(gameSession, overlayHost, layoutAsset, report);
 
             EditorSceneManager.MarkSceneDirty(scene);
             Undo.CollapseUndoOperations(undoGroup);
@@ -61,7 +60,6 @@ namespace GameName.UI.Editor.SceneSetup
             GameSessionBootstrap gameSession,
             OverlayPanelHost overlayHost,
             MemoryRoomLayoutAsset layoutAsset,
-            MemoryColorLabelAsset labelAsset,
             SceneSetupReport report)
         {
             var memoryRoomScreen = Object.FindFirstObjectByType<MemoryRoomBootstrap>(FindObjectsInactive.Include);
@@ -77,7 +75,6 @@ namespace GameName.UI.Editor.SceneSetup
             Link(memoryRoomScreen, "_gameSession", gameSession, report);
             Link(memoryRoomScreen, "_spaceView", spaceView, report);
             Link(memoryRoomScreen, "_layoutAsset", layoutAsset, report);
-            Link(memoryRoomScreen, "_memoryColorLabels", labelAsset, report);
             Link(memoryRoomScreen, "_overlayPanels", overlayHost, report);
         }
 

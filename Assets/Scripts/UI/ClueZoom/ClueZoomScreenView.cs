@@ -1,71 +1,116 @@
 using System;
-using GameName.Core.Clues;
+using System.Collections.Generic;
+using System.Text;
+using GameName.Core.Complexes;
 using UnityEngine.UIElements;
 
 namespace GameName.UI.ClueZoom
 {
-    // 단서 설명 창의 요소 구성. 담을 수 있는지, 왜 실패했는지는 하나도
-    // 판단하지 않는다 — 컨트롤러가 Core에게 물어 얻은 결론이고, 이 View는
-    // 버튼이 눌렸다는 사실만 알린다.
+    // 단서를 클릭했을 때 뜨는 스토리 패널. 그 단서의 짧은 서사와, 원본 태그가
+    // 활성 컴플렉스 체인을 통과해 최종 태그가 되기까지의 해석 로그를 보여준다.
     //
-    // 인벤토리 칸을 그리지 않는다. 습득 시 가방은 열리지 않고, 습득한 단서
-    // 확인은 대화 도중 가방(인벤토리 오버레이)에서 한다.
+    // 판정은 하나도 하지 않는다 — 컨트롤러가 Core에서 받은 결과를 문구로 옮길 뿐.
+    // UXML 요소 이름은 옛 단서 확대 창 것을 재활용한다(정리는 별도 작업).
     public sealed class ClueZoomScreenView
     {
         private readonly VisualElement _stage;
         private readonly Label _nameLabel;
-        private readonly Label _kindLabel;
+        private readonly Label _storyLabel;
         private readonly Label _messageLabel;
 
-        // 이 화면을 연 누름이 그대로 닫기로 이어지지 않게 막는 빗장.
         private bool _acceptsStageClose;
 
         // 나가기 버튼을 눌렀거나 카드 바깥(무대)을 눌렀다.
         public event Action ExitRequested;
 
-        // [수집] 버튼을 눌렀다.
-        public event Action CollectRequested;
-
         public ClueZoomScreenView(VisualElement root)
         {
             _stage = root.Q<VisualElement>("clue-zoom-stage");
             _nameLabel = root.Q<Label>("clue-zoom-clue-name");
-            _kindLabel = root.Q<Label>("clue-zoom-clue-kind");
+            _storyLabel = root.Q<Label>("clue-zoom-clue-kind");
             _messageLabel = root.Q<Label>("clue-zoom-message");
 
-            root.Q<Button>("clue-zoom-exit-button").clicked += () => ExitRequested?.Invoke();
-            root.Q<Button>("clue-zoom-collect-button").clicked += () => CollectRequested?.Invoke();
+            var exit = root.Q<Button>("clue-zoom-exit-button");
+            if (exit != null) exit.clicked += () => ExitRequested?.Invoke();
 
-            // 빈 공간(무대 자신)을 눌렀을 때만 닫는다. 다만 이 화면을 연 그 누름으로는
-            // 닫지 않는다 — 방에서 단서를 누르는 순간 이 화면이 떠오르는데, 같은
-            // 프레임에 UI 쪽으로도 그 누름이 전달되면 열리자마자 닫힌다. 손을 한 번
-            // 뗀 뒤부터 닫기를 받는다.
-            _stage.RegisterCallback<PointerUpEvent>(_ => _acceptsStageClose = true);
-            _stage.RegisterCallback<PointerDownEvent>(evt =>
+            // 옛 [수집] 버튼 자리는 이제 [닫기]다.
+            var close = root.Q<Button>("clue-zoom-collect-button");
+            if (close != null)
             {
-                if (_acceptsStageClose && ReferenceEquals(evt.target, _stage))
-                    ExitRequested?.Invoke();
-            });
+                close.text = "닫기";
+                close.clicked += () => ExitRequested?.Invoke();
+            }
+
+            if (_stage != null)
+            {
+                _stage.RegisterCallback<PointerUpEvent>(_ => _acceptsStageClose = true);
+                _stage.RegisterCallback<PointerDownEvent>(evt =>
+                {
+                    if (_acceptsStageClose && ReferenceEquals(evt.target, _stage))
+                        ExitRequested?.Invoke();
+                });
+            }
         }
 
-        public void SetClue(ClueInfo clue)
+        // 패널이 열릴 때. 아직 서사는 없다(읽기 결과를 기다린다).
+        public void BeginRead(string displayName)
         {
-            // 열릴 때마다 빗장을 다시 건다 — 이번 화면을 연 누름은 아직 끝나지 않았다.
             _acceptsStageClose = false;
+            if (_nameLabel != null)
+                _nameLabel.text = string.IsNullOrEmpty(displayName) ? "단서" : displayName;
+            SetStory(string.Empty);
+            SetMessage(null);
+        }
 
-            var kindText = clue.Kind == ClueKind.Poster ? "벽에 붙은 포스터" : "바닥에 떨어진 물건";
+        public void SetStory(string story)
+        {
+            if (_storyLabel == null) return;
+            _storyLabel.text = story ?? string.Empty;
+            _storyLabel.style.display = string.IsNullOrEmpty(story) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
 
-            // 이름이 비어 있으면(저작 누락) 종류를 이름 자리에 대신 보여준다.
-            var hasName = !string.IsNullOrEmpty(clue.DisplayName);
-            _nameLabel.text = hasName ? clue.DisplayName : kindText;
-            _kindLabel.text = hasName ? kindText : string.Empty;
-            _kindLabel.style.display = hasName ? DisplayStyle.Flex : DisplayStyle.None;
+        // 해석 로그: 원본 → 각 컴플렉스 단계 → 최종 태그.
+        public void SetInterpretation(
+            IReadOnlyList<StoryTag> sourceTags,
+            IReadOnlyList<ComplexChainStep> steps,
+            IReadOnlyList<StoryTag> finalTags)
+        {
+            var sb = new StringBuilder();
+            sb.Append("원본  ").Append(Join(sourceTags));
+
+            if (steps != null)
+            {
+                foreach (var step in steps)
+                    sb.Append('\n').Append(step.ComplexId).Append("  ").Append(Join(step.TagsAfter));
+            }
+
+            if (steps == null || steps.Count == 0)
+                sb.Append("\n(작용한 컴플렉스 없음)");
+
+            sb.Append("\n최종  ").Append(Join(finalTags));
+            SetMessage(sb.ToString());
         }
 
         public void SetMessage(string message)
         {
+            if (_messageLabel == null) return;
             _messageLabel.text = message ?? string.Empty;
             _messageLabel.style.display = string.IsNullOrEmpty(message) ? DisplayStyle.None : DisplayStyle.Flex;
+        }
+
+        private static string Join(IReadOnlyList<StoryTag> tags)
+        {
+            if (tags == null || tags.Count == 0)
+                return "—";
+
+            var sb = new StringBuilder();
+            for (var i = 0; i < tags.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(tags[i]);
+            }
+
+            return sb.ToString();
         }
     }
 }

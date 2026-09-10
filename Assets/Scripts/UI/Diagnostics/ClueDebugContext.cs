@@ -126,25 +126,6 @@ namespace GameName.UI.Diagnostics
             return label == null ? string.Empty : label.text;
         }
 
-        // 지금 인벤토리에 무엇이 들어 있는가. 방에서 단서가 사라졌을 때 그것이
-        // 인벤토리로 옮겨 간 것인지(정상) 그냥 없어진 것인지(사고)를 가르려면
-        // 방만 봐서는 알 수 없다.
-        public string InventoryText()
-        {
-            var session = Session;
-            if (session == null)
-                return "(세션 없음)";
-
-            var names = new System.Collections.Generic.List<string>();
-            foreach (var item in session.Inventory.Items)
-            {
-                var clue = item as GameName.Core.Clues.ClueInfo;
-                names.Add(clue == null ? item.GetType().Name : clue.Id.Value);
-            }
-
-            return names.Count == 0 ? "비어 있음" : string.Join(", ", names);
-        }
-
         // 지금 서 있는 곳이 기억 방인가, 그렇다면 어느 방인가. 화면이 쓰는 것과
         // 똑같은 판정을 쓴다 — 진단이 자기만의 답을 따로 계산하면 화면과 다른
         // 것을 보게 된다.
