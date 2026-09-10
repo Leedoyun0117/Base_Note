@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using GameName.Core.Clues;
-using GameName.Core.MemoryRooms;
 using GameName.UI.MemoryRoom.Space;
 using NUnit.Framework;
 
@@ -17,10 +16,10 @@ namespace GameName.UI.Tests.EditMode
     // 전부 훑고, 미리 정한 허용 목록에 없는 Core 타입이 하나라도 있으면
     // 실패시킨다.
     //
-    // 허용하는 것은 식별자 둘뿐이다: 단서 오브젝트의 ClueId, 출입구 오브젝트의
-    // MemoryGraphNodeId. 둘 다 "무엇을 가리키는가"만 담을 뿐 게임 정보를
-    // 실어 나르지 않으므로, 씬이 이것만 알고 나머지는 컨트롤러를 통하게 하는
-    // 것이 이번 설계의 경계다. Core 처리기(ClueCollector 등)도 당연히 금지된다.
+    // 허용하는 것은 식별자 하나뿐이다: 단서 오브젝트의 ClueId. "무엇을
+    // 가리키는가"만 담을 뿐 게임 정보를 실어 나르지 않으므로, 씬이 이것만 알고
+    // 나머지는 컨트롤러를 통하게 하는 것이 이번 설계의 경계다. Core
+    // 처리기(ClueCollector 등)도 당연히 금지된다.
     public class MemoryRoomSceneObjectBoundaryTests
     {
         private static readonly Type[] SceneObjectTypes =
@@ -34,7 +33,6 @@ namespace GameName.UI.Tests.EditMode
         private static readonly HashSet<Type> AllowedCoreTypes = new HashSet<Type>
         {
             typeof(ClueId),
-            typeof(MemoryGraphNodeId),
         };
 
         private const string CoreNamespacePrefix = "GameName.Core";

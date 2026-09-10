@@ -1,9 +1,9 @@
 using System.Linq;
-using GameName.UI.MemoryRoom;
 using GameName.UI.MemoryRoom.Space;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace GameName.UI.Editor.SceneSetup
 {
@@ -12,6 +12,10 @@ namespace GameName.UI.Editor.SceneSetup
     // 조명이 아니라 씬 콘텐츠(스프라이트 + 회전 컴포넌트)라, 조명 빌더와도
     // 메인 씬 구성과도 분리한 별도 메뉴로 둔다 — 메인 씬 구성은 손 배치
     // 스프라이트를 의도적으로 제외하고, 조명 빌더는 Light2D만 다룬다.
+    //
+    // 방 배경을 방 씬으로 뽑아낸 뒤로는 Clock이 방 씬(Room_Greenroom)의 루트에
+    // 있고 MemoryRoomBootstrap이 없다. 그래서 계층 위치가 아니라 활성 씬 전체에서
+    // 이름으로 Clock을 찾는다 — 이 도구가 필요로 하는 건 Clock 하나뿐이다.
     //
     // ── 여러 번 돌려도 안전하다 ─────────────────────────────────────────
     // Clock 스프라이트를 ClockSimple로 바꾸고 Hour/Min 자식을 이름으로 찾아
@@ -48,18 +52,12 @@ namespace GameName.UI.Editor.SceneSetup
             var undoGroup = Undo.GetCurrentGroup();
             Undo.SetCurrentGroupName(UndoGroupName);
 
-            var screen = Object.FindFirstObjectByType<MemoryRoomBootstrap>(FindObjectsInactive.Include);
-            if (screen == null)
-            {
-                report.Problem("MemoryRoomBootstrap을 찾지 못했습니다. 기억 방 화면이 있는 씬에서 실행하세요.");
-                Present(scene.name, report);
-                return;
-            }
-
-            var clock = FindChild(screen.transform, "Clock");
+            var clock = FindInLoadedScenes("Clock");
             if (clock == null)
             {
-                report.Problem("Clock 스프라이트를 찾지 못했습니다. 기억 방 스프라이트 레이어가 있는 씬에서 실행하세요.");
+                report.Problem(
+                    "Clock 오브젝트를 찾지 못했습니다. 그린룸 배경이 있는 씬(Room_Greenroom 또는 " +
+                    "배경 추출 전 LDY_GameScene)을 열고 실행하세요.");
                 Present(scene.name, report);
                 return;
             }
@@ -76,9 +74,12 @@ namespace GameName.UI.Editor.SceneSetup
                 () => min = BuildHand(clock, "Min", MinSpriteGuid, MinSortingOrder, unlit, report), report);
             Step("ClockHands", () => WireClockHands(clock, hour, min, report), report);
 
-            EditorSceneManager.MarkSceneDirty(scene);
+            // Clock이 든 씬을 더티로 — 활성 씬이 아니라(추출 후 Room_Greenroom을
+            // 따로 열었을 수 있다) Clock이 실제로 있는 씬을 저장 대상으로 표시한다.
+            var clockScene = clock.gameObject.scene;
+            EditorSceneManager.MarkSceneDirty(clockScene);
             Undo.CollapseUndoOperations(undoGroup);
-            Present(scene.name, report);
+            Present(clockScene.name, report);
         }
 
         // 한 단계를 감싸 예외를 붙잡아 리포트로 돌린다 — 한 단계가 던져도 나머지는
@@ -229,15 +230,26 @@ namespace GameName.UI.Editor.SceneSetup
             return material;
         }
 
-        // 이름으로 자손 Transform을 찾는다(비활성 포함).
-        private static Transform FindChild(Transform root, string name)
+        // 열려 있는 모든 씬에서 이름으로 Transform을 찾는다(비활성 포함). Clock이
+        // 씬 루트에 있든(방 씬) 다른 오브젝트 밑에 있든(구 단일 씬), Room_Greenroom을
+        // 단독으로 열었든 LDY_GameScene과 함께 열었든 똑같이 찾힌다.
+        private static Transform FindInLoadedScenes(string name)
         {
-            if (root.name == name)
-                return root;
+            for (var i = 0; i < SceneManager.sceneCount; i++)
+            {
+                var scene = SceneManager.GetSceneAt(i);
+                if (!scene.isLoaded)
+                    continue;
 
-            return root
-                .GetComponentsInChildren<Transform>(includeInactive: true)
-                .FirstOrDefault(t => t.name == name);
+                foreach (var root in scene.GetRootGameObjects())
+                {
+                    var found = root.GetComponentsInChildren<Transform>(includeInactive: true)
+                        .FirstOrDefault(t => t.name == name);
+                    if (found != null)
+                        return found;
+                }
+            }
+            return null;
         }
 
         // 바로 아래 자식만(중첩 계층의 동명 오브젝트와 섞이지 않게).
