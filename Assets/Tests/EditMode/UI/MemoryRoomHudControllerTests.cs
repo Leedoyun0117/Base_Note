@@ -73,7 +73,7 @@ namespace GameName.UI.Tests.EditMode
             StringAssert.Contains("0", fx.Text("hud-trust"));
             StringAssert.Contains("4", fx.Text("hud-trust"));
             StringAssert.Contains("0", fx.Text("hud-hiromi-value"));
-            StringAssert.Contains("0", fx.Text("hud-chance"));
+            StringAssert.Contains("없음", fx.Text("hud-chance"));
         }
 
         [Test]
@@ -98,24 +98,25 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 컴플렉스가_활성화되면_개수가_갱신된다()
+        public void 컴플렉스가_활성화되면_이름과_남은_턴이_뜬다()
         {
             var fx = new Fixture();
 
-            fx.ActiveComplexes.TryActivate(Complex("complex-a"));
+            fx.ActiveComplexes.TryActivate(Complex("가라앉다", durationTurns: 3));
 
-            StringAssert.Contains("1", fx.Text("hud-chance"));
+            StringAssert.Contains("가라앉다", fx.Text("hud-chance"));
+            StringAssert.Contains("3", fx.Text("hud-chance"));
         }
 
         [Test]
-        public void 컴플렉스가_소멸하면_개수가_갱신된다()
+        public void 컴플렉스가_소멸하면_목록에서_빠진다()
         {
             var fx = new Fixture();
             fx.ActiveComplexes.TryActivate(Complex("complex-a", durationTurns: 1));
 
             fx.Turns.AdvanceTurn(); // 지속 턴 1 → 0, 소멸.
 
-            StringAssert.Contains("0", fx.Text("hud-chance"));
+            StringAssert.Contains("없음", fx.Text("hud-chance"));
         }
 
         [Test]

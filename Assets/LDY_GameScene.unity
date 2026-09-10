@@ -505,7 +505,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1f2edd78f88d5724aa9fc52a6b75de2a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: GameName.UI::GameName.UI.Session.GameSessionBootstrap
-  _roomLimit: 0
+  _roomLimit: 1
 --- !u!4 &1618574296
 Transform:
   m_ObjectHideFlags: 0

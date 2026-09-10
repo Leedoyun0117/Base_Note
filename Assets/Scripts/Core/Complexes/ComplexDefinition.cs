@@ -11,6 +11,10 @@ namespace GameName.Core.Complexes
     {
         public ComplexId Id { get; }
 
+        // 화면·해석 로그가 "이 컴플렉스"를 사람 말로 부를 때 쓰는 이름("가라앉다").
+        // 저작 데이터에서 흘러 들어오며, 비어 있으면 식별자를 그대로 쓴다.
+        public string DisplayName { get; }
+
         // 체인 적용 순서. 낮을수록 먼저 적용된다 — 앞 컴플렉스의 출력이 다음
         // 컴플렉스의 입력이 되므로 순서가 결과를 바꾼다. 동시에 여러 컴플렉스가
         // 활성일 때 ActiveComplexList가 이 값으로 정렬한다.
@@ -35,7 +39,8 @@ namespace GameName.Core.Complexes
             int priority,
             int durationTurns,
             ComplexKind kind,
-            IReadOnlyList<TagTransformRule> rules)
+            IReadOnlyList<TagTransformRule> rules,
+            string displayName = null)
         {
             if (durationTurns < 1)
                 throw new ArgumentOutOfRangeException(
@@ -46,6 +51,7 @@ namespace GameName.Core.Complexes
             DurationTurns = durationTurns;
             Kind = kind;
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+            DisplayName = string.IsNullOrEmpty(displayName) ? id.Value : displayName;
         }
     }
 }

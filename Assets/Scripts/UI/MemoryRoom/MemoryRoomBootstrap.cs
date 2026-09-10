@@ -32,6 +32,8 @@ namespace GameName.UI.MemoryRoom
         [SerializeField] private OverlayPanelHost _overlayPanels;
 
         private MemoryRoomScreenController _screenController;
+        private RoundOutcomeController _roundOutcome;
+        private ChainStepConsoleLog _chainLog;
 
         private void OnEnable()
         {
@@ -52,10 +54,15 @@ namespace GameName.UI.MemoryRoom
 
             // ── 오버레이: 스토리 패널 ──────────────────────────────────
             var zoomView = new ClueZoomScreenView(_overlayPanels.RootOf(OverlayPanel.ClueZoom));
-            var zoomController = new ClueZoomScreenController(zoomView, session.ClueUse, session.EventBus);
+            var zoomController = new ClueZoomScreenController(
+                zoomView, session.ClueUse, session.ClueTracker, session.EventBus);
 
             _screenController = new MemoryRoomScreenController(
                 hudView, hudController, spaceController, zoomController, _overlayPanels);
+
+            // 라운드 클리어 / 판 종료 문구, 그리고 해석 체인 콘솔 로그.
+            _roundOutcome = new RoundOutcomeController(hudView, session.EventBus);
+            _chainLog = new ChainStepConsoleLog(session.EventBus);
 
             _overlayPanels.Bind(OverlayPanel.ClueZoom, onShown: null, onHidden: _screenController.OnClueZoomHidden);
         }
@@ -64,6 +71,11 @@ namespace GameName.UI.MemoryRoom
         {
             if (_overlayPanels != null)
                 _overlayPanels.Bind(OverlayPanel.ClueZoom, null);
+
+            _roundOutcome?.Dispose();
+            _roundOutcome = null;
+            _chainLog?.Dispose();
+            _chainLog = null;
 
             _screenController?.Dispose();
             _screenController = null;

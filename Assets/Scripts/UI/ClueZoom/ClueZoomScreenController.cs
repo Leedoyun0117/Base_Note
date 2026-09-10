@@ -7,14 +7,16 @@ namespace GameName.UI.ClueZoom
 {
     // 스토리 패널의 Core 연동.
     //
-    // 방에서 단서를 누르면 Read()가 불려 ClueUseProcessor.Use()를 거친다 —
-    // 인벤토리에 직접 담거나 상태를 직접 바꾸지 않는다. 성공하면 Core가 낸
-    // 사건(ClueUsedEvent = 서사, ClueInterpretedEvent = 태그 체인)을 듣고
-    // 패널을 채운다. 실패하면 이유만 안내한다.
+    // 방에서 단서를 누르면 Preview()가 불려 그 단서의 서사만 먼저 보여 준다 —
+    // 아직 아무것도 소모하지 않는다. 플레이어가 [사용]을 누르면 OnUseRequested가
+    // ClueUseProcessor.Use()를 거친다. 성공하면 Core가 낸 사건(ClueInterpretedEvent
+    // = 태그 체인, ClueUsedEvent = 서사)을 듣고 해석 로그를 덧붙인다. 실패하면
+    // 이유만 안내한다. [그만두기]로 나가면 턴은 쓰이지 않는다.
     public sealed class ClueZoomScreenController : IDisposable
     {
         private readonly ClueZoomScreenView _view;
         private readonly ClueUseProcessor _clueUse;
+        private readonly IMemoryRoomClueTracker _clueTracker;
         private readonly IDisposable[] _subscriptions;
 
         // 지금 이 컨트롤러가 연 읽기인지 — 다른 경로로 난 사건에 반응하지 않게 한다.
@@ -27,12 +29,17 @@ namespace GameName.UI.ClueZoom
         public event Action CloseRequested;
 
         public ClueZoomScreenController(
-            ClueZoomScreenView view, ClueUseProcessor clueUse, IEventBus eventBus)
+            ClueZoomScreenView view,
+            ClueUseProcessor clueUse,
+            IMemoryRoomClueTracker clueTracker,
+            IEventBus eventBus)
         {
             _view = view ?? throw new ArgumentNullException(nameof(view));
             _clueUse = clueUse ?? throw new ArgumentNullException(nameof(clueUse));
+            _clueTracker = clueTracker ?? throw new ArgumentNullException(nameof(clueTracker));
             if (eventBus == null) throw new ArgumentNullException(nameof(eventBus));
 
+            _view.UseRequested += OnUseRequested;
             _view.ExitRequested += OnExitRequested;
 
             _subscriptions = new[]
@@ -42,15 +49,25 @@ namespace GameName.UI.ClueZoom
             };
         }
 
-        // [수집]을 눌렀다. 화면 없이 규칙을 확인할 수 있도록 공개 메서드로도 열어 둔다.
-        public void Read(ClueInfo clue)
+        // 단서를 눌렀다 — 서사만 보여 주고 [사용]을 기다린다.
+        public void Preview(ClueInfo clue)
         {
             if (clue == null) throw new ArgumentNullException(nameof(clue));
 
             _pending = clue.Id;
-            _view.BeginRead(clue.DisplayName);
+            var story = _clueTracker.TryGetDefinition(clue.Id, out var definition)
+                ? definition.Story
+                : null;
+            _view.BeginRead(clue.DisplayName, story);
+        }
 
-            var result = _clueUse.Use(clue.Id);
+        // [사용]을 눌렀다 — 이 한 번이 한 턴을 쓴다.
+        public void OnUseRequested()
+        {
+            if (_pending == null)
+                return;
+
+            var result = _clueUse.Use(_pending.Value);
             if (!result.Succeeded)
             {
                 _pending = null;
@@ -70,6 +87,7 @@ namespace GameName.UI.ClueZoom
                 return;
 
             _view.SetStory(e.Story);
+            _view.MarkUsed();
             ClueRead?.Invoke();
         }
 
@@ -102,6 +120,7 @@ namespace GameName.UI.ClueZoom
 
         public void Dispose()
         {
+            _view.UseRequested -= OnUseRequested;
             _view.ExitRequested -= OnExitRequested;
             foreach (var subscription in _subscriptions)
                 subscription.Dispose();

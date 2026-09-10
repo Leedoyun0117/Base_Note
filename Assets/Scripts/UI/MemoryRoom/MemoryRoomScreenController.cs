@@ -51,7 +51,7 @@ namespace GameName.UI.MemoryRoom
         private void OnClueActivated(ClueInfo clue)
         {
             _overlayPanels.Show(OverlayPanel.ClueZoom);
-            _clueZoom.Read(clue);
+            _clueZoom.Preview(clue);
         }
 
         private void OnClueZoomCloseRequested() => _overlayPanels.Hide(OverlayPanel.ClueZoom);

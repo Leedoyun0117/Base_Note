@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Text;
+using GameName.Core.Complexes;
 using UnityEngine.UIElements;
 
 namespace GameName.UI.MemoryRoom
@@ -50,9 +53,26 @@ namespace GameName.UI.MemoryRoom
             _stabilityLabel.text = $"안정 {sign}{position}";
         }
 
-        public void SetComplexCount(int count)
+        // 활성 컴플렉스를 이름 + 남은 턴으로 죽 늘어놓는다. 폴리싱 없이 한 줄이다.
+        public void SetComplexes(IReadOnlyList<ActiveComplex> active)
         {
-            if (_complexLabel != null) _complexLabel.text = $"컴플렉스 {count}";
+            if (_complexLabel == null) return;
+
+            if (active == null || active.Count == 0)
+            {
+                _complexLabel.text = "컴플렉스 없음";
+                return;
+            }
+
+            var sb = new StringBuilder("컴플렉스: ");
+            for (var i = 0; i < active.Count; i++)
+            {
+                if (i > 0) sb.Append(", ");
+                sb.Append(active[i].Definition.DisplayName)
+                  .Append('(').Append(active[i].RemainingTurns).Append("턴)");
+            }
+
+            _complexLabel.text = sb.ToString();
         }
     }
 }

@@ -37,10 +37,11 @@ namespace GameName.UI.MemoryRoom
             _subscriptions = new[]
             {
                 eventBus.Subscribe<RoomStartedEvent>(_ => RenderAll()),
-                eventBus.Subscribe<TurnAdvancedEvent>(_ => RenderTurn()),
+                // 턴이 넘어가면 남은 턴 표시도 같이 줄어야 하므로 컴플렉스 목록도 다시 그린다.
+                eventBus.Subscribe<TurnAdvancedEvent>(_ => { RenderTurn(); RenderComplexes(); }),
                 eventBus.Subscribe<StabilityChangedEvent>(_ => RenderStability()),
-                eventBus.Subscribe<ComplexActivatedEvent>(_ => RenderComplexCount()),
-                eventBus.Subscribe<ComplexExpiredEvent>(_ => RenderComplexCount()),
+                eventBus.Subscribe<ComplexActivatedEvent>(_ => RenderComplexes()),
+                eventBus.Subscribe<ComplexExpiredEvent>(_ => RenderComplexes()),
             };
 
             RenderAll();
@@ -50,12 +51,12 @@ namespace GameName.UI.MemoryRoom
         {
             RenderTurn();
             RenderStability();
-            RenderComplexCount();
+            RenderComplexes();
         }
 
         private void RenderTurn() => _view.SetTurn(_turns.CurrentTurn, _turns.TurnsToSurvive);
         private void RenderStability() => _view.SetStability(_stability.Position);
-        private void RenderComplexCount() => _view.SetComplexCount(_activeComplexes.Count);
+        private void RenderComplexes() => _view.SetComplexes(_activeComplexes.InPriorityOrder);
 
         public void Dispose()
         {
