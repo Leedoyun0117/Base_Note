@@ -120,8 +120,9 @@ namespace GameName.UI.Tests.EditMode
             Assert.AreEqual("Clue_" + next, clues[0].name, "남아 있는 것이 새 방의 단서가 아니다.");
         }
 
-        // 가시 비율 밖으로 지시받은 단서는 콜라이더가 꺼진 채로 만들어진다 —
-        // ClueCollectionProcessor의 OutOfView 거부와 화면이 갈라지지 않게.
+        // 접근 불가로 지시받은 단서는 콜라이더가 꺼진 채로 만들어진다. (3차
+        // 개편에서 접근 정책은 사라졌지만 ClueSceneItem.Accessible 표시 경로
+        // 자체는 남아 있어 계속 확인한다.)
         [Test]
         public void 접근_불가로_지시된_단서는_콜라이더가_꺼진_채_만들어진다()
         {

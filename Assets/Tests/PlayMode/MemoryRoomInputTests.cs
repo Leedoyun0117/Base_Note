@@ -25,7 +25,7 @@ namespace GameName.Tests.PlayMode
     public class MemoryRoomInputTests : InputTestFixture
     {
         private const string SceneName = "LDY_GameScene";
-        private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
+        private static readonly MemoryRoomId Round1 = new MemoryRoomId("round-1");
 
         private Keyboard _keyboard;
         private Mouse _mouse;

@@ -24,7 +24,7 @@ namespace GameName.Tests.PlayMode
     public class MemoryRoomHudOcclusionTests
     {
         private const string SceneName = "LDY_GameScene";
-        private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
+        private static readonly MemoryRoomId Round1 = new MemoryRoomId("round-1");
 
         private GameSession _session;
 
@@ -37,7 +37,7 @@ namespace GameName.Tests.PlayMode
 
             _session = Object.FindFirstObjectByType<GameSessionBootstrap>(FindObjectsInactive.Include).Session;
 
-            Assert.AreEqual(Room1, _session.CurrentRoomId, "첫 방이 room-1이 아니다.");
+            Assert.AreEqual(Round1, _session.CurrentRoomId, "첫 라운드가 round-1이 아니다.");
 
             // UI가 실제 크기를 잡아야 Pick이 의미 있는 답을 준다.
             yield return null;

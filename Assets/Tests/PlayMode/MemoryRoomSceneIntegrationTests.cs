@@ -28,7 +28,7 @@ namespace GameName.Tests.PlayMode
         // 이름으로 연다 — PlayMode 테스트는 에디터 전용 API를 쓸 수 없으므로,
         // 이 씬이 Build Settings에 등록되어 있어야 한다(등록되어 있다).
         private const string SceneName = "LDY_GameScene";
-        private static readonly MemoryRoomId Room1 = new MemoryRoomId("room-1");
+        private static readonly MemoryRoomId Round1 = new MemoryRoomId("round-1");
 
         private GameSession _session;
 
@@ -48,10 +48,10 @@ namespace GameName.Tests.PlayMode
             Assert.IsNotNull(_session, "GameSession이 조립되지 않았다.");
         }
 
-        // RunProgressor가 조립 끝에 첫 방으로 진입시킨다 — 데모의 첫 방은 room-1이다.
+        // RunProgressor가 조립 끝에 첫 라운드로 진입시킨다 — 데모의 첫 라운드는 round-1이다.
         private IEnumerator EnterFirstMemoryRoom()
         {
-            Assert.AreEqual(Room1, _session.CurrentRoomId, "첫 방이 room-1이 아니다.");
+            Assert.AreEqual(Round1, _session.CurrentRoomId, "첫 라운드가 round-1이 아니다.");
             yield return null;
         }
 
@@ -128,24 +128,20 @@ namespace GameName.Tests.PlayMode
         }
 
         [UnityTest]
-        public IEnumerator 집은_단서는_방에서_바로_사라지고_인벤토리에_들어간다()
+        public IEnumerator 읽은_단서는_방에서_바로_사라진다()
         {
             yield return EnterFirstMemoryRoom();
 
             var view = FindSpaceView();
             var beforeCount = FindClueObjects(view).Length;
 
-            // 실제 습득 경로(ClueCollectionProcessor)를 그대로 쓴다. 성공하면
-            // ClueCollectedEvent가 발행되어 방이 즉시 다시 그려지고, 인벤토리
-            // 투영이 단서를 슬롯에 넣는다.
+            // 실제 읽기 경로(ClueUseProcessor)를 그대로 쓴다. 성공하면
+            // ClueUsedEvent가 발행되어 방이 즉시 다시 그려진다.
             var clueId = ReadClueId(FindClueObjects(view)[0]);
-            Assert.IsTrue(_session.ClueCollectionProcessor.Collect(clueId).Succeeded, "단서를 집지 못했다.");
+            Assert.IsTrue(_session.ClueUse.Use(clueId).Succeeded, "단서를 읽지 못했다.");
             yield return null;
 
-            Assert.AreEqual(beforeCount - 1, FindClueObjects(view).Length, "집은 단서가 방에서 사라지지 않았다.");
-            Assert.IsTrue(
-                _session.Inventory.Items.OfType<ClueInfo>().Any(c => c.Id.Equals(clueId)),
-                "집은 단서가 인벤토리에 들어가지 않았다.");
+            Assert.AreEqual(beforeCount - 1, FindClueObjects(view).Length, "읽은 단서가 방에서 사라지지 않았다.");
         }
 
         [UnityTest]
@@ -184,19 +180,6 @@ namespace GameName.Tests.PlayMode
             yield return null;
             Assert.AreEqual(DisplayStyle.Flex, DisplayOf(host, OverlayPanel.ClueZoom));
             Assert.AreEqual(DisplayStyle.None, DisplayOf(host, OverlayPanel.Inventory), "두 오버레이가 함께 떠 있다.");
-        }
-
-        [UnityTest]
-        public IEnumerator 인벤토리_화면의_칸_개수는_Core_용량을_따른다()
-        {
-            yield return EnterFirstMemoryRoom();
-
-            var host = Object.FindFirstObjectByType<OverlayPanelHost>(FindObjectsInactive.Include);
-            host.Show(OverlayPanel.Inventory);
-            yield return null;
-
-            var grid = host.RootOf(OverlayPanel.Inventory).Q<VisualElement>("inventory-slot-grid");
-            Assert.AreEqual(_session.Inventory.Capacity, grid.childCount);
         }
 
         private static DisplayStyle ZoomDisplay()
