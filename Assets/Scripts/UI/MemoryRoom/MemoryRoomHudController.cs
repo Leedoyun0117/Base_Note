@@ -55,7 +55,8 @@ namespace GameName.UI.MemoryRoom
         }
 
         private void RenderTurn() => _view.SetTurn(_turns.CurrentTurn, _turns.TurnsToSurvive);
-        private void RenderStability() => _view.SetStability(_stability.Position);
+        private void RenderStability() =>
+            _view.SetStability(_stability.Position, _stability.Min, _stability.Max);
         private void RenderComplexes() => _view.SetComplexes(_activeComplexes.InPriorityOrder);
 
         public void Dispose()

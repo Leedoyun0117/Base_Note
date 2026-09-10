@@ -24,10 +24,19 @@ namespace GameName.UI.Tests.EditMode
         private static VisualElement MakeHudRoot()
         {
             var root = new VisualElement();
-            foreach (var name in new[] { "hud-key-hints", "hud-message", "hud-trust", "hud-hiromi-value", "hud-chance" })
+            foreach (var name in new[] { "hud-key-hints", "hud-message", "hud-trust", "hud-stability-value", "hud-chance" })
                 root.Add(new Label { name = name });
 
+            root.Add(new VisualElement { name = "hud-stability-fill" });
+            root.Add(new VisualElement { name = "hud-stability-baseline" });
+
             return root;
+        }
+
+        private static (float left, float width) FillBox(VisualElement root)
+        {
+            var fill = root.Q<VisualElement>("hud-stability-fill");
+            return (fill.style.left.value.value, fill.style.width.value.value);
         }
 
         private static RoomDefinition Round(string id, int turnsToSurvive) =>
@@ -74,8 +83,14 @@ namespace GameName.UI.Tests.EditMode
 
             StringAssert.Contains("0", fx.Text("hud-trust"));
             StringAssert.Contains("4", fx.Text("hud-trust"));
-            StringAssert.Contains("0", fx.Text("hud-hiromi-value"));
+            StringAssert.Contains("0", fx.Text("hud-stability-value"));
             StringAssert.Contains("없음", fx.Text("hud-chance"));
+
+            // 시작값 0 = 게이지가 중앙(범위 -100..100의 50%)에서 폭 0.
+            var box = FillBox(fx.Root);
+            Assert.AreEqual(50f, box.left, 0.01f);
+            Assert.AreEqual(0f, box.width, 0.01f);
+            Assert.AreEqual(50f, fx.Root.Q<VisualElement>("hud-stability-baseline").style.left.value.value, 0.01f);
         }
 
         [Test]
@@ -96,7 +111,31 @@ namespace GameName.UI.Tests.EditMode
 
             fx.Stability.Shift(15);
 
-            StringAssert.Contains("15", fx.Text("hud-hiromi-value"));
+            StringAssert.Contains("15", fx.Text("hud-stability-value"));
+        }
+
+        [Test]
+        public void 안정_축이_양수면_채움이_중앙에서_오른쪽으로_벌어진다()
+        {
+            var fx = new Fixture();
+
+            fx.Stability.Shift(30); // -100..100에서 30 = 65%
+
+            var box = FillBox(fx.Root);
+            Assert.AreEqual(50f, box.left, 0.01f);
+            Assert.AreEqual(15f, box.width, 0.01f);
+        }
+
+        [Test]
+        public void 안정_축이_음수면_채움이_중앙에서_왼쪽으로_벌어진다()
+        {
+            var fx = new Fixture();
+
+            fx.Stability.Shift(-40); // -100..100에서 -40 = 30%
+
+            var box = FillBox(fx.Root);
+            Assert.AreEqual(30f, box.left, 0.01f);
+            Assert.AreEqual(20f, box.width, 0.01f);
         }
 
         [Test]
@@ -130,13 +169,13 @@ namespace GameName.UI.Tests.EditMode
         {
             var fx = new Fixture(startingStability: 0);
             fx.Stability.Shift(20);
-            StringAssert.Contains("20", fx.Text("hud-hiromi-value"));
+            StringAssert.Contains("20", fx.Text("hud-stability-value"));
 
             fx.Bus.Publish(new RoomStartedEvent(new MemoryRoomId("round-2"), 1));
 
             // 안정 축은 런 전체에 걸쳐 이어진다 — 라운드가 바뀌어도 그대로다.
             Assert.AreEqual(20, fx.Stability.Position);
-            StringAssert.Contains("20", fx.Text("hud-hiromi-value"));
+            StringAssert.Contains("20", fx.Text("hud-stability-value"));
         }
     }
 }

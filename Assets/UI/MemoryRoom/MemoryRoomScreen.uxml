@@ -23,14 +23,14 @@
             <ui:VisualElement class="hud-bar__group" picking-mode="Ignore">
                 <ui:Label name="hud-trust" text="" class="hud-bar__stat" />
 
-                <!-- 히로민 게이지. 채워진 만큼이 보유량이고, 세로선(hud-hiromi-marker)이
-                     이동 문턱 자리다. 문턱보다 채움이 짧으면(강제 이동 상태)
-                     hud-hiromi-fill의 below-threshold 수식 클래스가 붙어 색이 바뀐다. -->
-                <ui:VisualElement name="hud-hiromi-group" class="hud-hiromi-group" picking-mode="Ignore">
-                    <ui:Label name="hud-hiromi-value" text="" class="hud-bar__stat" />
-                    <ui:VisualElement name="hud-hiromi-track" class="hud-hiromi-track" picking-mode="Ignore">
-                        <ui:VisualElement name="hud-hiromi-fill" class="hud-hiromi-fill" picking-mode="Ignore" />
-                        <ui:VisualElement name="hud-hiromi-marker" class="hud-hiromi-marker" picking-mode="Ignore" />
+                <!-- 안정 축 게이지. 중앙의 얇은 기준선(hud-stability-baseline)이 0(안정)
+                     자리이고, 값이 음수(침체)면 채움이 왼쪽으로, 양수(흥분)면 오른쪽으로
+                     벌어진다. 기준선 자리와 채움 폭은 코드가 축 범위에 맞춰 정한다. -->
+                <ui:VisualElement name="hud-stability-group" class="hud-stability-group" picking-mode="Ignore">
+                    <ui:Label name="hud-stability-value" text="" class="hud-bar__stat" />
+                    <ui:VisualElement name="hud-stability-track" class="hud-stability-track" picking-mode="Ignore">
+                        <ui:VisualElement name="hud-stability-fill" class="hud-stability-fill" picking-mode="Ignore" />
+                        <ui:VisualElement name="hud-stability-baseline" class="hud-stability-baseline" picking-mode="Ignore" />
                     </ui:VisualElement>
                 </ui:VisualElement>
 

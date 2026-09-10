@@ -104,6 +104,15 @@ namespace GameName.Core.Tests.EditMode
         }
 
         [Test]
+        public void 하한_상한을_그대로_읽어_준다()
+        {
+            var axis = new StabilityAxis(0, -80, 120, Bus());
+
+            Assert.AreEqual(-80, axis.Min);
+            Assert.AreEqual(120, axis.Max);
+        }
+
+        [Test]
         public void 하한이_상한보다_크면_생성에서_막는다()
         {
             var bus = Bus();

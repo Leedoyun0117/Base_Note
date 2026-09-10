@@ -20,6 +20,8 @@ namespace GameName.Core.Mind
         private readonly IEventBus _eventBus;
 
         public int Position { get; private set; }
+        public int Min => _min;
+        public int Max => _max;
 
         public StabilityAxis(int initialPosition, int min, int max, IEventBus eventBus)
         {

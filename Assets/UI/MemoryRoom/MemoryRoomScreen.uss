@@ -96,19 +96,16 @@
     margin-right: var(--space-4);
 }
 
-/* 히로민 게이지 — 채워진 만큼이 보유량, 세로선이 이동 문턱. */
-.hud-hiromi-group {
+/* 안정 축 게이지 — 중앙 기준선에서 좌우로 벌어지는 양방향 바. */
+.hud-stability-group {
     flex-direction: row;
     align-items: center;
     margin-right: var(--space-4);
 }
 
-/* 폭을 넉넉히(예전 64px의 2.5배) 잡는다 — 문턱 마커가 눈금 하나처럼
-   보이지 않고, 채움 끝이 마커의 왼쪽인지 오른쪽인지가 한눈에 읽혀야 한다.
-   코드가 문턱을 항상 50%에 그리므로(displayCeiling = 문턱×2) 폭이 넓을수록
-   "위/아래" 판단 거리가 길어진다. 모서리는 각지게 — 계기처럼 읽히고, 마커가
-   위아래로 삐져나올 수 있도록 overflow도 열어 둔다. */
-.hud-hiromi-track {
+/* 폭을 넉넉히 잡는다 — 중앙에서 얼마나 벌어졌는지가 한눈에 읽혀야 한다.
+   모서리는 각지게(계기처럼), 기준선이 위아래로 삐져나오도록 overflow도 연다. */
+.hud-stability-track {
     position: relative;
     width: 160px;
     height: 14px;
@@ -121,33 +118,26 @@
     margin-left: var(--space-1);
 }
 
-.hud-hiromi-fill {
+/* 채움. left/width는 코드가 축 위치·범위에 맞춰 정한다(음수면 기준선 왼쪽,
+   양수면 오른쪽). 기본값은 0(안정)일 때의 자리 = 폭 0. */
+.hud-stability-fill {
     position: absolute;
-    left: 0;
+    left: 50%;
     top: 0;
     bottom: 0;
-    width: 0%;
-    background-color: var(--success);
+    width: 0;
+    background-color: var(--memory-blue);
 }
 
-/* 히로민이 이동 문턱보다 적을 때 — "강제 이동" 상태를 색으로 드러낸다.
-   success(초록)와 danger(적)는 색상이 반대라 채움 색만 봐도 상태가 바뀐 걸
-   안다. 넓어진 막대가 색 면적을 키워 이 전환이 더 또렷해진다. */
-.hud-hiromi-fill--below-threshold {
-    background-color: var(--danger);
-}
-
-/* 이동 문턱(15) 자리. 채움과 확실히 구분되도록: 흰 심 + 양옆 어두운 테두리로
-   초록/적/빈 트랙 어떤 배경에서도 대비가 서고, 트랙보다 위아래로 5px씩
-   삐져나와 "눈금"이 아니라 "문"으로 읽힌다. margin-left로 심을 문턱 지점에
-   가운데 맞춘다(전체 폭 6px). */
-.hud-hiromi-marker {
+/* 0(안정) 자리의 얇은 세로 기준선. left는 코드가 정한다(비대칭 범위 대비).
+   트랙 위아래로 5px씩 삐져나와 "눈금"이 아니라 "기준"으로 읽힌다. */
+.hud-stability-baseline {
     position: absolute;
     top: -5px;
     bottom: -5px;
-    width: 4px;
-    left: 0%;
-    margin-left: -3px;
+    width: 2px;
+    left: 50%;
+    margin-left: -1px;
     background-color: #FFFFFF;
     border-left-width: 1px;
     border-right-width: 1px;
