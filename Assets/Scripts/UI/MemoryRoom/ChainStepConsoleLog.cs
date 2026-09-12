@@ -42,7 +42,24 @@ namespace GameName.UI.MemoryRoom
             }
 
             sb.Append("\n최종 ").Append(Join(e.FinalTags));
+
+            if (!HasEmotionTag(e.FinalTags))
+                sb.Append("\n  ⚠ 안정 축 이동 없음 — 최종 태그에 감정 축이 없다(거부/삭제로 사라졌을 수 있음).");
+
             Debug.Log(sb.ToString());
+        }
+
+        private static bool HasEmotionTag(IReadOnlyList<StoryTag> tags)
+        {
+            if (tags == null) return false;
+
+            foreach (var tag in tags)
+            {
+                if (tag.Axis == StoryTagAxis.Emotion)
+                    return true;
+            }
+
+            return false;
         }
 
         private static string Join(IReadOnlyList<StoryTag> tags)

@@ -96,7 +96,7 @@
     margin-right: var(--space-4);
 }
 
-/* 안정 축 게이지 — 중앙 기준선에서 좌우로 벌어지는 양방향 바. */
+/* 안정 축 게이지 — 중앙 기준선 고정 + 색으로 벌어지는 채움 + 그 끝의 포인터 마커. */
 .hud-stability-group {
     flex-direction: row;
     align-items: center;
@@ -104,7 +104,8 @@
 }
 
 /* 폭을 넉넉히 잡는다 — 중앙에서 얼마나 벌어졌는지가 한눈에 읽혀야 한다.
-   모서리는 각지게(계기처럼), 기준선이 위아래로 삐져나오도록 overflow도 연다. */
+   모서리는 각지게(계기처럼), 기준선·채움·마커가 위아래로 삐져나오도록
+   overflow도 연다. */
 .hud-stability-track {
     position: relative;
     width: 160px;
@@ -118,8 +119,9 @@
     margin-left: var(--space-1);
 }
 
-/* 채움. left/width는 코드가 축 위치·범위에 맞춰 정한다(음수면 기준선 왼쪽,
-   양수면 오른쪽). 기본값은 0(안정)일 때의 자리 = 폭 0. */
+/* 채움. 기준선에서 값 자리까지 색으로 벌어진다 — left/width/색은 코드
+   (MemoryRoomHudView)가 축 위치·범위에 맞춰 정한다. 여기 값은 첫 렌더
+   전까지만 쓰이는 기본값이다. */
 .hud-stability-fill {
     position: absolute;
     left: 50%;
@@ -129,8 +131,10 @@
     background-color: var(--memory-blue);
 }
 
-/* 0(안정) 자리의 얇은 세로 기준선. left는 코드가 정한다(비대칭 범위 대비).
-   트랙 위아래로 5px씩 삐져나와 "눈금"이 아니라 "기준"으로 읽힌다. */
+/* 0(안정) 자리의 얇은 세로 기준선. 값이 바뀌어도 안 움직인다 — left는 축의
+   min/max로 정해지는 자리라 코드가 정하지만(비대칭 범위 대비), 한 판 동안
+   고정이다. 트랙 위아래로 5px씩 삐져나와 "눈금"이 아니라 "기준"으로 읽힌다.
+   채움보다 위에 그려져 채움에 덮이지 않는다. */
 .hud-stability-baseline {
     position: absolute;
     top: -5px;
@@ -143,6 +147,24 @@
     border-right-width: 1px;
     border-left-color: rgba(0, 0, 0, 0.65);
     border-right-color: rgba(0, 0, 0, 0.65);
+}
+
+/* 채움 끝에 얹히는 포인터 마커 — 값 자리를 정확히 콕 집어 준다. 폭은
+   고정(8px)이고 left(축 위치 비율)와 색(채움과 같은 색)만 코드
+   (MemoryRoomHudView)가 정한다 — margin-left로 폭의 절반만큼 당겨 값이
+   가리키는 지점에 중앙이 오게 한다. 채움·기준선보다 더 삐져나와(6px) 항상
+   그 위로 그려진다. 여기 색은 첫 렌더 전까지만 쓰이는 기본값이다. */
+.hud-stability-marker {
+    position: absolute;
+    top: -6px;
+    bottom: -6px;
+    width: 8px;
+    left: 50%;
+    margin-left: -4px;
+    border-radius: 4px;
+    background-color: var(--memory-blue);
+    border-width: 1px;
+    border-color: rgba(0, 0, 0, 0.65);
 }
 
 /* 손에 든 추출 기억의 색 요약 — 세 점을 나란히. 개수가 아니라 보유 여부만:

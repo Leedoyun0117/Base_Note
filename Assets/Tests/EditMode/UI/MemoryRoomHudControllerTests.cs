@@ -8,6 +8,7 @@ using GameName.Core.MemoryRooms;
 using GameName.Core.Mind;
 using GameName.UI.MemoryRoom;
 using NUnit.Framework;
+using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace GameName.UI.Tests.EditMode
@@ -29,6 +30,7 @@ namespace GameName.UI.Tests.EditMode
 
             root.Add(new VisualElement { name = "hud-stability-fill" });
             root.Add(new VisualElement { name = "hud-stability-baseline" });
+            root.Add(new VisualElement { name = "hud-stability-marker" });
 
             return root;
         }
@@ -38,6 +40,9 @@ namespace GameName.UI.Tests.EditMode
             var fill = root.Q<VisualElement>("hud-stability-fill");
             return (fill.style.left.value.value, fill.style.width.value.value);
         }
+
+        private static float MarkerLeft(VisualElement root) =>
+            root.Q<VisualElement>("hud-stability-marker").style.left.value.value;
 
         private static RoomDefinition Round(string id, int turnsToSurvive) =>
             new RoomDefinition(new MemoryRoomId(id), Array.Empty<ClueDefinition>(), turnsToSurvive);
@@ -86,10 +91,12 @@ namespace GameName.UI.Tests.EditMode
             StringAssert.Contains("0", fx.Text("hud-stability-value"));
             StringAssert.Contains("없음", fx.Text("hud-chance"));
 
-            // 시작값 0 = 게이지가 중앙(범위 -100..100의 50%)에서 폭 0.
+            // 시작값 0 = 게이지가 중앙(범위 -100..100의 50%)에서 채움 폭 0,
+            // 마커도 기준선과 같은 자리.
             var box = FillBox(fx.Root);
             Assert.AreEqual(50f, box.left, 0.01f);
             Assert.AreEqual(0f, box.width, 0.01f);
+            Assert.AreEqual(50f, MarkerLeft(fx.Root), 0.01f);
             Assert.AreEqual(50f, fx.Root.Q<VisualElement>("hud-stability-baseline").style.left.value.value, 0.01f);
         }
 
@@ -115,7 +122,7 @@ namespace GameName.UI.Tests.EditMode
         }
 
         [Test]
-        public void 안정_축이_양수면_채움이_중앙에서_오른쪽으로_벌어진다()
+        public void 안정_축이_양수면_채움이_중앙에서_오른쪽으로_벌어지고_마커가_그_끝에_온다()
         {
             var fx = new Fixture();
 
@@ -124,10 +131,11 @@ namespace GameName.UI.Tests.EditMode
             var box = FillBox(fx.Root);
             Assert.AreEqual(50f, box.left, 0.01f);
             Assert.AreEqual(15f, box.width, 0.01f);
+            Assert.AreEqual(65f, MarkerLeft(fx.Root), 0.01f);
         }
 
         [Test]
-        public void 안정_축이_음수면_채움이_중앙에서_왼쪽으로_벌어진다()
+        public void 안정_축이_음수면_채움이_중앙에서_왼쪽으로_벌어지고_마커가_그_끝에_온다()
         {
             var fx = new Fixture();
 
@@ -136,6 +144,78 @@ namespace GameName.UI.Tests.EditMode
             var box = FillBox(fx.Root);
             Assert.AreEqual(30f, box.left, 0.01f);
             Assert.AreEqual(20f, box.width, 0.01f);
+            Assert.AreEqual(30f, MarkerLeft(fx.Root), 0.01f);
+        }
+
+        [Test]
+        public void 안정_축이_음수면_마커가_파란색이다()
+        {
+            var fx = new Fixture();
+
+            fx.Stability.Shift(-40);
+
+            var color = fx.Root.Q<VisualElement>("hud-stability-marker").style.backgroundColor.value;
+            Assert.Greater(color.b, color.r, "침체(음수) 쪽인데 마커가 파랑보다 빨강에 가깝다.");
+        }
+
+        [Test]
+        public void 안정_축이_양수면_마커가_빨간색이다()
+        {
+            var fx = new Fixture();
+
+            fx.Stability.Shift(40);
+
+            var color = fx.Root.Q<VisualElement>("hud-stability-marker").style.backgroundColor.value;
+            Assert.Greater(color.r, color.b, "흥분(양수) 쪽인데 마커가 빨강보다 파랑에 가깝다.");
+        }
+
+        [Test]
+        public void 안정_축이_0이면_마커_색이_거의_흰색이다()
+        {
+            var fx = new Fixture();
+
+            // Shift(0)은 조기 반환이라 이벤트가 안 난다 — 생성 직후(=0) 기본색을 본다.
+            var color = fx.Root.Q<VisualElement>("hud-stability-marker").style.backgroundColor.value;
+
+            Assert.AreEqual(1f, color.r, 0.01f, "0(안정)인데 흰색이 아니다(빨강 성분).");
+            Assert.AreEqual(1f, color.g, 0.01f, "0(안정)인데 흰색이 아니다(초록 성분).");
+            Assert.AreEqual(1f, color.b, 0.01f, "0(안정)인데 흰색이 아니다(파랑 성분).");
+        }
+
+        [Test]
+        public void 안정_축이_음수_극단에_가까울수록_파랑이_진해진다()
+        {
+            var near = new Fixture();
+            near.Stability.Shift(-10);
+            var far = new Fixture();
+            far.Stability.Shift(-90);
+
+            var nearColor = near.Root.Q<VisualElement>("hud-stability-marker").style.backgroundColor.value;
+            var farColor = far.Root.Q<VisualElement>("hud-stability-marker").style.backgroundColor.value;
+
+            // 둘 다 파랑 쪽(b > r)이어야 하고, 극단에 가까운 쪽이 더 진하다(밝기가 낮다).
+            Assert.Greater(nearColor.b, nearColor.r, "약한 음수인데 파랑 쪽이 아니다.");
+            Assert.Greater(farColor.b, farColor.r, "강한 음수인데 파랑 쪽이 아니다.");
+            Assert.Less(farColor.r + farColor.g + farColor.b, nearColor.r + nearColor.g + nearColor.b,
+                "극단에 가까운데 더 옅다(밝다) — 진해지지 않았다.");
+        }
+
+        [Test]
+        public void 안정_축이_양수_극단에_가까울수록_빨강이_진해진다()
+        {
+            var near = new Fixture();
+            near.Stability.Shift(10);
+            var far = new Fixture();
+            far.Stability.Shift(90);
+
+            var nearColor = near.Root.Q<VisualElement>("hud-stability-marker").style.backgroundColor.value;
+            var farColor = far.Root.Q<VisualElement>("hud-stability-marker").style.backgroundColor.value;
+
+            // 둘 다 빨강 쪽(r > b)이어야 하고, 극단에 가까운 쪽이 더 진하다(밝기가 낮다).
+            Assert.Greater(nearColor.r, nearColor.b, "약한 양수인데 빨강 쪽이 아니다.");
+            Assert.Greater(farColor.r, farColor.b, "강한 양수인데 빨강 쪽이 아니다.");
+            Assert.Less(farColor.r + farColor.g + farColor.b, nearColor.r + nearColor.g + nearColor.b,
+                "극단에 가까운데 더 옅다(밝다) — 진해지지 않았다.");
         }
 
         [Test]

@@ -24,6 +24,7 @@ namespace GameName.UI.Tests.EditMode
                 root.Add(new Label { name = name });
             root.Add(new VisualElement { name = "hud-stability-fill" });
             root.Add(new VisualElement { name = "hud-stability-baseline" });
+            root.Add(new VisualElement { name = "hud-stability-marker" });
             return root;
         }
 
@@ -57,14 +58,14 @@ namespace GameName.UI.Tests.EditMode
                 positions.Add(session.Stability.Position);
             }
 
-            // 라운드1 시작 컴플렉스(가라앉다)가 감정을 후회(-6)로 바꾸므로 매 사용이
+            // 라운드1 시작 컴플렉스(가라앉다)가 감정을 후회로 바꾸므로 매 사용이
             // 축을 침체 쪽으로 민다 — 마지막 위치가 시작보다 확실히 낮아야 한다.
             Assert.Less(positions[positions.Count - 1], positions[0],
                 "여러 번 썼는데 누적 이동이 없다: " + string.Join(" → ", positions));
         }
 
         [Test]
-        public void HUD_게이지_채움이_단서_사용에_따라_갱신된다()
+        public void HUD_게이지_채움과_마커가_단서_사용에_따라_갱신된다()
         {
             var session = NewSession();
             var root = MakeHudRoot();
@@ -74,18 +75,22 @@ namespace GameName.UI.Tests.EditMode
                 view, session.Turns, session.Stability, session.ActiveComplexes, session.EventBus);
 
             var fill = root.Q<VisualElement>("hud-stability-fill");
-            var beforeLeft = fill.style.left.value.value;
-            var beforeWidth = fill.style.width.value.value;
+            var marker = root.Q<VisualElement>("hud-stability-marker");
+            var beforeFillWidth = fill.style.width.value.value;
+            var beforeMarkerLeft = marker.style.left.value.value;
 
             var clue = session.ClueTracker.GetCluesInRoom(session.CurrentRoomId)[0];
             Assert.IsTrue(session.ClueUse.Use(clue.Id).Succeeded);
 
-            var afterLeft = fill.style.left.value.value;
-            var afterWidth = fill.style.width.value.value;
+            var afterFillWidth = fill.style.width.value.value;
+            var afterMarkerLeft = marker.style.left.value.value;
 
             Assert.IsFalse(
-                Mathf.Approximately(beforeLeft, afterLeft) && Mathf.Approximately(beforeWidth, afterWidth),
-                $"게이지가 그대로다: left {beforeLeft}→{afterLeft}, width {beforeWidth}→{afterWidth}");
+                Mathf.Approximately(beforeFillWidth, afterFillWidth),
+                $"게이지 채움이 그대로다: width {beforeFillWidth}→{afterFillWidth}");
+            Assert.IsFalse(
+                Mathf.Approximately(beforeMarkerLeft, afterMarkerLeft),
+                $"게이지 마커가 그대로다: left {beforeMarkerLeft}→{afterMarkerLeft}");
 
             controller.Dispose();
         }

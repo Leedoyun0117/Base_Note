@@ -32,13 +32,17 @@ namespace GameName.UI.Session
         private static readonly float[] PosterSlots = { 0.30f, 0.70f };
 
         // 최종 태그의 감정 축 값 → 안정 축 이동량. 임시 튜닝치다.
+        //
+        // 축 범위가 -100..+100(span 200)이라 한 자릿수 이동은 게이지에서 몇 px로
+        // 눈에 안 띈다 — 한 라운드(4~5턴) 안에 한쪽으로 확실히 쏠려 컴플렉스
+        // 발생 확률(SpawnChance: 20/40/70 구간)까지 밀어붙이도록 잡았다.
         private static readonly Dictionary<string, int> EmotionShift = new Dictionary<string, int>
         {
-            { "그리움", -2 },
-            { "후회", -6 },
-            { "평온", 3 },
-            { "격정", 8 },
-            { "분노", 10 },
+            { "그리움", -8 },
+            { "후회", -18 },
+            { "평온", 10 },
+            { "격정", 24 },
+            { "분노", 30 },
         };
 
         // |안정 위치| → 그 턴에 새 컴플렉스가 생길 확률(계단식). 임시치.

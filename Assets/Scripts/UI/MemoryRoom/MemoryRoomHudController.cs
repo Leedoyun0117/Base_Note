@@ -63,6 +63,8 @@ namespace GameName.UI.MemoryRoom
         {
             foreach (var subscription in _subscriptions)
                 subscription.Dispose();
+
+            _view.CancelStabilityAnimation();
         }
     }
 }
