@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: RoomSceneMap
   m_EditorClassIdentifier: GameName.UI::GameName.UI.Session.RoomSceneMap
   _entries:
-  - RoomId: room-1
+  - RoomId: round-1
     SceneName: Room_Greenroom
   - RoomId: room-2
     SceneName: Room_ClockTower

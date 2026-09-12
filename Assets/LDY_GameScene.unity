@@ -486,6 +486,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1618574296}
   - component: {fileID: 1618574295}
+  - component: {fileID: 1618574297}
   m_Layer: 0
   m_Name: GameSession
   m_TagString: Untagged
@@ -506,6 +507,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: GameName.UI::GameName.UI.Session.GameSessionBootstrap
   _roomLimit: 1
+--- !u!114 &1618574297
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1618574294}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a6d76e8ec17c411aa484c85187b1182f, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: GameName.UI::GameName.UI.Session.RoomSceneLoader
+  _gameSession: {fileID: 1618574295}
+  _map: {fileID: 11400000, guid: aad4cabcc94940158b37282234c375b2, type: 2}
+  _debugLog: 0
 --- !u!4 &1618574296
 Transform:
   m_ObjectHideFlags: 0
